@@ -28,11 +28,11 @@
   4. fetched 版本与请求版本不一致时构建失败
   5. 验证实例重装后 `/gsd-health` + 独立 CLI + `.env` 拦截三项复验通过
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 01-01: staging 取源管线（npm pack → 官方 --claude staging → 产物捕获）
+- [x] 01-01: staging 取源管线（npm pack → 官方 --claude staging → 产物捕获）
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02: 改写与 gate 迁移（staging-相对映射、版本交叉校验、scripts/ 固化）
