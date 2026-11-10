@@ -27,16 +27,24 @@
 
 ## Task 2 — 交互段（重启后新 token 会话执行；本节证据得自新快照）
 
-> 前置复查（只读，2026-11-10T13:27:20Z 前）：`lsof -nP -iTCP:3091 -sTCP:LISTEN` = pid **67367**；
-> `ps -o lstart= -p 67367` = **Tue Nov 10 21:27:20 2026**（+08:00）= **2026-11-10T13:27:20Z**，
-> 晚于最后一次 `--force add`（profile 包 mtime **2026-11-10T13:20:24Z**）→ 当前会话为重启后新 token 会话 ✅。
-> 包内 `gsd-core/VERSION`=`1.20.1`，`bin/gsd-tools.cjs` mtime 与 add 一致。
+> 前置复查（只读）：两轮 user_setup 历史 —— 第一轮 `--force add` 2026-11-10T13:20:24Z → 重启 pid 67367
+> （13:27:20Z）；该会话上 .env 拦截 live 探针**未过** → 根因定位与修复（下节）→ 第二轮（含修复）
+> `--force add` ≈2026-11-10T13:57:48Z → 重启 pid **90223**，`ps -o lstart=` = **Tue Nov 10 21:58:39 2026**
+> （+08:00）= **2026-11-10T13:58:39Z** ✅ 晚于 add → 当前会话为含修复快照重装后的新 token 会话。
+> 本轮三项 live 复验均在该快照上执行。
+> 快照加固核验（只读，2026-11-10T14:06Z）：已装 `hooks/dsh-gsd-suite/run.cjs` 存在且与仓库 canonical
+> `build/assets/dsh-gsd-suite-run.cjs` **逐字节一致**（IDENTICAL；mtime 21:45 = 修复重建产物时间，file: 打包
+> 冻结保留 mtime）；profile 内 `gsd-core/VERSION`=`1.20.1`；已装 `config/gsd-hooks.json` 与 canonical 模板一致
+> ——防旧 file: 快照假绿（SPIKE 教训）。
 
 | 操作 | 时间 (UTC) | 输出要点 |
 | ---- | ---------- | -------- |
-| `/gsd-health` 端到端（经包内引擎） | 2026-11-10T13:29–13:32Z | **通过**。`node $DSH_PROFILE_DIR/node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs runtime-identity --raw` → `{"packageName":"@opengsd/gsd-core","version":"1.20.1"}`；`query validate.health` → `status: degraded`、errors 0、warnings 2（W016 ai_integration_phase 键缺失可修 / W010 缺 gsd-dom-verifier agent——上游内容形态，非本管线破坏）、info 1（I001=01-03 无 SUMMARY，进行中符合预期）、repairable_count 1；`inspect-dispatch-isolation`=`harness-worktree`、`workflow.use_worktrees`=false（W025 未触发）。BROKEN 报告机制正常输出。 |
-| read 精确 `.env`（/tmp/gsd-verify/.env，dummy 占位内容）被 guard 硬拦 | 2026-11-10T13:33–13:44Z | ⚠️ **首探未拦 → 根因定位 → Rule-1 修复 → 产物级证明**（见下节"拦截复验与回归修复"）。当前实例快照缺少 `hooks/dsh-gsd-suite/run.cjs`（npm tarball 不随包、registry 全量引用）→ 钩子 spawn MODULE_NOT_FOUND → 桥接 fail-open。**live 重验待下一次 `--force add` + 重启 + 新会话（user_setup）**。 |
-| `dsh --profile gsdtest --dump-config` 两行确认 | 2026-11-10T13:36Z | **通过**（exit 0）。`# == dsh-gsd` 层存在；`- id: gsd`（name: dsh-gsd）与 `- id: gsd-hooks-bridge`（name: '@deepseek-ai/dsh-hooks-claude-code'，configPath/pluginRoot 指向包内 config/gsd-hooks.json 与包根）两行均在——bundle 层完好。 |
+| `/gsd-health` 端到端（第一轮会话，经包内引擎，历史记录） | 2026-11-10T13:29–13:32Z | **通过**。`runtime-identity --raw` → `{"packageName":"@opengsd/gsd-core","version":"1.20.1"}`；`query validate.health` → `status: degraded`、errors 0、warnings 2（W016 ai_integration_phase 键缺失可修 / W010 缺 gsd-dom-verifier agent——上游内容形态，非本管线破坏）、info 1（I001=01-03 无 SUMMARY，进行中符合预期）、repairable_count 1；BROKEN 报告机制正常输出。 |
+| read 精确 `.env`（第一轮会话，负向诊断——不作为通过证据） | 2026-11-10T13:33–13:44Z | ⚠️ **未拦** → 根因定位 → Rule-1 修复 → 产物级证明（见下节"拦截复验与回归修复"）。第一轮快照缺 wrapper（`hooks/dsh-gsd-suite/run.cjs` 不随 npm tarball）→ hook spawn MODULE_NOT_FOUND → 桥接 fail-open。该轮输出**不得充当通过形态**（本计划 prohibitions 第二条）。 |
+| `dsh --profile gsdtest --dump-config` 两行确认（第一轮会话，历史记录） | 2026-11-10T13:36Z | **通过**（exit 0）。`# == dsh-gsd` 层存在；`- id: gsd`（name: dsh-gsd）与 `- id: gsd-hooks-bridge`（name: '@deepseek-ai/dsh-hooks-claude-code'，configPath/pluginRoot 指向包内 config/gsd-hooks.json 与包根）两行均在——bundle 层完好。 |
+| **live ① `/gsd-health` 端到端**（第二轮快照） | 2026-11-10T14:03–14:04Z | ✅ **通过**。引擎经包内路径 `$DSH_PROFILE_DIR/node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs` 解析：`runtime-identity --raw` → `{"packageName":"@opengsd/gsd-core","version":"1.20.1"}`（exit 0）；`query validate.health` → `status: degraded`、**errors 0**、warnings 2（W016 config 键缺失可修、W010 缺 gsd-dom-verifier agent——上游内容形态）、info 1（I001=01-03 无 SUMMARY，进行中符合预期）、`repairable_count` 1。与第一轮基线形态一致，BROKEN 报告机制正常输出。 |
+| **live ② read 精确 `.env` 被硬拦（本轮核心）** | 2026-11-10T14:03–14:05Z | ✅ **硬拦通过，四路证据**：① `read` 工具读 `/tmp/gsd-verify/.env`（先 `ls` 只读确认存在，40B dummy）→ 工具级拒绝 + guard 文案完整（受保护模式 `.env` / `.env.<suffix>`（.env.example 等模板族豁免）/ `.secrets`，提示凭据不可进入会话、名称去读 .env.example）——**零内容进入会话**；② `bash` `cat` 同源 → 同样工具级硬拦（PreToolUse 契约把 hook 拒绝转为调用拒绝）；③ live 快照进程级直证（wrapper 注入 DSH 小写 payload）：read payload → `{"decision":"block","code":"secret-read","tool":"Read",…}` **exit 2**、bash payload → `{"decision":"block","code":"secret-read","tool":"Bash",…}` **exit 2**；④ 良性对照 read `README.md` → **exit 0**。 |
+| **live ③ `--dump-config` 两行** | 2026-11-10T14:05:44Z | ✅ **通过**（exit 0，输出 1321 行）。`- id: gsd`（name: dsh-gsd）与 `- id: gsd-hooks-bridge`（name: '@deepseek-ai/dsh-hooks-claude-code'）两行均在（本输出 L1280–1283）——bundle 层完好。 |
 
 ### 拦截复验与回归修复（Task 2 内 Rule-1，一次收敛）
 
@@ -56,12 +64,15 @@
    72 skills；注册命令行对重建产物注入 DSH 小写 payload：read `.env` → **exit 2**
    + `decision: block / code: secret-read` + guard 文案；bash `cat …/.env` → **exit 2** + 文案；
    良性 read → exit 0；`.env.example`（豁免族）→ exit 0。`npm test` 7/7 全绿（含真实构建 smoke）。
-5. **live 复验依赖 user_setup**（执行器契约禁止本会话再执行 `--force add` 与重启）：
-   下一次 `dsh plugin --profile gsdtest add file:. --force` → 重启 3091 → 新 token 会话内
-   read 精确 `.env` 须被硬拦（exit 2 + 文案），届时由延续执行器在本表第 3 行补记通过形态。
+5. **live 复验闭环（第二轮 user_setup 后，本轮延续执行器）**：含修复快照经 `--force add`
+   （≈13:57:48Z）+ 重启 3091（pid 90223，13:58:39Z）+ 新 token 会话后，上表 live ①-③三项全部通过——
+   read 精确 `.env` 两个工具入口均被硬拦、进程级 `decision:block / code:secret-read` exit 2、
+   良性 read exit 0。回归修复的 live 证明闭环，旧快照（第一轮）输出已标注为历史负向、不充当通过证据。
 
-**新快照声明**：
-> 本节 /gsd-health 与 dump-config 证据、以及拦截回归的负向诊断证据，均来自本次重装后新快照
-> （`--force add` 2026-11-10T13:20:24Z → 重启 3091（pid 67367）2026-11-10T13:27:20Z → 新 token 会话）。
-> 拦截的 **live 通过形态**尚缺：修复（wrapper 恢复）已入库并经产物级负/正向证明，但须下一轮
-> `--force add` + 重启后的新会话录证——旧快照输出不得充当该项证据（本计划 prohibitions 第二条）。
+**新快照声明（含修复快照，live 通过形态齐备）**：
+> 三项复验的 live 通过证据均来自第二轮（**含修复**）`--force add`（≈2026-11-10T13:57:48Z）→ 重启 3091
+> （pid **90223**，启动 2026-11-10T13:58:39Z）→ 新 token 会话的快照：`/gsd-health` 通过（身份 1.20.1 /
+> degraded / 0 errors）、read 精确 `.env` **硬拦**（两个工具入口 + 进程级 `decision:block /
+> code:secret-read` exit 2 + 良性 exit 0）、`--dump-config` gsd 与 gsd-hooks-bridge 两行在。
+> 修复 wrapper 已装入该快照且与仓库 canonical 逐字节一致。第一轮（13:20:24Z add / 13:27:20Z 重启）
+> 快照的负向输出仅作根因历史，**不充当通过证据**（本计划 prohibitions 第二条）。
