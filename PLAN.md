@@ -1,20 +1,20 @@
-# PLAN — 将 install-gsd-dsh 插件化为 dsh-plugin-gsd
+# PLAN — 将 install-gsd-dsh 插件化为 dsh-gsd
 
 > 状态:P0 (spike) 已完成并**全链路验证通过**(含 hooks 阳性拦截,2026-11-10);
 > 证据与调试结论见 [SPIKE.md](./SPIKE.md)。进入 P1。
-> 目标形态:`dsh plugin --profile <name> add dsh-plugin-gsd@<版本>` 一条命令完成
+> 目标形态:`dsh plugin --profile <name> add dsh-gsd@<版本>` 一条命令完成
 > GSD 在 DSH 上的安装(72 skills + 引擎 + hooks 守卫桥接),零手工脚本、零 `~/.dsh` 写入。
 
 ## 验收标准(UAT,按 P5 在新机器全量执行)
 
 1. 干净机器(无 ~/.dsh 或全新 DSH_HOME)上:
-   `dsh plugin --profile web add dsh-plugin-gsd@0.1.0-gsd1.20.1`,重启 `dsh web`。
+   `dsh plugin --profile web add dsh-gsd@0.1.0-gsd1.20.1`,重启 `dsh web`。
 2. 会话技能目录出现 72 个 `gsd-*`;`/gsd-health` 成功执行。
 3. 模型 `read` 一个 `.env` → 被 gsd-secret-read-guard 拦(exit 2,带拦截文案)。
-4. 引擎可用:`node $DSH_PROFILE_DIR/node_modules/dsh-plugin-gsd/gsd-core/bin/gsd-tools.cjs runtime-identity --raw`
+4. 引擎可用:`node $DSH_PROFILE_DIR/node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs runtime-identity --raw`
    打印 `@opengsd/gsd-core` + 目标版本。
 5. `/gsd-new-project --auto` 在小测试仓库 scaffold 出 `.planning/`。
-6. `dsh plugin --profile web remove dsh-plugin-gsd` → 重启后上述全部消失。
+6. `dsh plugin --profile web remove dsh-gsd` → 重启后上述全部消失。
 7. 升级/回滚:重跑 add 换版本号,随后同 2-5 抽测通过。
 8. 不破坏共存:同一 profile 里其他插件(codegraph/deja/dshmarket 级)不受影响。
 
@@ -54,7 +54,7 @@
 - 老部署(install-gsd-dsh 装的机器)迁移 runbook:
   1) `bash install-gsd-dsh.sh --uninstall`(清 ~/.dsh 摊平的 skills/gsd-core/hooks/patch);
   2) `npm uninstall -g @opengsd/gsd-core`;
-  3) `dsh plugin --profile web add dsh-plugin-gsd@…`;重启。
+  3) `dsh plugin --profile web add dsh-gsd@…`;重启。
   顺序不可反(先卸旧再装新,避免同名 skills 双源)。
 - install-gsd-dsh.sh 保留定位:离线内网、自定义 DSH_HOME 批量铺、诊断保底;
   README 顶部注明推荐新方式。
@@ -79,7 +79,7 @@
 
 ## 开放问题
 1. dshmarket 注册规范与审核要求(调研后决定是否首发就上)。
-2. 是否发布配套 `dsh-plugin-gsd-core` 精简档(对应 GSD_PROFILE=core)?初期不排期。
+2. 是否发布配套 `dsh-gsd-core` 精简档(对应 GSD_PROFILE=core)?初期不排期。
 3. npm 包内直接嵌 hooks/engine 的审计义务(上游更新时的重新打包责任)——CI 用
    GSD release 事件/定时任务驱动重建提示。
 4. (可选项)secret-read-guard 的 basename 规则对 `*something.env` 不命中

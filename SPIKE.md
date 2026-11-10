@@ -1,11 +1,11 @@
-# SPIKE — dsh-plugin-gsd(把 install-gsd-dsh 插件化)
+# SPIKE — dsh-gsd(把 install-gsd-dsh 插件化)
 
 日期:2026-11-10 · 环境:macOS, DSH 0.2.2-rc.1, Node v24.21.0, pnpm 12.11.2 · 状态:**已验证(见下)**
 
 ## 目标
 
 回答一个问题:`install-gsd-dsh.sh` 这套"下载脚本 + 人工运行 + 写 `~/.dsh`"的安装形态,
-能否改成 DSH 原生插件,`dsh plugin --profile <name> add dsh-plugin-gsd` 一条命令装完?
+能否改成 DSH 原生插件,`dsh plugin --profile <name> add dsh-gsd` 一条命令装完?
 如果可以,机制是什么、代价是什么、哪些能力对不齐?
 
 ## 关键机制(源码/现网实证)
@@ -13,7 +13,7 @@
 1. **plugin = pnpm 转发 + bundle 声明**。`dsh plugin` 只是把参数原样转发给 profile 目录里的
    pnpm(dsh lib/plugin-DscIHF4k.js);bundle 自动 reconcile 由 `dsh-app-boot` 的
    `reconcileProfilePlugins()` 负责。实测:add 后 `dsh.profile.bundles` 立即、自动加上
-   `dsh-plugin-gsd`,无需重启。remove 后立即消失,node_modules 同步清理。
+   `dsh-gsd`,无需重启。remove 后立即消失,node_modules 同步清理。
 2. **bundle = npm 包 + `dsh.bundle.patch`**,patch 是 cordis patch 层,先于用户
    `cordis.patch.yml`。第三方先例:@jiangzhenguo/dsh-codegraph、dsh-deja、dshmarket
    (全部同形)。
@@ -31,7 +31,7 @@
    `import { apply } from '<pkg>'` 再传函数。
 6. **环境变量**:bash 工具进程带 `DSH_HOME` / `DSH_PROFILE` / `DSH_PROFILE_DIR`
    (dsh-shell-env 注入);profile 用 hoisted node_modules(`pnpm-workspace.yaml:
-   nodeLinker: hoisted`),`$DSH_PROFILE_DIR/node_modules/dsh-plugin-gsd/...`
+   nodeLinker: hoisted`),`$DSH_PROFILE_DIR/node_modules/dsh-gsd/...`
    是稳定可预测路径,成为所有 runtime 路径改写的目标。
 7. **兼容门**:`engines.dsh`(自决)或 `@deepseek-ai/dsh-*` peers;不匹配时行被禁用。
 8. **pnpm 约束**:生命周期脚本默认被拦截(CLI 通道尤其如此)—— 因此插件必须"零安装脚本、
@@ -45,7 +45,7 @@
   依赖 `@deepseek-ai/dsh-hooks-claude-code` + `@deepseek-ai/dsh-hook-protocol`
   (后者是桥接的 peer 且 profile `autoInstallPeers: false`,必须显式依赖 —— 老安装器的教训)、
   peer `@deepseek-ai/dsh-skill-filesystem`(宿主提供)。
-- `cordis.patch.yml`:单行 `- insert: [{id: gsd, name: 'dsh-plugin-gsd'}]`。
+- `cordis.patch.yml`:单行 `- insert: [{id: gsd, name: 'dsh-gsd'}]`。
 - `index.js`:apply() 内 ①`ctx.skills.registerProvider`(FileSystemSkillProvider,
   providerName `gsd`, includeDefaultRoots false) ②`ctx.plugin(hooksBridgeApply)`
   挂桥接;都包在 `ctx.effect` 里并返回 cleanup;`config.skills/hooks: false` 逃生门。
@@ -60,13 +60,13 @@
 
 | 步骤 | 结果 |
 |---|---|
-| `dsh plugin --profile gsdtest add file:…` | ✅ 安装;bundles 自动出现 `dsh-plugin-gsd` |
-| `dsh --profile gsdtest --dump-config` | ✅ `# == dsh-plugin-gsd` 层 + `gsd` 行(后来升级为双行,含 `gsd-hooks-bridge`) |
+| `dsh plugin --profile gsdtest add file:…` | ✅ 安装;bundles 自动出现 `dsh-gsd` |
+| `dsh --profile gsdtest --dump-config` | ✅ `# == dsh-gsd` 层 + `gsd` 行(后来升级为双行,含 `gsd-hooks-bridge`) |
 | 首次 boot(web, 3091) | ❌ `invalid plugin, expect function…` — `ctx.plugin` 传了字符串;已修 |
 | 二次 boot(单行 patch + ctx.plugin 桥接) | ✅ 无激活告警;但 hooks 未生效(见下) |
 | GUI 目验 skills | ✅ `/` 触发器给出全部 gsd-* 命令提示;`/gsd-health` 端到端跑通(引擎 @opengsd/gsd-core v1.16.0,BROKEN 报告正常输出) |
 | 三次 boot(双行 patch,YAML 桥接行) | ✅ hooks 阳性对照通过:read 精确 `.env` → **被硬拦截**,guard 文案完整出现在会话中(2026-11-10 16:49) |
-| `remove dsh-plugin-gsd` | ✅ bundles 移除、dump 无 gsd 行、node_modules 清理 |
+| `remove dsh-gsd` | ✅ bundles 移除、dump 无 gsd 行、node_modules 清理 |
 | 再次 `add`(回路) | ✅ 恢复原状 |
 
 ## 关键调试结论(负面结果同样值钱)
@@ -82,7 +82,7 @@
    cordis.patch.yml 的 DEV NOTE。
 3. **`!!js` 求值上下文确认**:`with(loaderCtx){ eval(expr) }`,
    `loaderCtx.baseUrl` = profile 的 cordis.yml URL;`createRequire(baseUrl)` 从
-   profile 起解析 `dsh-plugin-gsd/package.json` → 得到包内绝对路径,与标准预估一致,
+   profile 起解析 `dsh-gsd/package.json` → 得到包内绝对路径,与标准预估一致,
    独立求值验证通过。
 4. **guard 按 basename 规则判定**(`.env` / `.env.<suffix>` / `.secrets`,
    豁免 `.env.<example|sample|template|dist>` 家族;`*something.env` 不命中)。

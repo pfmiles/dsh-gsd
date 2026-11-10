@@ -1,4 +1,4 @@
-// dsh-plugin-gsd — GSD coding workflow as a DeepSeek Harness bundle.
+// dsh-gsd — GSD coding workflow as a DeepSeek Harness bundle.
 //
 // One cordis application that registers a filesystem skill provider over this
 // package's `skills/` directory (reusing DSH's own FileSystemSkillProvider),
@@ -22,7 +22,7 @@ const skillsDir = join(pluginRoot, 'skills')
 
 export function apply(ctx, config = {}) {
   if (config.skills === false) {
-    ctx.logger.info('[dsh-plugin-gsd] skills provider disabled by row config')
+    ctx.logger.info('[dsh-gsd] skills provider disabled by row config')
     return
   }
   let provider
@@ -38,5 +38,5 @@ export function apply(ctx, config = {}) {
   ctx.effect(function* () {
     yield () => { void provider?.dispose?.() }
   }, 'gsd-skill-provider')
-  ctx.logger.info(`[dsh-plugin-gsd] skills provider: ${skillsDir}`)
+  ctx.logger.info(`[dsh-gsd] skills provider: ${skillsDir}`)
 }

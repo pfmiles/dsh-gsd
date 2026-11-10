@@ -1,6 +1,6 @@
-# dsh-plugin-gsd bundle patch
+# dsh-gsd bundle patch
 #
-# Makes `dsh plugin --profile <name> add dsh-plugin-gsd` install as a one-click
+# Makes `dsh plugin --profile <name> add dsh-gsd` install as a one-click
 # profile layer: pnpm resolves this package, DSH detects the bundle via
 # `dsh.bundle.patch`, and this patch inserts two rows into the host cordis
 # composition:
@@ -16,10 +16,10 @@
 # before re-testing. See SPIKE.md.
 - insert:
     - id: gsd
-      name: 'dsh-plugin-gsd'
+      name: 'dsh-gsd'
     - id: gsd-hooks-bridge
       name: '@deepseek-ai/dsh-hooks-claude-code'
       config:
-        configPath: !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-plugin-gsd/package.json')), 'config/gsd-hooks.json')"
-        pluginRoot: !!js "process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-plugin-gsd/package.json'))"
+        configPath: !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-gsd/package.json')), 'config/gsd-hooks.json')"
+        pluginRoot: !!js "process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-gsd/package.json'))"
         defaultTimeoutMs: 300000

@@ -1,16 +1,16 @@
-# dsh-plugin-gsd
+# dsh-gsd
 
 将 [GSD Core](https://github.com/open-gsd/gsd-core)(规格驱动的编码工作流)以 **DeepSeek Harness 原生产插件 bundle** 的形式安装到 DSH。与 `install-gsd-dsh.sh` 脚本方案不同,这里没有任何手工步骤:
 
 ```bash
-dsh plugin --profile web add dsh-plugin-gsd@0.1.0-gsd1.20.1
+dsh plugin --profile web add dsh-gsd@0.1.0-gsd1.20.1
 # 重启 dsh web 即生效
 ```
 
 - **一条命令**,装的即是 DSH 认知的 plugin(出现在插件管理器/市场同级的 bundle 清单里,可 enable/disable/remove)。
 - 自带 72 个 `gsd-*` skills(含 DSH 适配说明)、GSD 引擎(workflows/templates/agents/commands)、
   hooks 守卫 + `dsh-hooks-claude-code` 桥接挂载,全部自包含在本包内,不写 `~/.dsh` 任何文件。
-- 升级/回滚 = 换一个版本号重跑同一条命令;卸载 = `dsh plugin --profile <name> remove dsh-plugin-gsd`。
+- 升级/回滚 = 换一个版本号重跑同一条命令;卸载 = `dsh plugin --profile <name> remove dsh-gsd`。
 
 ## Requirements
 
@@ -27,7 +27,7 @@ dsh plugin --profile web add dsh-plugin-gsd@0.1.0-gsd1.20.1
   2. `ctx.plugin()` 挂载 `@deepseek-ai/dsh-hooks-claude-code`,`configPath`/`pluginRoot`
      指向包内 `config/gsd-hooks.json` 与包根,`${CLAUDE_PLUGIN_ROOT}` 全部在包内展开。
 - skills 里的每条 DSH 适配说明(runtime_note)由 `npm run build`(或 `prepack`)生成:
-  引擎与工作流路径统一改写为 `$DSH_PROFILE_DIR/node_modules/dsh-plugin-gsd/...`,
+  引擎与工作流路径统一改写为 `$DSH_PROFILE_DIR/node_modules/dsh-gsd/...`,
   会话任务目录保留在 `$DSH_HOME/tasks`。runtime 时模型用 bash 展开 `$DSH_PROFILE_DIR` 一次即可。
 
 ## 目录结构
@@ -59,11 +59,11 @@ npm pack                         # prepack 自动执行 build
 
 ## 验证
 
-1. `dsh plugin --profile web add dsh-plugin-gsd`,重启 `dsh web`。
+1. `dsh plugin --profile web add dsh-gsd`,重启 `dsh web`。
 2. 会话 skill 目录中出现 `gsd-*`;`/gsd-health` 可执行。
-3. `dsh --profile web --dump-config | grep dsh-plugin-gsd` 可见 `gsd` 行。
+3. `dsh --profile web --dump-config | grep dsh-gsd` 可见 `gsd` 行。
 4. 让模型 `read` 一个 `.env` 文件 → 被 gsd-secret-read-guard 以 exit 2 拦截(桥接生效的证据)。
-5. `dsh plugin --profile web remove dsh-plugin-gsd` → 下个进程启动后一切消失。
+5. `dsh plugin --profile web remove dsh-gsd` → 下个进程启动后一切消失。
 
 ## License
 
