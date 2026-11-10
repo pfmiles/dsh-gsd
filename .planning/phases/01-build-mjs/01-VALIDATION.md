@@ -29,9 +29,10 @@ created: "2026-11-10"
 ## Sampling Rate
 
 - **After every task commit:** Run `node --test tests/rewrite-map.test.mjs`（秒级）
-- **After every plan wave:** Run `node build.mjs && node --test tests/`（全量 smoke）
+- **After every plan wave:** Run `node build.mjs && node --test tests/ && bash tests/run-gates.sh`（全量 smoke）
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 120 seconds
+- **Accepted deviation (Nyquist 8b):** 任务级 full-build 验证（pack→stage→gate 全链）本质上超过 ~30 s 反馈预算，为已记录偏差；秒级 per-commit 单测（rewrite-map.test / run-gates 于 fixture）是主反馈回路，全量构建验收归在 wave 合并级与 phase gate。
 
 ---
 

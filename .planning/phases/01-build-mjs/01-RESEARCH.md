@@ -284,7 +284,9 @@ node gsd-core/bin/gsd-tools.cjs runtime-identity --raw
 | A3 | staging 树的顶层形状在上游 1.16.x 内稳定（4 树 + 额外资产） | Architecture Patterns | 中——若上游增删顶层目录，白名单拷贝表需跟测；gate B/C 应作为哨兵 |
 | A4 | `--claude --global` 非交互路径在上游版本内不弹 prompt（1.16.0 实跑无 prompt，exit 0） | Pipeline | 中——若未来版本加交互，构建会挂起；GSD_VERSION 固定 + timeout 缓解 |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three questions resolved during planning (2026-11-10): Q1 → 01-03 Task 3 ⑦ canonical↔mirror 交叉核对命令（SBOM 记 canonical 值 + 实际取源 registry）；Q2 → 采纳 `build/assets/gsd-hooks.json`（01-01 Task 2 创建）；Q3 → `THIRD-PARTY-NOTICES.md` 落 repo 根、暂不进 `files`（01-01 Task 3 生成）。
 
 1. **npmmirror 与 canonical 的 integrity 何时会漂移**
    - What we know: 研究时刻两边 dist.integrity/shasum/tarball 完全一致；两 registry 均从本机可达。
