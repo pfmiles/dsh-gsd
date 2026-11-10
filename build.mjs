@@ -107,7 +107,7 @@ async function injectNote(files) {
 console.log(`build: source=${source} from-prefix=${sourceHome}`)
 
 // 1) reset managed output dirs
-for (const d of ['skills', 'gsd-core', 'hooks', 'config']) {
+for (const d of ['skills', 'gsd-core', 'hooks', 'config', 'scripts']) {
   await rm(join(root, d), { recursive: true, force: true })
 }
 
@@ -123,6 +123,12 @@ await cp(join(source, 'gsd-core'), join(root, 'gsd-core'), { recursive: true })
 counters.copied++
 await cp(join(source, 'hooks'), join(root, 'hooks'), { recursive: true })
 counters.copied++
+// `scripts/` is the engine's package-root sibling (bin/lib requires
+// '../../../scripts/fix-slash-commands.cjs' etc.) — without it the
+// standalone engine crashes with MODULE_NOT_FOUND when invoked through
+// $DSH_PROFILE_DIR/node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs.
+await cp(join(source, 'scripts'), join(root, 'scripts'), { recursive: true })
+counters.copied++
 await mkdir(join(root, 'config'), { recursive: true })
 await cp(join(source, 'gsd-hooks.dsh.json'), join(root, 'config', 'gsd-hooks.json'))
 counters.copied++
@@ -133,6 +139,10 @@ await walk(join(root, 'skills'), async (f) => {
   await writeFile(f, rewrite(text))
 })
 await walk(join(root, 'gsd-core'), async (f) => {
+  const text = await readFile(f, 'utf8')
+  await writeFile(f, rewrite(text))
+})
+await walk(join(root, 'scripts'), async (f) => {
   const text = await readFile(f, 'utf8')
   await writeFile(f, rewrite(text))
 })
