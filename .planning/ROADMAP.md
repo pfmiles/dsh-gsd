@@ -22,7 +22,7 @@
 **Depends on**: Nothing（P0 spike 已完成）
 **Requirements**: SKIL-03, SKIL-04, INST-02, DEV-03
 **Success Criteria** (what must be TRUE):
-  1. `GSD_VERSION=1.16.0 node build.mjs` 在离线/在线环境产出与当前等效的 76 棵树
+  1. `GSD_VERSION=1.20.1 node build.mjs` 在离线/在线环境产出与当前等效的 76 棵树
   2. 改写不再依赖任何机器特定前缀（staging 根为基准）
   3. `node gsd-core/bin/gsd-tools.cjs runtime-identity --raw` 从 repo 产物直接输出身份 JSON
   4. fetched 版本与请求版本不一致时构建失败

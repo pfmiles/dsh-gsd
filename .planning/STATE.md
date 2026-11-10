@@ -33,7 +33,7 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **已�
 - 分支：local git（master，4 commits；发布期建 GitHub remote）
 - 验证实例：gsdtest profile @ 127.0.0.1:3091，插件 file: 安装（dsh-gsd）
 - 已知修复：scripts/ 兄弟目录缺失 → 引擎 MODULE_NOT_FOUND（已并入 build.mjs）
-- 当前引擎版本：@opengsd/gsd-core 1.16.0（部署快照；P1 起可参数化）
+- 目标引擎版本：@opengsd/gsd-core 1.20.1（2026-11-10 执行期 checkpoint 人类决策；canonical shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd`，双 registry 一致）；本机部署快照仍为 1.16.0（P1 换源后随重建同步）
 - 构建产物不入 git：skills/ gsd-core/ hooks/ config/ scripts/
 
 ## Progress Log

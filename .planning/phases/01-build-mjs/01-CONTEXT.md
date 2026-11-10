@@ -30,7 +30,7 @@
 - 产物含 `gsd-core/`、`skills/`、`hooks/`、`config/`、`scripts/`（兄弟目录齐备，杜绝 MODULE_NOT_FOUND）。构建产物不入 git；`prepack` 全量重建。
 - 独立 CLI 验收（SKIL-03）：`node gsd-core/bin/gsd-tools.cjs runtime-identity --raw` 从 repo 产物直接输出 `@opengsd/gsd-core` + 请求版本。
 - 72 个 SKILL.md 各恰好一个 runtime_note adapter 块（构建期注入），零残留绝对路径（SKIL-04）。
-- 默认目标版本沿用当前已验证快照 `1.16.0`（STATE.md 已锁定），首个打包脚本以该版本为缺省。
+- 默认目标版本沿用当前已验证快照 `1.16.0`（STATE.md 已锁定），首个打包脚本以该版本为缺省。**执行期修订（2026-11-10 checkpoint blocking-human）：** 默认目标版本改为 `1.20.1`（2026-11-05 发布、仍属 too-new，人类已知悉选择；canonical↔npmmirror dist.integrity 逐字节一致），GSD_VERSION 缺省值随之改 1.20.1。
 
 ### 验证与达成（PRD locked：DEV-03）
 - 本 phase 全部完成物必须在验证实例（gsdtest profile @ 127.0.0.1:3091）上 gate 通过：`--force` 重装 → 重启 → `/gsd-health` + 独立 CLI + `.env` 拦截三项复验。
@@ -84,7 +84,7 @@
 - 现状数据点（SPIKE 实测）：292 个文件被改写、72 个 SKILL.md 各恰好一个 adapter 块、零残留绝对路径；scripts/ 兄弟目录缺失曾致引擎 MODULE_NOT_FOUND（已在 SPIKE 版 build.mjs 并修复，P1 需在换源后保持）。
 - 官方 staging 通道 = `@opengsd/gsd-core` 安装器的 `--claude` 段（stage 到临时目录后摊平），这是 SPIKE 中已验证的复用目标。
 - 验证回路（DEV-02）：任何插件源码变更后 `--force` 重装 + 重启验证实例 + 新 token 会话。
-- `GSD_VERSION=1.16.0 node build.mjs` 是成功判据的基准命令。
+- `GSD_VERSION=1.20.1 node build.mjs` 是成功判据的基准命令。
 </specifics>
 
 <deferred>

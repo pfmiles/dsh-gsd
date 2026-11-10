@@ -399,3 +399,14 @@ node gsd-core/bin/gsd-tools.cjs runtime-identity --raw
 
 **Research date:** 2026-11-10
 **Valid until:** 2026-12-10（npm 生态快动；1.16.x 上游形变风险由 A3 哨兵 gate 覆盖）
+
+---
+
+## Version Amendment（2026-11-10，执行期 checkpoint 人类决策）
+
+**目标版本 1.16.0 → 1.20.1。** 01-01 Task 1 blocking-human checkpoint 的回答为改取 `@opengsd/gsd-core@1.20.1`，GSD_VERSION 默认值与全 phase 判据已同步改为 1.20.1（01-01/01-02/01-03 PLAN、01-CONTEXT、ROADMAP、STATE）。
+
+- **1.20.1 canonical 值** [VERIFIED: registry.npmjs.org 与 npmmirror 双查，2026-11-10]：dist.shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd`；dist.integrity `sha512-vG3iTEmeImmFFS8CjX69n7F2bxQ3QdssO++DxhaVDa/S2k098DFoGWXkjHbCCOyfQkIIkFt7kDginryDnoPcZQ==`；license MIT；发布时间 2026-11-05T14:33:23Z（≈5 天新，**too-new 仍成立**，属人类已知悉决策）。
+- **包形同构** [VERIFIED: npm pack --dry-run 双侧]：1.20.1 与 1.16.0 顶层结构等价——skills/ 恰 72 个 gsd-*、SKILL.md 恰 72、gsd-core/ hooks/ scripts/ 均齐；故 76 棵树 SC、gate C 72 计数、adapter 注入 72× 等结构常量不变。文件总数 1265（1.16.0 为 1125），差异来自 gsd-core/hooks/scripts 内部文件。
+- **勘误（本文件）**：§Environment 所述 "1.16.0 发布 2026-11-05T14:33:23Z" 为错行——该时间戳逐秒吻合 1.20.1 的发布时间；1.16.0 实际发布于 2026-10-05T02:12:43Z（≈36 天）。"too-new（5 天）" 的判断对 1.16.0 不成立、对 1.20.1 成立。
+- 1.16.0 相关记录（§Environment/§Code Examples 的 canonical 值与 1125 files 等）保留为审计历史。
