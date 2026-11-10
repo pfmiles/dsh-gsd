@@ -3,10 +3,14 @@
 // 覆盖 plan 01-02 Task 3 五组断言：真实构建成功、76 棵树与 scripts/ 固化
 // （SKIL-03 的 MODULE_NOT_FOUND 回归防线）、identity JSON、INST-02 build 侧
 // 零 '~/.dsh' 字面量、SKIL-04 adapter 72×1（均恰一注入标记）。
+// 01-validate-phase 审计追加 ⑥⑦⑧ 三组：hooks 桥接 fail-open 回归防线
+// （01-03 Task 2 / 2d45fac）机器化 —— wrapper 逐字节重放 + registry 经
+// wrapper 调度 + 注册命令行组件级 .env 拦截/放行契约。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,7 +26,12 @@ const buildEnv = () => {
   return env
 }
 
-test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 72×1）', { timeout: 420000 }, () => {
+test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 72×1 / hooks 桥接守卫）', { timeout: 420000 }, () => {
+  // 对抗性前置（⑥ 的断言前提）：wrapper 由 build.mjs ⑤ 捕获段每轮重放；
+  // 先删除再构建——若捕获段被删回归，其余 5 组断言与 gates 均不触碰该文件，
+  // 只有本断言暴露（防 stale 文件假绿——01-03 第一轮快照教训）。
+  rmSync(join(ROOT, 'hooks', 'dsh-gsd-suite', 'run.cjs'), { force: true })
+
   // ① 真实构建成功（离线 .build-cache 暖缓存档；gates 内嵌于 build 且已通过，
   //    失败即非零 exit → execFileSync 抛错）
   execFileSync('node', ['build.mjs'], { cwd: ROOT, env: buildEnv(), stdio: 'pipe' })
@@ -63,5 +72,54 @@ test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 7
     const g = spawnSync('grep', ['-c', 'gsd:dsh-adapter begin', f], { encoding: 'utf8' })
     const count = g.status === 0 ? Number((g.stdout || '').trim()) : g.status === 1 ? 0 : null
     assert.equal(count, 1, `adapter block count != 1 in ${f}`)
+  }
+
+  // ⑥ hooks 桥接 fail-open 回归防线（01-03 Task 2 / 2d45fac 机器化）：
+  //    wrapper 是 install-gsd-dsh.sh 部署产物、不在 @opengsd/gsd-core npm
+  //    tarball 树内，构建必须逐轮重放 canonical 拷贝；缺失 = 全部守卫
+  //    MODULE_NOT_FOUND fail-open（① 前已删除，故此处存在即捕获段存活）。
+  const WRAPPER = join(ROOT, 'hooks', 'dsh-gsd-suite', 'run.cjs')
+  const CANONICAL = join(ROOT, 'build', 'assets', 'dsh-gsd-suite-run.cjs')
+  assert.ok(existsSync(WRAPPER), 'hooks/dsh-gsd-suite/run.cjs missing after build — all guards fail open')
+  assert.equal(
+    readFileSync(CANONICAL, 'utf8'),
+    readFileSync(WRAPPER, 'utf8'),
+    'wrapper drifted from canonical build/assets/dsh-gsd-suite-run.cjs',
+  )
+
+  // ⑦ registry 契约：config/gsd-hooks.json 的 read|grep|bash PreToolUse 组
+  //    必须经 wrapper 调度到 gsd-secret-read-guard（防 registry 改走旁路）。
+  const registry = JSON.parse(readFileSync(join(ROOT, 'config', 'gsd-hooks.json'), 'utf8'))
+  const secretGroup = registry.hooks.PreToolUse?.find((g) => (g.matcher || '').split('|').includes('read'))
+  assert.ok(secretGroup, 'config/gsd-hooks.json PreToolUse read group missing')
+  const secretCmd = secretGroup.hooks?.[0]?.command ?? ''
+  assert.match(secretCmd, /dsh-gsd-suite\/run\.cjs/, `secret-read dispatch must go via wrapper: ${secretCmd}`)
+  assert.match(secretCmd, /gsd-secret-read-guard\.js/, `secret-read guard not dispatched: ${secretCmd}`)
+
+  // ⑧ 行为级：注册命令行 + DSH 小写 payload 走 wrapper → guard（组件级拦截
+  //    闭环，不依赖活体 DSH 实例；live 工具级拦截仍为 DEV-03 manual-only）。
+  const probeDir = mkdtempSync(join(tmpdir(), 'gsd-nyquist-'))
+  try {
+    writeFileSync(join(probeDir, '.env'), 'DUMMY=1\n')
+    const runGuard = (payload) =>
+      spawnSync('node', [WRAPPER, 'node', join(ROOT, 'hooks', 'gsd-secret-read-guard.js')], {
+        input: payload, encoding: 'utf8',
+      })
+    const blockRead = runGuard(JSON.stringify({ tool_name: 'read', tool_input: { file_path: join(probeDir, '.env') } }))
+    assert.equal(blockRead.status, 2, `read .env must block: ${blockRead.stdout} ${blockRead.stderr}`)
+    const decision = JSON.parse(blockRead.stdout)
+    assert.equal(decision.decision, 'block')
+    assert.equal(decision.code, 'secret-read')
+    assert.equal(decision.tool, 'Read')
+    const blockBash = runGuard(JSON.stringify({ tool_name: 'bash', tool_input: { command: `cat ${join(probeDir, '.env')}` } }))
+    assert.equal(blockBash.status, 2, `bash cat .env must block: ${blockBash.stdout} ${blockBash.stderr}`)
+    // 良性对照：README.md 与豁免族 .env.example 放行（exit 0 且无 block JSON）
+    const allowReadme = runGuard(JSON.stringify({ tool_name: 'read', tool_input: { file_path: join(ROOT, 'README.md') } }))
+    assert.equal(allowReadme.status, 0, `README.md must be allowed: ${allowReadme.stderr}`)
+    assert.doesNotMatch(allowReadme.stdout, /decision/, 'benign read must not emit decision JSON')
+    const allowExample = runGuard(JSON.stringify({ tool_name: 'read', tool_input: { file_path: join(probeDir, '.env.example') } }))
+    assert.equal(allowExample.status, 0, `.env.example (exempt family) must be allowed: ${allowExample.stderr}`)
+  } finally {
+    rmSync(probeDir, { recursive: true, force: true })
   }
 })
