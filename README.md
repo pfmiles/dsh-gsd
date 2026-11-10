@@ -49,6 +49,8 @@ P0 spike 已全链路验证（2026-11-10，含守卫 hooks 阳性拦截）；版
 
 这个项目由它自己开发：插件装入验证实例后，由它自带的 skills / 引擎 / hooks 驱动本仓库的全部开发流程（dogfooding）。感兴趣可看 [`.planning/`](./.planning/)。
 
+构建者与复验者见 [BUILD.md](./BUILD.md)——GSD_VERSION 用法、在线/离线四档、exit codes 0/1/2、gates 契约、上游完整性交叉核对与验证实例复验序；上游包元数据（SBOM）见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)。
+
 ## License
 
 MIT，见 [LICENSE](./LICENSE)。含上游内容：GSD Core (MIT, © 2026 Open GSD)、DeepSeek Harness (MIT)。
@@ -103,6 +105,8 @@ The P0 spike is fully verified end-to-end (2026-11-10), including positive guard
 ## Bootstrapped (a fun aside)
 
 This project is built by itself: once installed into a verification instance, its own skills / engine / hooks drive this repo's entire development process (dogfooding). Curious? See [`.planning/`](./.planning/).
+
+Builders and re-verifiers: [BUILD.md](./BUILD.md) covers GSD_VERSION usage, the four offline/online tiers, exit codes 0/1/2, the gates contract, upstream integrity cross-checks, and the verification-instance re-verify sequence; upstream package metadata (SBOM) lives in [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
 
 ## License
 
