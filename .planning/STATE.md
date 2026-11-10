@@ -1,15 +1,15 @@
 ---
 gsd_state_version: "1.0"
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-11-10T13:09:34.670Z"
-state_head: 18809438be97720734b38eba5f0581072b398816
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-11-10T14:18:56.376Z"
+state_head: 14ee71ceee06d7ef58fa7909fa4f44d5f25fbd78
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 current_phase_name: 生产化构建（build.mjs 换源 + 引擎独立可用）
 ---
 
@@ -17,7 +17,7 @@ current_phase_name: 生产化构建（build.mjs 换源 + 引擎独立可用）
 
 ## Current Focus
 
-Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **执行中（01-01 取源管线 + 01-02 改写/gate 迁移完成，2/3；下一 plan = 01-03 验证实例复验与构建文档）**。改写映射已抽为 build/lib/rewrite-map.cjs（9 对，单测覆盖），gate A/B/C 外置 tests/run-gates.sh 并被 build 清理前强制消费；npm test / prepack 全链绿。
+Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **3/3 计划执行完成（01-01 取源管线 + 01-02 改写/gate 迁移 + 01-03 验证实例复验与构建文档）；下一节点 = verify-work 阶段验证 / 01-VALIDATION 签核**。三项复验 live 全过（含 .env 硬拦回归修复闭环），BUILD.md 八章 + README/SBOM 互链落地；DEV-03/INST-02/SKIL-03/SKIL-04 需求四方已落 Complete；WINDOWS #1/#2/#3 关闭留 verifier。
 
 ## Key Decisions（已锁定）
 
@@ -44,6 +44,7 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **执�
 - 2026-11-10 planning（3091 实例）：Phase 1 经 PRD express path 跳过 discuss → 轻量 research + pattern map → 3 plans 产出并通过 plan-checker 两轮验证（1 blocker + 2 warnings 已修，0 剩余）；需求覆盖 4/4（SKIL-03/04、INST-02、DEV-03）；决策覆盖门 skipped（无 D-ID）
 - 2026-11-10 execution 01-01（3091 实例）：staging 取源管线完成（commits ebf35b4 + 0305b6e）——npm tarball 主链 + 离线三档 + 双 gate + exit 0/1/2 + THIRD-PARTY-NOTICES；3 处 1.20.1 形态差内联适配（gate A 双锚、gate B 三段式、① 档双哈希）记入 01-01-SUMMARY；SKIL-03/04 因共享 ID（01-02/01-03 同声明）按门未落 Complete
 - 2026-11-10 execution 01-02（3091 实例）：改写与 gate 迁移完成（commits 395a795 + 02fe473 + 1880943）——rewrite-map.cjs 9 对映射+六组单测、run-gates.sh 三段式/双锚外置并强制消费、build-smoke 76 树/identity/零 '~/.dsh'/adapter 72×1、test/prepack 全链；2 处执行现实适配（gate A/B 继承 01-01 口径、node --test 目录参数→glob 形态）记入 01-02-SUMMARY；SKIL-03/04/INST-02 因共享 ID（01-03 同声明）按门未落 Complete
+- 2026-11-10 execution 01-03（3091 实例）：验证实例全量复验与构建文档完成（commits a95f639 + 2d45fac + bca4875 + 14ee71c）——三项复验 live 全过留证 verify-evidence.md（独立 CLI 1.20.1 / gsd-health / read 精确 .env 硬拦 exit 2），两轮 user_setup + 一次 Rule-1 回归修复（hooks 桥接适配器 dsh-gsd-suite/run.cjs 不随 npm tarball → 守卫 fail-open → canonical 入库 + 捕获拷贝，回归 2d45fac、live 复验 bca4875）；BUILD.md 八章（离线四档/gates/exit 0-1-2/交叉核对/复验序）+ README/SBOM 双语互链；DEV-03/INST-02/SKIL-03/SKIL-04 四方 Complete，门此前因共享 ID 未落的判断在本计划 SUMMARY 落盘后解除
 
 ## Performance Metrics
 
@@ -51,6 +52,7 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **执�
 |------|----------|-------|-------|
 | Phase 01 P01-01 | 20 min | 3 tasks | 4 files |
 | Phase 01 P01-02 | 11 min | 3 tasks | 6 files |
+| Phase 01 P01-03 | 60 min | 3 tasks | 5 files |
 
 ## Decisions
 
@@ -62,9 +64,12 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **执�
 - [Phase 01]: build-smoke 版本锚点断言 gsd-core/VERSION（1.20.1 staged 树无 gsd-core/package.json——01-01 偏差 1 同口径）
 - [Phase 01]: test/prepack 脚本采样 'node --test tests/*.test.mjs' glob 形态：Node v24.21.0 实测目录参数 'node --test tests/' 被当作模块加载机械失败（/tmp 最小复现确认），glob 由 node 内部展开，7/7 全绿
 - [Phase 01]: WINDOWS 条目 #1（01-01 gate-B deviation）已被 run-gates.sh 三段式覆盖、可关闭（关闭动作留 verifier）
+- [Phase 01]: 01-03：hooks 桥接适配器 dsh-gsd-suite/run.cjs 为 install-gsd-dsh.sh 部署产物、不在 @opengsd/gsd-core npm tarball 树内，01-01 4 树捕获默认丢失 → 全部守卫 MODULE_NOT_FOUND fail-open（live 探针实证）；canonical 入库 build/assets 并由 build.mjs 捕获拷贝进产物（回归 2d45fac、live 复验 bca4875）
+- [Phase 01]: 01-03：DEV-03 三项复验证据口径 = 可观察输出 + UTC 时间戳 + 新快照声明；live 通过形态只认含修复快照（第二轮 add ≈13:57:48Z → 重启 pid 90223 13:58:39Z → 新 token），旧快照负向仅作根因历史、不充当通过证据
+- [Phase 01]: 01-03：BUILD.md 按实况成文（prepack/test glob 形态、run-gates.sh 双 env fail-closed、exit 0/1/2 表与 build.mjs 一致）；README 原 Build & Release 段已被并发重构为自举构建段，互链定点落在该段（双语各 1 处）、不重写全篇
 
 ## Session
 
-**Last session:** 2026-11-10T13:09:13.930Z
-**Stopped at:** Completed 01-02-PLAN.md
+**Last session:** 2026-11-10T14:18:44.547Z
+**Stopped at:** Completed 01-03-PLAN.md
 **Resume file:** None

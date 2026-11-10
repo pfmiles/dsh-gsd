@@ -28,7 +28,7 @@
   4. fetched 版本与请求版本不一致时构建失败
   5. 验证实例重装后 `/gsd-health` + 独立 CLI + `.env` 拦截三项复验通过
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -38,7 +38,7 @@ Plans:
 - [x] 01-02: 改写与 gate 迁移（staging-相对映射、版本交叉校验、scripts/ 固化）
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-03: 验证实例全量复验与构建文档
+- [x] 01-03: 验证实例全量复验与构建文档
 
 ### Phase 2: 版本与兼容矩阵
 
