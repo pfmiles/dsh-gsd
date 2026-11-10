@@ -24,6 +24,7 @@ import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { makeRewrites } from './build/lib/rewrite-map.cjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)))
 const PLUGIN_ROOT_REF = '$DSH_PROFILE_DIR/node_modules/dsh-gsd'
@@ -293,16 +294,10 @@ async function main() {
   await cp(join(root, 'build', 'assets', 'gsd-hooks.json'), join(root, 'config', 'gsd-hooks.json'))
   counters.copied++
 
-  // ⑥ rewrite: from-basis = THIS run's staging root（不是任何部署前缀，无 /Users/ 字面量依赖）
-  const rewrites = [
-    [`${STAGING}/gsd-core`, `${PLUGIN_ROOT_REF}/gsd-core`],
-    [`${STAGING}/skills`, `${PLUGIN_ROOT_REF}/skills`],
-    [`${STAGING}/tasks`, '$DSH_HOME/tasks'],
-    [STAGING, '$DSH_HOME'],
-    ['~/.dsh/gsd-core', `${PLUGIN_ROOT_REF}/gsd-core`],
-    ['~/.dsh/tasks', '$DSH_HOME/tasks'],
-    ['~/.dsh', '$DSH_HOME'],
-  ]
+  // ⑥ rewrite: from-basis = THIS run's staging root（不是任何部署前缀，无 /Users/
+  // 字面量依赖）。映射来自 build/lib/rewrite-map.cjs（可单测模块：staging 根
+  // 基准 + ~/ 与 $HOME 回退形态，最长/最具体 from 在前）。
+  const rewrites = makeRewrites(STAGING)
   for (const tree of ['skills', 'gsd-core', 'hooks', 'scripts']) {
     await walk(join(root, tree), async (f) => {
       await writeFile(f, rewrite(await readFile(f, 'utf8'), rewrites, counters))
