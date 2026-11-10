@@ -1,0 +1,69 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [
+        { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-check-update.js\"", "timeout": 30 },
+        { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-session-state.sh\"", "timeout": 10 }
+      ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "write|edit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-prompt-guard.js\"", "timeout": 120 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-read-guard.js\"", "timeout": 5 }
+        ] },
+      { "matcher": "bash|write|edit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-workflow-guard.js\"", "timeout": 120 }
+        ] },
+      { "matcher": "write|edit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-worktree-path-guard.js\"", "timeout": 120 }
+        ] },
+      { "matcher": "subagent|subagent_fork|workflow",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-agent-isolation-guard.js\"", "timeout": 120 }
+        ] },
+      { "matcher": "write",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-write-guard.js\"", "timeout": 120 }
+        ] },
+      { "matcher": "read|grep|bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-secret-read-guard.js\"", "timeout": 120 }
+        ] },
+      { "matcher": "bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-validate-commit.sh\"", "timeout": 30 }
+        ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "bash|edit|write|subagent|subagent_fork|workflow",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-context-monitor.js\"", "timeout": 10 }
+        ] },
+      { "matcher": "read|web_fetch|web_search",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-read-injection-scanner.js\"", "timeout": 5 }
+        ] },
+      { "matcher": "bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-graphify-update.sh\"", "timeout": 10 }
+        ] },
+      { "matcher": "write|edit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-phase-boundary.sh\"", "timeout": 10 }
+        ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [
+        { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-context-monitor.js\"", "timeout": 10 }
+      ] }
+    ],
+    "Stop": [
+      { "hooks": [
+        { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/dsh-gsd-suite/run.cjs\" \"node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/gsd-context-monitor.js\"", "timeout": 10 }
+      ] }
+    ]
+  }
+}
