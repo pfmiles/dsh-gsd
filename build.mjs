@@ -292,6 +292,14 @@ async function main() {
   await mkdir(join(root, 'config'), { recursive: true })
   await cp(join(root, 'build', 'assets', 'gsd-hooks.json'), join(root, 'config', 'gsd-hooks.json'))
   counters.copied++
+  // hooks-bridge stdio adapter: the canonical hooks registry dispatches every
+  // guard through hooks/dsh-gsd-suite/run.cjs, which the npm tarball does NOT
+  // ship (install-gsd-dsh.sh deployment-only artifact). Missing it = every
+  // hook spawn MODULE_NOT_FOUND → bridge fail-open → all guards dead. Caught
+  // by the 01-03 Task 2 live .env interception probe (gsdtest/3091); shipped
+  // from our canonical copy. 4-tree capture semantics unchanged.
+  await mkdir(join(root, 'hooks', 'dsh-gsd-suite'), { recursive: true })
+  await cp(join(root, 'build', 'assets', 'dsh-gsd-suite-run.cjs'), join(root, 'hooks', 'dsh-gsd-suite', 'run.cjs'))
 
   // ⑥ rewrite: from-basis = THIS run's staging root（不是任何部署前缀，无 /Users/
   // 字面量依赖）。映射来自 build/lib/rewrite-map.cjs（可单测模块：staging 根
