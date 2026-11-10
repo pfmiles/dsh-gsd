@@ -37,7 +37,8 @@
     "skills",
     "gsd-core",
     "hooks",
-    "config"
+    "config",
+    "scripts"
   ],
   "scripts": {
     "build": "node build.mjs",
