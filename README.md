@@ -67,4 +67,4 @@ npm pack                         # prepack 自动执行 build
 
 ## License
 
-Apache-2.0。上游:GSD Core (MIT)、DeepSeek Harness (MIT)。第三方组件保留各自许可。
+MIT。许可证文本见 [LICENSE](./LICENSE)。上游:GSD Core (MIT, © 2026 Open GSD)、DeepSeek Harness (MIT)。第三方组件保留各自许可。
