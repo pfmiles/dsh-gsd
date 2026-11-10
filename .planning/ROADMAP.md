@@ -17,6 +17,7 @@
 ## Phase Details
 
 ### Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）
+
 **Goal**: build.mjs 支持 `GSD_VERSION` 从 `@opengsd/gsd-core@<version>` npm tarball 取材并经官方 `--claude` staging，改写映射以 staging 根为基准；产物含 scripts/，独立 CLI 全绿。
 **Depends on**: Nothing（P0 spike 已完成）
 **Requirements**: SKIL-03, SKIL-04, INST-02, DEV-03
@@ -26,14 +27,21 @@
   3. `node gsd-core/bin/gsd-tools.cjs runtime-identity --raw` 从 repo 产物直接输出身份 JSON
   4. fetched 版本与请求版本不一致时构建失败
   5. 验证实例重装后 `/gsd-health` + 独立 CLI + `.env` 拦截三项复验通过
+
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
 - [ ] 01-01: staging 取源管线（npm pack → 官方 --claude staging → 产物捕获）
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02: 改写与 gate 迁移（staging-相对映射、版本交叉校验、scripts/ 固化）
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-03: 验证实例全量复验与构建文档
 
 ### Phase 2: 版本与兼容矩阵
+
 **Goal**: DSH 行 × GSD 版本的兼容矩阵体系，engines.dsh 与依赖 pin 策略固化，CI 冒烟。
 **Depends on**: Phase 1
 **Requirements**: VER-01..04, DEV-03
@@ -42,12 +50,14 @@ Plans:
   2. 版本号方案 `<gsd-ver>-<rev>-dsh<line>` 文档化并示例
   3. 不兼容安装被 engines.dsh 干净拒绝，日志可解释
   4. 桥接依赖 pin 与 DSH 行对齐的脚本/文档位
+
 **Plans**: TBD（执行时 plan）
 Plans:
 - [ ] 02-01: 兼容矩阵与 CI [TBD 细化]
 - [ ] 02-02: 版本号与 pin 策略落地 [TBD 细化]
 
 ### Phase 3: 发布（GitHub + npm + dshmarket）
+
 **Goal**: repo/npm/registry 三处同名 dsh-gsd 上线，市场可搜可装。
 **Depends on**: Phase 2
 **Requirements**: PUB-01..04, INST-06
@@ -56,12 +66,14 @@ Plans:
   2. npm pack 清单 = files 白名单且含 scripts/、locale、icon
   3. awesome-dsh-plugin PR 已开（双语文案、category=workflow）
   4. README 徽章/许可/致谢齐备
+
 **Plans**: TBD
 Plans:
 - [ ] 03-01: GitHub 建仓与发布管线
 - [ ] 03-02: npm 发布与 registry 提交
 
 ### Phase 4: 迁移与并存
+
 **Goal**: 脚本部署用户的无痛迁移，两种方式可解释可回退。
 **Depends on**: Phase 3
 **Requirements**: MIG-01..04
@@ -69,12 +81,14 @@ Plans:
   1. runbook 全流程在验证机走通（uninstall → add → 复验）
   2. install-gsd-dsh.sh README 顶部互链，定位重述为保底/离线
   3. 同 profile 与 codegraph/deja/dshmarket 并存无冲突实测
+
 **Plans**: TBD
 Plans:
 - [ ] 04-01: 迁移 runbook 与实测
 - [ ] 04-02: 并存验证与文档
 
 ### Phase 5: 端到端 UAT 与 1.0 收官
+
 **Goal**: 干净机器全量验收，发布 1.0。
 **Depends on**: Phase 4
 **Requirements**: UAT-01..06, INST-01..06 全量复验
@@ -83,6 +97,7 @@ Plans:
   2. hooks 回归（commit 校验拦截错误格式、injection 扫描落日志）
   3. 启动开销数字与技能 watch 行为记录入 README
   4. 1.0 发布 + UAT 报告
+
 **Plans**: TBD
 Plans:
 - [ ] 05-01: 干净机器 UAT 执行与报告

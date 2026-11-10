@@ -1,12 +1,15 @@
 ---
-gsd_state_version: '1.0'
+gsd_state_version: "1.0"
 status: planning
+last_updated: "2026-11-10T11:37:08.494Z"
+state_head: 5bb8515dcbf177684fdffec5b885c68cacfd0a90
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
   percent: 0
+current_phase_name: 生产化构建（build.mjs 换源 + 引擎独立可用）
 ---
 
 # STATE: dsh-gsd
