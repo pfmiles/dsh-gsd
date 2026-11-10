@@ -20,7 +20,8 @@
     "cross_ai_command": "",
     "cross_ai_timeout": 300,
     "test_gate_timeout": 600,
-    "_auto_chain_active": false
+    "_auto_chain_active": false,
+    "use_worktrees": false
   },
   "ship": {
     "pr_body_sections": []
@@ -31,7 +32,8 @@
     "sub_repos": []
   },
   "git": {
-    "create_tag": true
+    "create_tag": true,
+    "allow_default_branch_commits": true
   },
   "parallelization": {
     "enabled": true,
