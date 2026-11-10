@@ -54,6 +54,9 @@ npm pack                         # prepack 自动执行 build
 生产发布将改为从 `@opengsd/gsd-core@<version>` npm tarball 取材并经官方 `--claude`
 安装通道 staging(见 PLAN.md)。规划文档:[PLAN.md](./PLAN.md),spike 记录:[SPIKE.md](./SPIKE.md)。
 
+> **开发提示**:`dsh plugin add file:<path>` 会按 `files` 字段打包冻结源码 ——
+> 改动 index.js / cordis.patch.yml 后必须**重新执行 add**(或加 `--force`)才会进入 profile。
+
 ## 验证
 
 1. `dsh plugin --profile web add dsh-plugin-gsd`,重启 `dsh web`。

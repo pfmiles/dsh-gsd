@@ -61,23 +61,44 @@
 | 步骤 | 结果 |
 |---|---|
 | `dsh plugin --profile gsdtest add file:…` | ✅ 安装;bundles 自动出现 `dsh-plugin-gsd` |
-| `dsh --profile gsdtest --dump-config` | ✅ `# == dsh-plugin-gsd` 层 + `gsd` 行 |
+| `dsh --profile gsdtest --dump-config` | ✅ `# == dsh-plugin-gsd` 层 + `gsd` 行(后来升级为双行,含 `gsd-hooks-bridge`) |
 | 首次 boot(web, 3091) | ❌ `invalid plugin, expect function…` — `ctx.plugin` 传了字符串;已修 |
-| 二次 boot | ✅ 无激活告警;web 401(带 token,正常);[llm] 行正常 |
+| 二次 boot(单行 patch + ctx.plugin 桥接) | ✅ 无激活告警;但 hooks 未生效(见下) |
+| GUI 目验 skills | ✅ `/` 触发器给出全部 gsd-* 命令提示;`/gsd-health` 端到端跑通(引擎 @opengsd/gsd-core v1.16.0,BROKEN 报告正常输出) |
+| 三次 boot(双行 patch,YAML 桥接行) | ✅ hooks 阳性对照通过:read 精确 `.env` → **被硬拦截**,guard 文案完整出现在会话中(2026-11-10 16:49) |
 | `remove dsh-plugin-gsd` | ✅ bundles 移除、dump 无 gsd 行、node_modules 清理 |
 | 再次 `add`(回路) | ✅ 恢复原状 |
 
+## 关键调试结论(负面结果同样值钱)
+
+1. **`ctx.plugin()` 编程式挂载桥接 → 无效**。模块被 import、apply 也执行(激活无错),
+   但桥接从未订阅会话事件:真实会话落盘记录中 hook 条目 = 0(同机主 profile 会话
+   数百~数千条)。Loader patch 行(`cordis.patch.yml` 里的独立行)才是官方通路,
+   插件最终采用该形态 —— 与 install-gsd-dsh 脚本写出的行同构,但由 bundle 自己携带。
+2. **`file:` 安装是"打包冻结"**。`dsh plugin add file:<path>` 按 `files` 字段打
+   tarball 后解包,**之后改源码不会同步进 profile**,必须重新 `add`(或
+   `--force` / 升版本号)。排障期因此误判"patch 行被 loader 丢弃"——实际上
+   `!!js` 双行 patch 自始可用,20 分钟排查打在旧快照上。这条也写进了
+   cordis.patch.yml 的 DEV NOTE。
+3. **`!!js` 求值上下文确认**:`with(loaderCtx){ eval(expr) }`,
+   `loaderCtx.baseUrl` = profile 的 cordis.yml URL;`createRequire(baseUrl)` 从
+   profile 起解析 `dsh-plugin-gsd/package.json` → 得到包内绝对路径,与标准预估一致,
+   独立求值验证通过。
+4. **guard 按 basename 规则判定**(`.env` / `.env.<suffix>` / `.secrets`,
+   豁免 `.env.<example|sample|template|dist>` 家族;`*something.env` 不命中)。
+   这是上游 GSD 的记档设计(#4580 取舍),不是插件缺陷;是否在插件内带收紧版
+   守卫列为可选项(PLAN 开放问题)。
+
 ## 已验证 / 未验证
 
-已验证:安装→bundle 注册→启动激活→卸载→重装全链路;适配改写正确性;两条依赖教训被闭环。
+已验证:安装→bundle 注册→启动激活→skills 目录与 `/gsd-*` 命令(GUI 目验)→
+`/gsd-health` 引擎端到端→**hooks 桥接阳性拦截(read `.env` → 硬阻塞)**→卸载→重装
+全链路;适配改写正确性;引擎 `!!js` 自定位;两条依赖教训。
 
-未验证(留给 GUI 目验与 P5 UAT):
-1. gsdtest 会话内 skill 目录确实列出 72 个 `gsd-*`、`/gsd-health` 执行 —— 机制路径与官方
-   用法完全一致(FileSystemSkillProvider 即官方 provider),但未用眼睛确认。
-2. hooks 桥接真实拦截(read `.env` → exit 2)—— 桥接 apply 已挂上(激活无错),
-   但 hook 只在会话事件时触发,spike 没有建立真实会话。
-3. `ctx.effect` 清理行为在 remove/disable 后的热卸载(patchReload: live)。
-4. tui/headless 等其他 profile 形态未测(目标场景是 web)。
+未验证(留给 P5 UAT):
+1. `ctx.effect` 清理行为在 remove/disable 后的热卸载(patchReload: live)。
+2. tui/headless 等其他 profile 形态未测(目标场景是 web)。
+3. 干净机器全量安装(P5 第 0 节 8 条验收)。
 
 ## 遗留决策(已由用户拍板)
 

@@ -1,6 +1,7 @@
 # PLAN — 将 install-gsd-dsh 插件化为 dsh-plugin-gsd
 
-> 状态:P0 (spike) 已完成;[SPIKE.md](./SPIKE.md) 记录了机制调研与真机验证证据。
+> 状态:P0 (spike) 已完成并**全链路验证通过**(含 hooks 阳性拦截,2026-11-10);
+> 证据与调试结论见 [SPIKE.md](./SPIKE.md)。进入 P1。
 > 目标形态:`dsh plugin --profile <name> add dsh-plugin-gsd@<版本>` 一条命令完成
 > GSD 在 DSH 上的安装(72 skills + 引擎 + hooks 守卫桥接),零手工脚本、零 `~/.dsh` 写入。
 
@@ -81,3 +82,6 @@
 2. 是否发布配套 `dsh-plugin-gsd-core` 精简档(对应 GSD_PROFILE=core)?初期不排期。
 3. npm 包内直接嵌 hooks/engine 的审计义务(上游更新时的重新打包责任)——CI 用
    GSD release 事件/定时任务驱动重建提示。
+4. (可选硬化)secret-read-guard 的 basename 规则对 `*something.env` 不命中
+   (上游 #4580 记档取舍):是否在插件内携带收紧版守卫、并与 GSD 升级同步打补丁。
+   默认不做,保持上游行为。

@@ -2,10 +2,24 @@
 #
 # Makes `dsh plugin --profile <name> add dsh-plugin-gsd` install as a one-click
 # profile layer: pnpm resolves this package, DSH detects the bundle via
-# `dsh.bundle.patch`, and this patch inserts one application row into the host
-# cordis composition. The row's index.js registers the GSD skill provider and
-# mounts the claude-code hooks bridge (configPath/pluginRoot point inside this
-# package). No manual dependency or patch edits are needed after install.
+# `dsh.bundle.patch`, and this patch inserts two rows into the host cordis
+# composition:
+#
+#   1. `gsd` — this package's index.js registers the GSD skill provider over
+#      its own `skills/` directory.
+#   2. `gsd-hooks-bridge` — mounts `@deepseek-ai/dsh-hooks-claude-code` with
+#      configPath/pluginRoot computed from this package's own location
+#      (same `createRequire(baseUrl)` idiom the shipped default config uses).
+#
+# DEV NOTE: `dsh plugin add file:<path>` installs a PACKED snapshot of the
+# package — after editing sources, re-run the add (or `pnpm add --force`)
+# before re-testing. See SPIKE.md.
 - insert:
     - id: gsd
       name: 'dsh-plugin-gsd'
+    - id: gsd-hooks-bridge
+      name: '@deepseek-ai/dsh-hooks-claude-code'
+      config:
+        configPath: !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-plugin-gsd/package.json')), 'config/gsd-hooks.json')"
+        pluginRoot: !!js "process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('dsh-plugin-gsd/package.json'))"
+        defaultTimeoutMs: 300000
