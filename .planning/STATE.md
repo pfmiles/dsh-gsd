@@ -16,7 +16,7 @@ current_phase_name: 生产化构建（build.mjs 换源 + 引擎独立可用）
 
 ## Current Focus
 
-Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）。当前 build.mjs 从本机部署取材（SPIKE 形态），需切换到 `@opengsd/gsd-core@<GSD_VERSION>` npm tarball → 官方 `--claude` staging 通道。
+Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **已规划完成（3 plans / 3 waves，Ready to execute）**。build.mjs 需从本机部署取材（SPIKE 形态）切换为 `@opengsd/gsd-core@<GSD_VERSION>` npm tarball → 官方 `--claude` staging 通道。
 
 ## Key Decisions（已锁定）
 
@@ -39,3 +39,4 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）。当前 bui
 ## Progress Log
 
 - 2026-11-10 bootstrapping：`.planning/` 由主会话按 GSD 模板生成；GSD 流程随后移交 3091 验证实例驱动
+- 2026-11-10 planning（3091 实例）：Phase 1 经 PRD express path 跳过 discuss → 轻量 research + pattern map → 3 plans 产出并通过 plan-checker 两轮验证（1 blocker + 2 warnings 已修，0 剩余）；需求覆盖 4/4（SKIL-03/04、INST-02、DEV-03）；决策覆盖门 skipped（无 D-ID）
