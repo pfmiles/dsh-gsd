@@ -18,7 +18,9 @@
 // Exit codes: 0 ok (staging + fakehome cleaned) / 1 IO·unpack·installer failure
 // (staging tree kept for forensics) / 2 gate failure (blocks prepack).
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -152,6 +154,80 @@ async function legacyBuild(source, sourceHome) {
 }
 
 // ---------------------------------------------------------------------------
+// Offline tier chain helpers
+// ---------------------------------------------------------------------------
+// ① 档完整性对照（T-1-01）：读 THIRD-PARTY-NOTICES.md 中该 GSD_VERSION 行的
+// canonical 值，对 tarball 做 SHA-512（对照 dist.integrity 解码值）与 SHA-1
+// （对照 dist.shasum）双重比对。未记录 / 任一不符 → exit 2 fail-closed。
+async function checkTarballIntegrity(tgzPath, version) {
+  const notices = await readFile(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8')
+  const tableRows = notices
+    .split('\n').map((l) => l.trim())
+    .filter((l) => l.startsWith('| @opengsd/gsd-core |'))
+  const row = tableRows.find((l) => l.startsWith(`| @opengsd/gsd-core | ${version} |`))
+  if (!row) {
+    finish(2, `build: checksum mismatch (expected <sha512> per THIRD-PARTY-NOTICES.md: no record for @opengsd/gsd-core@${version})`)
+  }
+  const cells = row.split('|').map((c) => c.trim())
+  const shasum = cells[3]
+  const integrity = cells[4]
+  const buf = await readFile(tgzPath)
+  const sha512hex = createHash('sha512').update(buf).digest('hex')
+  const sha1hex = createHash('sha1').update(buf).digest('hex')
+  const expected512 = Buffer.from(integrity.replace(/^sha512-/, ''), 'base64').toString('hex')
+  if (sha512hex !== expected512 || sha1hex !== shasum) {
+    finish(2, `build: checksum mismatch (expected ${expected512} sha512 / ${shasum} sha1 per THIRD-PARTY-NOTICES.md)`)
+  }
+  console.log('build: GSD_TARBALL integrity verified against THIRD-PARTY-NOTICES.md')
+}
+
+async function fetchEngine(GSD_VERSION, WORK) {
+  // 探测顺序固定（01-RESEARCH Pattern 2），命中即止。
+  // ① GSD_TARBALL（显式档，shasum-gated）→ ② .build-cache（repo 内缓存）
+  // → ③ GSD_PACKAGE_DIR（unpacked；必须含 bin/install.js 与 package.json）
+  // → ④ npm pack（在线）。npm cache 离线模式永不进入代码路径（ENOTCACHED 实测，
+  // RESEARCH Pitfall 1——镜像 302 重定向使缓存键落在 cdn URL 上）。
+  console.log(`build: fetching @opengsd/gsd-core@${GSD_VERSION}`)
+  const tarballEnv = env('GSD_TARBALL')
+  const cacheTgz = join(root, '.build-cache', `opengsd-gsd-core-${GSD_VERSION}.tgz`)
+  const pkgDirEnv = env('GSD_PACKAGE_DIR')
+  let tgzPath = null
+  let tier = ''
+
+  if (tarballEnv) {
+    tgzPath = resolve(process.cwd(), tarballEnv)
+    tier = 'GSD_TARBALL'
+    await checkTarballIntegrity(tgzPath, GSD_VERSION)
+  } else if (existsSync(cacheTgz)) {
+    tgzPath = cacheTgz
+    tier = '.build-cache'
+  } else if (pkgDirEnv) {
+    const p = resolve(process.cwd(), pkgDirEnv)
+    if (existsSync(join(p, 'bin', 'install.js')) && existsSync(join(p, 'package.json'))) {
+      tier = 'GSD_PACKAGE_DIR'
+      console.log(`build: fetched via ${tier} (unpacked — no tar step)`)
+      return { pkgDir: p, tier }
+    }
+  }
+
+  if (!tgzPath) {
+    // ④ online npm pack（最后一档）
+    const r = spawnSync('npm', ['pack', `@opengsd/gsd-core@${GSD_VERSION}`, '--pack-destination', WORK, '--silent'], { stdio: 'inherit' })
+    if (r.status !== 0) {
+      finish(1, `build: could not fetch @opengsd/gsd-core@${GSD_VERSION} — no offline tier available (tried in order: ① GSD_TARBALL, ② .build-cache/opengsd-gsd-core-${GSD_VERSION}.tgz, ③ GSD_PACKAGE_DIR) and ④ online npm pack failed (exit ${r.status}). offline? see BUILD.md`)
+    }
+    tgzPath = join(WORK, `opengsd-gsd-core-${GSD_VERSION}.tgz`)
+    tier = 'npm pack'
+  }
+  console.log(`build: fetched via ${tier}; unpacking with system tar`)
+  await rm(join(WORK, 'package'), { recursive: true, force: true })
+  const t = spawnSync('tar', ['xzf', tgzPath, '-C', WORK], { stdio: 'inherit' })
+  if (t.error) finish(1, `build: tar unavailable (need system tar/bsdtar for unpacking) — ${t.error.message}`)
+  if (t.status !== 0) finish(1, `build: tar unpack of ${tgzPath} failed (exit ${t.status})`)
+  return { pkgDir: join(WORK, 'package'), tier }
+}
+
+// ---------------------------------------------------------------------------
 // Production path: npm tarball → official staging → capture → rewrite →
 // inject → gates.
 // ---------------------------------------------------------------------------
@@ -164,18 +240,8 @@ async function main() {
   const WORK = join(root, '.gsd-build-tmp')
   await mkdir(WORK, { recursive: true })
 
-  // ② fetch: online npm pack → tar xzf（离线档位由 01-01 Task 3 扩入同骨架）
-  console.log(`build: fetching @opengsd/gsd-core@${GSD_VERSION}`)
-  const TGZ = join(WORK, `opengsd-gsd-core-${GSD_VERSION}.tgz`)
-  let PKG_DIR
-  {
-    const r = spawnSync('npm', ['pack', `@opengsd/gsd-core@${GSD_VERSION}`, '--pack-destination', WORK, '--silent'], { stdio: 'inherit' })
-    if (r.status !== 0) finish(1, `build: npm pack @opengsd/gsd-core@${GSD_VERSION} failed (exit ${r.status})`)
-    await rm(join(WORK, 'package'), { recursive: true, force: true })
-    const t = spawnSync('tar', ['xzf', TGZ, '-C', WORK], { stdio: 'inherit' })
-    if (t.status !== 0) finish(1, `build: tar unpack of ${TGZ} failed (exit ${t.status})`)
-    PKG_DIR = join(WORK, 'package')
-  }
+  // ② fetch: 离线三档 → 在线（探测顺序固定，命中即止）
+  const { pkgDir: PKG_DIR } = await fetchEngine(GSD_VERSION, WORK)
 
   // ③ pre-gate (BEFORE staging): fetched == requested
   {
@@ -195,8 +261,8 @@ async function main() {
     await mkdir(FAKEHOME, { recursive: true })
     const r = spawnSync('node', [join(PKG_DIR, 'bin', 'install.js'), '--claude', '--global'], {
       // CLAUDE_CONFIG_DIR pins the installer to the throwaway staging dir; fake
-      // HOME keeps the run reproducible; PATH is explicitly inherited.
-      env: { ...process.env, CLAUDE_CONFIG_DIR: STAGING, HOME: FAKEHOME },
+      // HOME keeps the run reproducible; PATH explicitly inherited.
+      env: { ...process.env, CLAUDE_CONFIG_DIR: STAGING, HOME: FAKEHOME, PATH: process.env.PATH },
       stdio: 'inherit',
     })
     if (r.status !== 0) {

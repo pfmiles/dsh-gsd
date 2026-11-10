@@ -6,3 +6,4 @@ gsd-core/
 hooks/
 config/
 scripts/
+.build-cache/
