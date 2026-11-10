@@ -1,0 +1,7 @@
+node_modules/
+*.tgz
+.gsd-build-tmp/
+skills/
+gsd-core/
+hooks/
+config/

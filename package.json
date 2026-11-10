@@ -1,0 +1,46 @@
+{
+  "name": "dsh-plugin-gsd",
+  "version": "0.1.0-gsd1.20.1",
+  "private": true,
+  "description": "GSD — spec-driven coding workflow (72 skills, engine, hooks guards) as a DeepSeek Harness plugin bundle. Install: dsh plugin --profile <name> add dsh-plugin-gsd",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "icon": "icon.svg",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24",
+    "dsh": ">=0.2.2-rc.1 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-hooks-claude-code": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-hook-protocol": "0.2.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-skill-filesystem": ">=0.2.2-rc.1 <0.3.0-0"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg",
+    "skills",
+    "gsd-core",
+    "hooks",
+    "config"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepack": "node build.mjs"
+  }
+}
