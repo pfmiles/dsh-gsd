@@ -82,6 +82,6 @@
 2. 是否发布配套 `dsh-plugin-gsd-core` 精简档(对应 GSD_PROFILE=core)?初期不排期。
 3. npm 包内直接嵌 hooks/engine 的审计义务(上游更新时的重新打包责任)——CI 用
    GSD release 事件/定时任务驱动重建提示。
-4. (可选硬化)secret-read-guard 的 basename 规则对 `*something.env` 不命中
+4. (可选项)secret-read-guard 的 basename 规则对 `*something.env` 不命中
    (上游 #4580 记档取舍):是否在插件内携带收紧版守卫、并与 GSD 升级同步打补丁。
-   默认不做,保持上游行为。
+   **决策(2026-11-10):保持上游行为,不内置补丁。**
