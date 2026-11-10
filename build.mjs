@@ -21,7 +21,6 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/pr
 import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeRewrites } from './build/lib/rewrite-map.cjs'
@@ -304,57 +303,25 @@ async function main() {
     })
   }
 
-  // ⑦ adapter injection: strip both historical markers → inject NOTE → count
+  // ⑦ adapter injection: strip both historical markers → inject NOTE
   console.log('build: injecting DSH adapter notes')
   const skillFiles = skillNames.map((n) => join(root, 'skills', n, 'SKILL.md'))
   await injectNote(skillFiles, counters)
-  if (skillNames.length !== 72) {
-    finish(2, `build: gate failed — expected 72 gsd-* skills, got ${skillNames.length}`)
-  }
 
-  // ⑧a gate A: product version cross-check. 1.20.1 ships no gsd-core/package.json
-  // (1.16.0 did) — the staged engine self-reports identity instead, and the
-  // tarball's package.json version was already pinned by pre-gate ③. Verified
-  // anchors in the captured tree: gsd-core/VERSION + the identity CLI's JSON.
-  const verFile = (await readFile(join(root, 'gsd-core', 'VERSION'), 'utf8')).trim()
-  if (verFile !== GSD_VERSION) {
-    finish(2, `build: gate failed — product VERSION ${verFile} != requested ${GSD_VERSION}`)
-  }
-  const ident = spawnSync('node', [join(root, 'gsd-core', 'bin', 'gsd-tools.cjs'), 'runtime-identity', '--raw'], { encoding: 'utf8' })
-  let identJson = null
-  try { identJson = JSON.parse((ident.stdout || '').trim()) } catch { identJson = null }
-  if (ident.status !== 0 || !identJson || identJson.packageName !== '@opengsd/gsd-core' || identJson.version !== GSD_VERSION) {
-    finish(2, `build: gate failed — engine identity ${(ident.stdout || '').trim() || '(unavailable)'} != @opengsd/gsd-core@${GSD_VERSION}`)
-  }
-
-  // ⑧b gate B: machine-coupling scan of the product trees.
-  // Three probes, each fail-closed (exit 2 on any hit):
-  //  B1 staging-root prefix in ALL product trees（staging 残留）;
-  //  B2 THIS machine's absolute residue in all trees（homedir() 前缀；以 root
-  //     运行构建时 homedir()==/root，天然覆盖 root 形态）;
-  //     upstream 1.20.1 ships narrative example paths（如 docs 里 "/Users/john/"
-  //     与 "/root/.ssh" 教学举例），这些是可移植叙述、非本机残留，不能一刀切误杀（Pitfall 5 精神）;
-  //  B3 literal /Users|home/<name>/ syntax in the skills/ tree only — SKIL-04
-  //     的字面范围就是 SKILL.md（REQUIREMENTS.md），skills 内零容忍。
-  //  $HOME/`~` 形态不在拒绝集（Pitfall 5，回退改写目标）。
-  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const trees = ['skills', 'gsd-core', 'hooks', 'scripts'].map((t) => join(root, t))
-  const gateScans = [
-    [`staging prefix (4 trees)`, escapeRe(STAGING), trees],
-    [`machine residue (4 trees)`, escapeRe(homedir()), trees],
-    [`portable-syntax residue (skills/)`, '/(Users|home)/[A-Za-z0-9_.-]+/', [join(root, 'skills')]],
-  ]
-  for (const [label, pattern, scanTrees] of gateScans) {
-    const g = spawnSync('grep', ['-RInE', pattern, ...scanTrees], { encoding: 'utf8' })
-    if (g.error) finish(1, `build: grep unavailable for gate B — ${g.error.message}`)
-    if (g.status === 0) finish(2, `build: gate failed (${label}) — residual paths matching ${pattern}:\n${g.stdout}`)
-    if (g.status !== 1) finish(1, `build: gate B scan failed (${label}, grep exit ${g.status})`)
-  }
-
-  // ⑧c gate C: 72 SKILL.md files, each with exactly one adapter block
-  for (const f of skillFiles) {
-    const n = ((await readFile(f, 'utf8')).match(/gsd:dsh-adapter begin/g) || []).length
-    if (n !== 1) finish(2, `build: gate failed — ${n} adapter blocks in ${f}`)
+  // ⑧ gates (A/B/C) via the shared script — runs BEFORE staging cleanup so a
+  // failed gate leaves the staging tree for forensics; the script owns the
+  // scan semantics (gate A 双锚 version cross-check / gate B 三段式
+  // machine-coupling scan / gate C 72×1 adapter count), and build merely
+  // propagates its exit code verbatim (1→IO-style, 2→gate, blocking prepack).
+  const gates = spawnSync('bash', [join(root, 'tests', 'run-gates.sh')], {
+    cwd: root,
+    env: { ...process.env, GSD_VERSION, GSD_STAGING_ROOT: STAGING },
+    stdio: 'inherit',
+  })
+  if (gates.error) finish(1, `build: could not run gate script — ${gates.error.message}`)
+  if (gates.status !== 0) {
+    console.error(`build: gates failed (exit ${gates.status}) — staging kept at ${STAGING} for forensics`)
+    process.exit(gates.status)
   }
 
   // ⑨ exit 0: clean staging + fakehome; last line keeps the "skills (72 total)" marker
