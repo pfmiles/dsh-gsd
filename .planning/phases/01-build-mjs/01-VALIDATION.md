@@ -41,9 +41,9 @@ created: "2026-11-10"
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 01-01 (plan) | 01 | 1 | SKIL-03 | T-1-02 / — | ①/④ 档离线 .tgz 经 shasum-512 对照 SBOM 后解包 | smoke | `node -e "const r=require('child_process').execSync('node gsd-core/bin/gsd-tools.cjs runtime-identity --raw');const j=JSON.parse(r);if(j.packageName!=='@opengsd/gsd-core'||j.version!==process.env.GSD_VERSION)process.exit(1)"` | ❌ W0 | ⬜ pending |
-| 01-02 (plan) | 01 | 1 | SKIL-04 | T-1-01 / T-1-03 | 产物树零残留机器绝对路径；72 个 SKILL.md 各恰一个 adapter 块 | gate/smoke | `bash tests/run-gates.sh`（gate A 版本交叉校验 + gate B 绝对路径 + gate C adapter 计数） | ❌ W0 | ⬜ pending |
-| 01-02 (plan) | 04 | 1 | INST-02 | T-1-02 | 产物树无 `~/.dsh` 托管字面量，安装不写受管文件 | smoke | `grep -RIl '~/.dsh' skills/ gsd-core/ hooks/ config/ && exit 1` | ❌ W0 | ⬜ pending |
-| 01-03 (plan) | 01 | 1 | DEV-03 | T-1-05 | 验证实例（gsdtest/3091）三项复验：`/gsd-health` + 独立 CLI + `.env` 拦截 | manual-only | `dsh plugin --profile gsdtest add file:… --force` → 重启 → `/gsd-health` + 独立 CLI + read `.env` 被拦（exit 2）。需运行中 DSH 实例，无法 CI 自动化 | ❌ W0（01-03 文档化序） | ⬜ pending |
+| 01-02 (plan) | 01 | 1 | SKIL-04 | T-1-06 / T-1-03 | 产物树零残留机器绝对路径；72 个 SKILL.md 各恰一个 adapter 块 | gate/smoke | `bash tests/run-gates.sh`（gate A 版本交叉校验 + gate B 绝对路径 + gate C adapter 计数） | ❌ W0 | ⬜ pending |
+| 01-02 (plan) | 04 | 1 | INST-02 | T-1-06 | 产物树无 `~/.dsh` 托管字面量，安装不写受管文件 | smoke | `grep -RIl '~/.dsh' skills/ gsd-core/ hooks/ config/ && exit 1` | ❌ W0 | ⬜ pending |
+| 01-03 (plan) | 01 | 1 | DEV-03 | T-1-08 | 验证实例（gsdtest/3091）三项复验：`/gsd-health` + 独立 CLI + `.env` 拦截 | manual-only | `dsh plugin --profile gsdtest add file:… --force` → 重启 → `/gsd-health` + 独立 CLI + read `.env` 被拦（exit 2）。需运行中 DSH 实例，无法 CI 自动化 | ❌ W0（01-03 文档化序） | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
