@@ -27,10 +27,10 @@ async function main() {
     },
   })
   if (!values.dsh) {
-    finish(2, 'compat-probe: --dsh <runtime-version> is required')
+    finish(1, 'compat-probe: --dsh <runtime-version> is required')
   }
   if (values.expect !== 'install-ok' && values.expect !== 'reject') {
-    finish(2, `compat-probe: invalid --expect '${values.expect ?? ''}' (must be install-ok|reject)`)
+    finish(1, `compat-probe: invalid --expect '${values.expect ?? ''}' (must be install-ok|reject)`)
   }
 
   let manifest
