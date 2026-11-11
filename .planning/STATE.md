@@ -4,11 +4,11 @@ current_phase: 02
 current_phase_name: 版本与兼容矩阵
 current_plan: 3
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-11-11T16:37:33.382Z"
+stopped_at: Checkpoint 02-03 Task 2 — 待人工重启 gsdtest/3091 后三项 live 复验（Task 1 自动化段已提交 9638354）
+last_updated: "2026-11-11T16:50:32.126Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 02 execution started
-state_head: e01a244da1ada1645fba976dbe9832711dcd03b7
+state_head: 963835460af23b858573875f9276ac86226bc6b6
 progress:
   total_phases: 5
   completed_phases: 1
@@ -91,9 +91,11 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 - [Phase 02]: 02-02：1.19.0 staged 树含 gsd-core/VERSION（官方安装器写入）——gate A 双锚天然兼容，形态差异预案未触发，tests/run-gates.sh 零改动
 - [Phase 02]: 02-02：Task 1 verify ④ 原命令按裸对象读 npm view 输出，本机 npm 12.2.1 对 exact spec 返回单元素数组+扁平键致 TypeError——验证命令适配为数组归一化+双形态字段读取，等值断言不变（与 02-01 偏差 3 同源）
 - [Phase 02]: 02-02：docs-consistency ④ 旧编码哨兵字面量（0.1.0-gsd1.20.1）在测试文件内定义、执行期从 README L19 现取，不写回任何文档/样例
+- [Phase 02]: 02-03：负向 doctored fixture 活体拒绝实测文案与 RESEARCH 预期完全一致（exit 1 + installation rejected + allow-version 双指引 + nothing was installed，preflight 早于 pnpm）；复原重装回产品快照身份复检通过
+- [Phase 02]: 02-03：~/.dsh 受管文件基线现为 1066（Phase 1 为 987，属本机部署 11-10→11-12 期间外部演进，非本 phase 写入；INST-02 判据维持 before/after comm -13 零新增）
 
 ## Session
 
-**Last session:** 2026-11-11T16:37:22.936Z
-**Stopped at:** Completed 02-02-PLAN.md
+**Last session:** 2026-11-11T16:50:31.555Z
+**Stopped at:** Checkpoint 02-03 Task 2 — 待人工重启 gsdtest/3091 后三项 live 复验（Task 1 自动化段已提交 9638354）
 **Resume file:** None
