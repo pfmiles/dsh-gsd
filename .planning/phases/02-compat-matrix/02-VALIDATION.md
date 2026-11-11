@@ -40,15 +40,15 @@ created: "2026-11-11"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | — | VER-01 | T-2-SC / TBD | 不兼容安装被宿主干净拒绝：engines.dsh 非空独自裁决、拒绝文案含 allow-version 指引、清单/锁文件回滚 | integration | `npm i --no-save @deepseek-ai/dsh@<line> && node scripts/compat-probe.mjs --dsh <line> --expect reject`（matrix 前一行 2 格） | ❌ W0 | ⬜ pending |
-| TBD | TBD | — | VER-01 | T-2-SC / TBD | 兼容安装不被误拒（当前行 0.2.2-rc.1 → install-ok） | integration | 同上 `--expect install-ok`（当前行 2 格） | ❌ W0 | ⬜ pending |
-| TBD | TBD | — | VER-01 | T-2-SC / TBD | 活体拒绝日志可解释（人读留证，DEV-03 口径） | manual-only | RESEARCH §Code Examples [4] 负向 file: 探针 + verify-evidence.md | — | ⬜ pending |
+| TBD | TBD | — | VER-01 | TBD | 不兼容安装被宿主干净拒绝：engines.dsh 非空独自裁决、拒绝文案含 allow-version 指引、清单/锁文件回滚 | integration | `npm i --no-save --no-package-lock @deepseek-ai/dsh@<line> && node build/lib/compat-probe.mjs --dsh <line> --expect reject`（matrix 前一行 2 格） | ❌ W0 | ⬜ pending |
+| TBD | TBD | — | VER-01 | TBD | 兼容安装不被误拒（当前行 0.2.2-rc.1 → install-ok） | integration | 同上 `--expect install-ok`（当前行 2 格） | ❌ W0 | ⬜ pending |
+| TBD | TBD | — | VER-01 | TBD | 活体拒绝日志可解释（人读留证，DEV-03 口径） | manual-only | RESEARCH §Code Examples [4] 负向 file: 探针 + verify-evidence.md | — | ⬜ pending |
 | TBD | TBD | — | VER-02 | TBD | 版本号方案 `<gsd-ver>-<rev>.dsh<line>` 格式白名单校验（rev 纯数字、线号去点） | unit | `node --test tests/version.test.mjs` | ❌ W0 | ⬜ pending |
 | TBD | TBD | — | VER-02 | TBD | README/BUILD.md 示例与规范一致（升级/回滚 = 同命令换 exact 版本） | static | `node --test tests/docs-consistency.test.mjs` | ❌ W0 | ⬜ pending |
 | TBD | TBD | — | VER-03 | TBD | `.github/workflows` 矩阵 CI：轴值为 pins.json 声明子集且含当前+前行（0.2.2-rc.1 / 0.2.1-rc.5），expect 列与支持窗一致 | static | `node --test tests/compat-matrix.test.mjs` | ❌ W0 | ⬜ pending |
 | TBD | TBD | — | VER-03 | TBD | 每格「build + gates + tests」通过 = 该 (DSH 行 × GSD 版本) 构建/冒烟记录 | integration | 矩阵单元 `GSD_VERSION=<gsd> node build.mjs && node --test tests/*.test.mjs` | —（CI 运行） | ⬜ pending |
 | TBD | TBD | — | VER-04 | TBD | `engines.node: ">=24"` 与上游 GSD engines 一致（1.20.1/1.19.0/1.16.0 均 ≥24.0.0）；README 双语声明 Node ≥ 24 | static | `node --test tests/docs-consistency.test.mjs` | ❌ W0 | ⬜ pending |
-| TBD | TBD | — | DEV-03 | T-2-SC / TBD | 本 phase 完成物在 gsdtest 验证实例 gate 通过（正向三项复验 + 负向拒绝探针，证据口径 = 可观察输出 + UTC 时间戳 + 新快照声明） | manual-only | BUILD.md §⑧ 复验序；证据落 verify-evidence.md | — | ⬜ pending |
+| TBD | TBD | — | DEV-03 | TBD | 本 phase 完成物在 gsdtest 验证实例 gate 通过（正向三项复验 + 负向拒绝探针，证据口径 = 可观察输出 + UTC 时间戳 + 新快照声明） | manual-only | BUILD.md §⑧ 复验序；证据落 verify-evidence.md | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -56,9 +56,9 @@ created: "2026-11-11"
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/pins.json` — pin/行对齐真源（check-pins 与 workflow 轴的共同消费方）
-- [ ] `scripts/check-pins.mjs` — VER-02/HOOK-05 前置校验器（exit 2 gate 口径）
-- [ ] `scripts/compat-probe.mjs` — VER-01 宿主求值探针（CI 单元执行件）
+- [ ] `build/assets/pins.json` — pin/行对齐真源（check-pins 与 workflow 轴的共同消费方；02-PATTERNS ⛔ 选项 A：scripts/ 被 .gitignore 与 build.mjs 捕获段覆盖，不可用）
+- [ ] `build/lib/check-pins.mjs` — VER-02/HOOK-05 前置校验器（exit 2 gate 口径）
+- [ ] `build/lib/compat-probe.mjs` — VER-01 宿主求值探针（CI 单元执行件）
 - [ ] `tests/version.test.mjs` — 版本号方案格式单测
 - [ ] `tests/compat-matrix.test.mjs` — workflow 存在性/轴值与 pins.json 一致性
 - [ ] `tests/docs-consistency.test.mjs` — engines 声明 ↔ README 双语一致性
