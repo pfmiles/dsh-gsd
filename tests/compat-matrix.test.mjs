@@ -1,7 +1,7 @@
 // tests/compat-matrix.test.mjs — 02-01 Task 2 静态防线（VER-03 静态面 + VER-02
-// pin 对齐面）：workflow 存在性 ① / 轴值 ⊆ pins.json ② / expect 列与支持窗一致
-// ③ / 选项 A 路径哨兵 ④ / 编排哨兵 ⑤ / check-pins --offline 消费 ⑥ /
-// workflow_dispatch inputs 消费面哨兵 ⑦。
+// pin 对齐面）：workflow 存在性 ① / 矩阵格集合恰等于 pins.json 笛卡尔积 ② /
+// expect 列与支持窗一致 ③ / 选项 A 路径哨兵 ④ / 编排哨兵 ⑤ /
+// check-pins --offline 消费 ⑥ / workflow_dispatch inputs 消费面哨兵 ⑦。
 // 零 YAML 依赖——全字符串/JSON 断言（断言面按 02-01-PLAN Task 2 action ①-⑦）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -15,7 +15,14 @@ const WF = join(ROOT, '.github', 'workflows', 'compat-matrix.yml')
 const PIN = join(ROOT, 'build', 'assets', 'pins.json')
 
 const readWF = () => readFileSync(WF, 'utf8')
-const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// 格行解析（②③ 共用单一真值，不重复扫描）：整行正则抽取
+// - { dsh: "...", gsd: "...", expect: install-ok|reject } 三元组。
+const CELL_RE = /^\s*-\s*\{\s*dsh:\s*"([^"]+)"\s*,\s*gsd:\s*"([^"]+)"\s*,\s*expect:\s*(install-ok|reject)\s*\}\s*$/
+const parseCells = (y) => y.split('\n')
+  .map((l) => CELL_RE.exec(l))
+  .filter(Boolean)
+  .map((m) => ({ dsh: m[1], gsd: m[2], expect: m[3] }))
 
 // ① 存在性：workflow 文件存在且含 name / checkout v7 / setup-node v7。
 test('① workflow 存在性与关键引用（compat-matrix / checkout@v7 / setup-node@v7）', () => {
@@ -26,33 +33,42 @@ test('① workflow 存在性与关键引用（compat-matrix / checkout@v7 / setu
   assert.ok(y.includes('actions/setup-node@v7'), 'actions/setup-node@v7 missing')
 })
 
-// ② 轴值 ⊆ pins.json：dsh/gsd 两轴的每个值都必须出现在 workflow 文本里
-//    （Anti-Pattern 4 防线——轴值唯一来源 pins.json，硬编码漂移在此失败）。
-test('② 矩阵轴值 ⊆ pins.json（轴值唯一来源 = pins.json）', () => {
+// ② 矩阵格集合 = pins.json 笛卡尔积（双向精确等值）：整行解析格为 (dsh,gsd,
+//    expect) 三元组，dsh×gsd 有序对集合 deepEqual 恰等于 pins.matrix 两轴
+//    笛卡尔积——幽灵格（pins 未声明的实验格）、冗余格（轴移除后残留）、重复格、
+//    1.20.1 vs 1.20.10 子串假匹配均在此失败（Anti-Pattern 4：轴值唯一来源
+//    = pins.json，双向、计数唯一）。
+test('② 矩阵格集合恰等于 pins.json 笛卡尔积（双向精确等值）', () => {
   const y = readWF()
   const pins = JSON.parse(readFileSync(PIN, 'utf8'))
-  for (const v of [...pins.matrix.dsh, ...pins.matrix.gsd]) {
-    assert.ok(y.includes(v), `workflow text missing axis value: ${v}`)
-  }
+  const cells = parseCells(y)
+  const expectedPairs = pins.matrix.dsh
+    .flatMap((d) => pins.matrix.gsd.map((g) => `${d}\u0000${g}`))
+    .sort()
+  assert.deepEqual(
+    cells.map((c) => `${c.dsh}\u0000${c.gsd}`).sort(),
+    expectedPairs,
+    `matrix cells must equal exactly pins.matrix.dsh × pins.matrix.gsd (got ${cells.length} cells)`,
+  )
 })
 
-// ③ expect 列与支持窗一致：对 pins.lines 每行，凡含该行 dsh 版本的矩阵格行
-//    必须同含与该行窗口一致的 expect（<unsupported> → reject，否则 install-ok）。
+// ③ expect 列与支持窗一致（复用 ② 的格解析结果）：对 pins.lines 每行，凡含该
+//    行 dsh 的格全部与该行窗口一致的 expect（<unsupported> → reject，否则
+//    install-ok）；格存在性由 ② 的精确等值保证，此处不做子串扫描。
 test('③ expect 列与支持窗一致（unsupported 行 → reject，支持行 → install-ok）', () => {
   const y = readWF()
   const pins = JSON.parse(readFileSync(PIN, 'utf8'))
+  const cells = parseCells(y)
   for (const lineKey of Object.keys(pins.lines)) {
     const line = pins.lines[lineKey]
     const v = line.dsh
     const expected = line.dshRange === '<unsupported>' ? 'reject' : 'install-ok'
-    const cellLines = y.split('\n').filter((l) => new RegExp(`dsh:\\s*"?${esc(v)}"?`).test(l))
-    assert.ok(cellLines.length > 0, `no matrix cell for dsh ${v}`)
-    for (const l of cellLines) {
-      const m = /expect:\s*(install-ok|reject)/.exec(l)
-      assert.ok(m, `cell for dsh ${v} has no expect column: ${l.trim()}`)
+    const matching = cells.filter((c) => c.dsh === v)
+    assert.ok(matching.length > 0, `no matrix cell for dsh ${v}`)
+    for (const c of matching) {
       assert.equal(
-        m[1], expected,
-        `cell for dsh ${v} has expect ${m[1]}, expected ${expected} (line dsh${lineKey} dshRange=${line.dshRange})`,
+        c.expect, expected,
+        `cell dsh=${c.dsh} gsd=${c.gsd} has expect ${c.expect}, expected ${expected} (line dsh${lineKey} dshRange=${line.dshRange})`,
       )
     }
   }
