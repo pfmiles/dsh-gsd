@@ -1,7 +1,7 @@
 ---
 phase: 01-build-mjs
 verified: 2026-11-11T10:08:06Z
-status: human_needed
+status: passed
 score: 14/14 must-haves verified
 covered_files: [".gitignore", ".planning/phases/01-build-mjs/01-01-PLAN.md", ".planning/phases/01-build-mjs/01-01-SUMMARY.md", ".planning/phases/01-build-mjs/01-02-PLAN.md", ".planning/phases/01-build-mjs/01-02-SUMMARY.md", ".planning/phases/01-build-mjs/01-03-PLAN.md", ".planning/phases/01-build-mjs/01-03-SUMMARY.md", "BUILD.md", "README.md", "THIRD-PARTY-NOTICES.md", "build.mjs", "build/assets/dsh-gsd-suite-run.cjs", "build/assets/gsd-hooks.json", "build/lib/rewrite-map.cjs", "package.json", "tests/build-smoke.test.mjs", "tests/rewrite-map.test.mjs", "tests/run-gates.sh"]
 covered_digest: "v3:sha256:4175d06510685a508b841e688c17b84d7f265fd0eb7bc971a903d275dda590dc"

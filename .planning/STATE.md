@@ -1,23 +1,24 @@
 ---
 gsd_state_version: "1.0"
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-11-10T14:18:56.376Z"
-state_head: 14ee71ceee06d7ef58fa7909fa4f44d5f25fbd78
+stopped_at: Phase 01 complete, ready to plan Phase 2
+last_updated: "2026-11-11T12:07:50.495Z"
+state_head: 1a15a32245b8213ad48dd4e8b2567b1751a6f3ea
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 100
-current_phase_name: 生产化构建（build.mjs 换源 + 引擎独立可用）
+  percent: 20
+current_phase: 2
+current_phase_name: 版本与兼容矩阵
 ---
 
 # STATE: dsh-gsd
 
 ## Current Focus
 
-Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **3/3 计划执行完成（01-01 取源管线 + 01-02 改写/gate 迁移 + 01-03 验证实例复验与构建文档）；下一节点 = verify-work 阶段验证 / 01-VALIDATION 签核**。三项复验 live 全过（含 .env 硬拦回归修复闭环），BUILD.md 八章 + README/SBOM 互链落地；DEV-03/INST-02/SKIL-03/SKIL-04 需求四方已落 Complete；WINDOWS #1/#2/#3 关闭留 verifier。
+Phase 2: 版本与兼容矩阵 —— **Ready to plan**（当前没有 CONTEXT.md，规划前先走 `/gsd-discuss-phase 2` 或跳过讨论直接 `/gsd-plan-phase 2`）。Phase 1 已 100% 完成：3/3 plans 执行 + Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0 open + verifier 14/14 → UAT 3/3 人工确认 → phase.complete。
 
 ## Key Decisions（已锁定）
 
@@ -31,7 +32,7 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **3/3 
 
 ## Context Snapshot（最近一次同步）
 
-- 分支：local git（master，4 commits；发布期建 GitHub remote）
+- 分支：local git（main；发布期建 GitHub remote）
 - 验证实例：gsdtest profile @ 127.0.0.1:3091，插件 file: 安装（dsh-gsd）
 - 已知修复：scripts/ 兄弟目录缺失 → 引擎 MODULE_NOT_FOUND（已并入 build.mjs）
 - 目标引擎版本：@opengsd/gsd-core 1.20.1（2026-11-10 执行期 checkpoint 人类决策；canonical shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd`，双 registry 一致）；repo 产物树已由 01-01 build 换源重建为 1.20.1（76 棵树）；本机 ~/.dsh 部署快照仍为 1.16.0
@@ -45,6 +46,7 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **3/3 
 - 2026-11-10 execution 01-01（3091 实例）：staging 取源管线完成（commits ebf35b4 + 0305b6e）——npm tarball 主链 + 离线三档 + 双 gate + exit 0/1/2 + THIRD-PARTY-NOTICES；3 处 1.20.1 形态差内联适配（gate A 双锚、gate B 三段式、① 档双哈希）记入 01-01-SUMMARY；SKIL-03/04 因共享 ID（01-02/01-03 同声明）按门未落 Complete
 - 2026-11-10 execution 01-02（3091 实例）：改写与 gate 迁移完成（commits 395a795 + 02fe473 + 1880943）——rewrite-map.cjs 9 对映射+六组单测、run-gates.sh 三段式/双锚外置并强制消费、build-smoke 76 树/identity/零 '~/.dsh'/adapter 72×1、test/prepack 全链；2 处执行现实适配（gate A/B 继承 01-01 口径、node --test 目录参数→glob 形态）记入 01-02-SUMMARY；SKIL-03/04/INST-02 因共享 ID（01-03 同声明）按门未落 Complete
 - 2026-11-10 execution 01-03（3091 实例）：验证实例全量复验与构建文档完成（commits a95f639 + 2d45fac + bca4875 + 14ee71c）——三项复验 live 全过留证 verify-evidence.md（独立 CLI 1.20.1 / gsd-health / read 精确 .env 硬拦 exit 2），两轮 user_setup + 一次 Rule-1 回归修复（hooks 桥接适配器 dsh-gsd-suite/run.cjs 不随 npm tarball → 守卫 fail-open → canonical 入库 + 捕获拷贝，回归 2d45fac、live 复验 bca4875）；BUILD.md 八章（离线四档/gates/exit 0-1-2/交叉核对/复验序）+ README/SBOM 双语互链；DEV-03/INST-02/SKIL-03/SKIL-04 四方 Complete，门此前因共享 ID 未落的判断在本计划 SUMMARY 落盘后解除
+- 2026-11-11 verification + 收口（3091 实例）：verify:post 全链——Nyquist validate-phase（1 gap 填补：hooks fail-open 机器防线 ⑥⑦⑧ 入 build-smoke，21a38e6）→ secure-phase（01-SECURITY threats_open 0，38b179f）→ code-review（6 findings 全修 384b72a + 处置 392a5b6）→ verifier（14/14 must-haves，01-VERIFICATION human_needed → UAT 3/3 人工确认 → status passed）→ phase.complete（3/3，next=Phase 2）。追踪 warnings 2 条：01-02-SUMMARY 引用 gsd-core/package.json（1.20.1 形态历史引用）与 REQUIREMENTS 追溯行格式缺省——由 /gsd-progress 追踪
 
 ## Performance Metrics
 
@@ -70,6 +72,6 @@ Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）—— **3/3 
 
 ## Session
 
-**Last session:** 2026-11-10T14:18:44.547Z
-**Stopped at:** Completed 01-03-PLAN.md
+**Last session:** 2026-11-11T12:10:00+08:00
+**Stopped at:** Phase 01 complete, ready to plan Phase 2
 **Resume file:** None

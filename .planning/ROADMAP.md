@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备
+- [x] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备 (completed 2026-11-11)
 - [ ] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化
 - [ ] **Phase 3: 发布（GitHub + npm + dshmarket）** - 建仓、prepack 校验、发布、registry PR
 - [ ] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链
@@ -28,7 +28,7 @@
   4. fetched 版本与请求版本不一致时构建失败
   5. 验证实例重装后 `/gsd-health` + 独立 CLI + `.env` 拦截三项复验通过
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**

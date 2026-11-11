@@ -18,7 +18,10 @@
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- ✓ **SKIL（核心）— Phase 1**：72 skills + 引擎独立可用已换源生产化（npm tarball 取源 + staging 改写 + gates），独立 CLI 输出身份 JSON
+- ✓ **INST（部分）— Phase 1**：安装面零 `~/.dsh` 写入（987→987 复证）；一条命令安装依赖 DSH 原生机制（P3 发布后全量验收）
+- ✓ **HOOK（部分）— Phase 1**：hooks 桥接真实拦截（live read 精确 `.env` hard-block exit 2；含 fail-open 回归修复与机器防线）
+- ✓ **DEV（部分）— Phase 1**：自举开发循环成立（本 phase 全部由本插件自己驱动，DEV-03 验证实例 gate 通过）
 
 ### Active
 
@@ -45,7 +48,7 @@
 
 - **栈**：Node ≥ 24、ESM plugin + cordis patch 层、pnpm（DSH 转发）、bash 构建脚本（build.mjs）
 - **宿主契约**：DSH 0.2.2-rc.1 系（`engines.dsh: ">=0.2.2-rc.1 <0.3.0-0"`）；依赖 `@deepseek-ai/dsh-hooks-claude-code` + `dsh-hook-protocol`（与 DSH 版本对齐）；`FileSystemSkillProvider`（事实公开导出，需版本矩阵守护）
-- **资产源**：`@opengsd/gsd-core@<version>` npm tarball → 官方安装器 `--claude` staging → 路径改写 + runtime_note 注入（当前 build.mjs 从本机部署取材，P1 换源）
+- **资产源**：`@opengsd/gsd-core@<GSD_VERSION>`（默认 1.20.1）npm tarball → 官方安装器 `--claude` staging → staging 根相对改写 + runtime_note 注入 + gates A/B/C（build.mjs 已换源生产化，离线三档回退）
 - **路径契约**：skills/hooks/引擎全部包内自定位（`!!js createRequire(baseUrl)`）；运行时引用 `$DSH_PROFILE_DIR/node_modules/dsh-gsd`；任务目录 `$DSH_HOME/tasks`
 - **已知宿主限制**：无 PreCompact/FileChanged/statusline 事件、无 agents 注册、无 `@`-include 展开（与 GSD on Codex 同状态）
 - **安全**：守卫钩子经 bash 沙箱运行；Linux 无 bubblewrap 时钩子 fail-open（与脚本版同行为）；pnpm 拦截生命周期脚本 = 设计使然（零安装脚本）
@@ -55,6 +58,7 @@
 - SPIKE.md：机制证据 + 真机验证 + 两个踩坑教训（ctx.plugin 不订阅事件；file: 安装打包冻结）
 - PLAN.md：P0 已闭环（含 hooks 阳性拦截），P1-P5 规划 → 本 ROADMAP 的 5 个 phase 与之对应
 - 已决：命名 `dsh-gsd`（curated registry 主流形态）；引擎资产嵌入；全局 gsd_run 不再安装；守卫保持上游行为；dshmarket category=workflow
+- Phase 1 执行决策：目标版本 1.20.1（checkpoint 人类决策）；gate A 双锚 / gate B 三段式（1.20.1 形态）；hooks 桥接适配器 canonical 入库；sequential 执行模式（DSH 无 worktree 隔离原语）；`node --test` glob 形态（Node v24）
 - **dogfooding 约定（本项目独有）**：GSD 流程由 3091 验证实例（gsdtest profile + 本插件）驱动；3080 主实例只做基建协助（重启/刷新/提交兜底），不推进 GSD phase
 
 ## Constraints
@@ -62,3 +66,6 @@
 - 不在主 profile（3080）上推进任何 GSD phase，直至至少一个 milestone（Phase 1）在验证实例上稳定通过
 - `.planning/` 提交进 git（GSD 惯例）；构建产物（skills/gsd-core/hooks/config/scripts）不提交
 - 每次插件源码变更后必须 `--force` 重装 + 重启验证实例（file: 快照机制）
+
+---
+*Last updated: 2026-11-11 after Phase 1*
