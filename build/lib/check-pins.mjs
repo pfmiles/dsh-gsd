@@ -163,7 +163,10 @@ async function main() {
   // spawn failure → exit 1, returned version != pin → exit 2 'registry drift'
   if (!values.offline) {
     for (const [name, pin] of Object.entries(bridge)) {
-      const p = spawnSync('npm', ['view', `${name}@${pin}`, 'version', '--json', `--registry=${values.registry}`], { encoding: 'utf8' })
+      const p = spawnSync('npm', ['view', `${name}@${pin}`, 'version', '--json', `--registry=${values.registry}`], { encoding: 'utf8', timeout: 120_000 })
+      if (p.error && p.error.code === 'ETIMEDOUT') {
+        finish(1, `check-pins: npm view ${name}@${pin} timed out (120s) — retry with --offline or --registry=<url>`)
+      }
       if (p.status !== 0) {
         finish(1, `check-pins: npm view ${name}@${pin} failed (exit ${p.status}) — ${(p.stderr || '').trim() || '(no stderr)'}`)
       }
