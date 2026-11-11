@@ -9,7 +9,7 @@
 ## Phases
 
 - [x] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备 (completed 2026-11-11)
-- [ ] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化
+- [x] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化 (completed 2026-11-12)
 - [ ] **Phase 3: 发布（GitHub + npm + dshmarket）** - 建仓、prepack 校验、发布、registry PR
 - [ ] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链
 - [ ] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录
