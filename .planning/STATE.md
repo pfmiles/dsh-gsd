@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: 版本与兼容矩阵
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-11-11T16:20:14.109Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-11-11T16:37:33.382Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 02 execution started
-state_head: 23b23a44a0e6131a1361f33ce8dc7655575169e7
+state_head: e01a244da1ada1645fba976dbe9832711dcd03b7
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -22,8 +22,8 @@ progress:
 ## Current Position
 
 Phase: 02 (版本与兼容矩阵) — EXECUTING
-Plan: 2 of 3
-Current Plan: 2
+Plan: 3 of 3
+Current Plan: 3
 Total Plans in Phase: 3
 Status: Ready to execute
 Last activity: 2026-11-11 — Phase 02 execution started
@@ -70,6 +70,7 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 | Phase 01 P01-02 | 11 min | 3 tasks | 6 files |
 | Phase 01 P01-03 | 60 min | 3 tasks | 5 files |
 | Phase 02 P01 | 35 min | 2 tasks | 6 files |
+| Phase 02 P02-02 | 9 min | 2 tasks | 5 files |
 
 ## Decisions
 
@@ -87,9 +88,12 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 - [Phase 02]: pins.json 增补顶层 version 键：AC2 篡改负向需要版本等值对照有牙，plan 校验序未含该对照；P2-04 禁止第二处硬编码版本串，期望版本置于 pins.json 本身（唯一版本串真源语义）
 - [Phase 02]: check-pins 在线取样兼容 npm view --json 数组形态：exact spec 亦返回单元素数组，漂移判定 = 数组长 1 且元素等于 pin，其余 registry drift exit 2
 - [Phase 02]: actionlint 1.7.12 经 brew 安装后 0 findings；brew auto-update 卡滞约 20 分钟 → HOMEBREW_NO_AUTO_UPDATE=1 重试同一 brew 安装路径成功
+- [Phase 02]: 02-02：1.19.0 staged 树含 gsd-core/VERSION（官方安装器写入）——gate A 双锚天然兼容，形态差异预案未触发，tests/run-gates.sh 零改动
+- [Phase 02]: 02-02：Task 1 verify ④ 原命令按裸对象读 npm view 输出，本机 npm 12.2.1 对 exact spec 返回单元素数组+扁平键致 TypeError——验证命令适配为数组归一化+双形态字段读取，等值断言不变（与 02-01 偏差 3 同源）
+- [Phase 02]: 02-02：docs-consistency ④ 旧编码哨兵字面量（0.1.0-gsd1.20.1）在测试文件内定义、执行期从 README L19 现取，不写回任何文档/样例
 
 ## Session
 
-**Last session:** 2026-11-11T16:20:14.071Z
-**Stopped at:** Completed 02-01-PLAN.md
+**Last session:** 2026-11-11T16:37:22.936Z
+**Stopped at:** Completed 02-02-PLAN.md
 **Resume file:** None

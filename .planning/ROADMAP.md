@@ -59,7 +59,7 @@ Plans:
 - [x] 02-01: 兼容矩阵与 CI [TBD 细化]
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02: 版本号与 pin 策略落地 [TBD 细化]
+- [x] 02-02: 版本号与 pin 策略落地 [TBD 细化]
 
 ### Phase 3: 发布（GitHub + npm + dshmarket）
 
