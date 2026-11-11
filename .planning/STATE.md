@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 2
+current_phase: 02
 current_phase_name: 版本与兼容矩阵
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 01 complete, ready to plan Phase 2
-last_updated: "2026-11-11T14:04:34.721Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-11-11T16:20:14.109Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 2 plans created, plan-checker passed
-state_head: 286a15630de2aefdec38164becbaa45e3d2792ee
+last_activity_desc: Phase 02 execution started
+state_head: 23b23a44a0e6131a1361f33ce8dc7655575169e7
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 20
 ---
 
@@ -21,12 +21,12 @@ progress:
 
 ## Current Position
 
-Phase: 2 (版本与兼容矩阵) — READY TO EXECUTE
-Plan: 0 of 3 in current phase
-Current Plan: 1
+Phase: 02 (版本与兼容矩阵) — EXECUTING
+Plan: 2 of 3
+Current Plan: 2
 Total Plans in Phase: 3
 Status: Ready to execute
-Last Activity: 2026-11-11 — Phase 2 plans created, plan-checker passed
+Last activity: 2026-11-11 — Phase 02 execution started
 
 Progress: ██░░░░░░░░ [██░░░░░░░░] 20%
 
@@ -69,6 +69,7 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 | Phase 01 P01-01 | 20 min | 3 tasks | 4 files |
 | Phase 01 P01-02 | 11 min | 3 tasks | 6 files |
 | Phase 01 P01-03 | 60 min | 3 tasks | 5 files |
+| Phase 02 P01 | 35 min | 2 tasks | 6 files |
 
 ## Decisions
 
@@ -83,9 +84,12 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 - [Phase 01]: 01-03：hooks 桥接适配器 dsh-gsd-suite/run.cjs 为 install-gsd-dsh.sh 部署产物、不在 @opengsd/gsd-core npm tarball 树内，01-01 4 树捕获默认丢失 → 全部守卫 MODULE_NOT_FOUND fail-open（live 探针实证）；canonical 入库 build/assets 并由 build.mjs 捕获拷贝进产物（回归 2d45fac、live 复验 bca4875）
 - [Phase 01]: 01-03：DEV-03 三项复验证据口径 = 可观察输出 + UTC 时间戳 + 新快照声明；live 通过形态只认含修复快照（第二轮 add ≈13:57:48Z → 重启 pid 90223 13:58:39Z → 新 token），旧快照负向仅作根因历史、不充当通过证据
 - [Phase 01]: 01-03：BUILD.md 按实况成文（prepack/test glob 形态、run-gates.sh 双 env fail-closed、exit 0/1/2 表与 build.mjs 一致）；README 原 Build & Release 段已被并发重构为自举构建段，互链定点落在该段（双语各 1 处）、不重写全篇
+- [Phase 02]: pins.json 增补顶层 version 键：AC2 篡改负向需要版本等值对照有牙，plan 校验序未含该对照；P2-04 禁止第二处硬编码版本串，期望版本置于 pins.json 本身（唯一版本串真源语义）
+- [Phase 02]: check-pins 在线取样兼容 npm view --json 数组形态：exact spec 亦返回单元素数组，漂移判定 = 数组长 1 且元素等于 pin，其余 registry drift exit 2
+- [Phase 02]: actionlint 1.7.12 经 brew 安装后 0 findings；brew auto-update 卡滞约 20 分钟 → HOMEBREW_NO_AUTO_UPDATE=1 重试同一 brew 安装路径成功
 
 ## Session
 
-**Last session:** 2026-11-11T12:10:00+08:00
-**Stopped at:** Phase 01 complete, ready to plan Phase 2
+**Last session:** 2026-11-11T16:20:14.071Z
+**Stopped at:** Completed 02-01-PLAN.md
 **Resume file:** None
