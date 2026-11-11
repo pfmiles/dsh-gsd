@@ -32,7 +32,7 @@ Progress: ██░░░░░░░░ [██░░░░░░░░] 20%
 
 ## Current Focus
 
-Phase 2: 版本与兼容矩阵 —— **Ready to plan**（当前没有 CONTEXT.md，规划前先走 `/gsd-discuss-phase 2` 或跳过讨论直接 `/gsd-plan-phase 2`）。Phase 1 已 100% 完成：3/3 plans 执行 + Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0 open + verifier 14/14 → UAT 3/3 人工确认 → phase.complete。
+Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves · plan-checker 通过，advisories 4 条 INFO 留档）。Phase 1 已 100% 完成：3/3 plans 执行 + Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0 open + verifier 14/14 → UAT 3/3 人工确认 → phase.complete。
 
 ## Key Decisions（已锁定）
 
