@@ -26,9 +26,9 @@ const finish = (code, msg) => {
 // line label (e.g. 1.20.1-2.dsh022). Returns { gsd, rev, line } or null.
 export function parseVersion(v) {
   if (typeof v !== 'string') return null
-  const m = /^(\d+\.\d+\.\d+)-(\d+)\.dsh(\d{3})$/.exec(v)
+  const m = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-([1-9]\d*)\.dsh(\d{3})$/.exec(v)
   if (!m) return null
-  return { gsd: m[1], rev: Number(m[2]), line: m[3] }
+  return { gsd: `${m[1]}.${m[2]}.${m[3]}`, rev: Number(m[4]), line: m[5] }
 }
 
 // True when v names a published-supportable pair: parseable, its DSH line

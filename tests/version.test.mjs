@@ -37,6 +37,10 @@ test('② 非法形态判 null：排序病理编码 + 迁移前旧编码', () =>
     '1.20.1-.dsh022', // 空 rev
     '1.20.1', // 纯 gsd 无 prerelease
     '0.1.0-gsd1.20.1', // 迁移前旧编码（README L19 现取样本）
+    '1.20.1-01.dsh022', // rev 前导零（semver 数字 prerelease id 非法，npm/DSH 宿主拒收）
+    '1.20.1-0001.dsh022', // rev 多位前导零
+    '1.20.1-0.dsh022', // rev=0（修订号从 1 起）
+    '01.20.1-1.dsh022', // gsd-ver 前导零
   ]
   for (const v of invalids) {
     assert.equal(parseVersion(v), null, `expected null for '${v}'`)
