@@ -34,7 +34,7 @@
 
 ### 版本与兼容 (VER)
 
-- [ ] **VER-01**: `engines.dsh` 门槛拒绝/禁用不兼容版本安装
+- [x] **VER-01**: `engines.dsh` 门槛拒绝/禁用不兼容版本安装
 - [x] **VER-02**: 插件版本号方案 = `<gsd-ver>-<rev>-dsh<line>`，升级/回滚 = 同命令换版本号
 - [x] **VER-03**: 每个 DSH 兼容行有构建/冒烟验证记录（CI matrix，当前行 + 前一行）
 - [x] **VER-04**: Node ≥ 24 门槛与 GSD 引擎要求一致并在 README 声明

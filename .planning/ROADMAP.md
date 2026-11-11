@@ -53,7 +53,7 @@ Plans:
 
 **Plans**: TBD（执行时 plan）
 Plans:
-- [ ] 02-03-PLAN.md
+- [x] 02-03-PLAN.md
 
 **Wave 1**
 - [x] 02-01: 兼容矩阵与 CI [TBD 细化]
