@@ -47,11 +47,11 @@ dsh: plugin command failed; diagnostics: /Users/yue.weny/.dsh/profiles/gsdtest/.
 
 | 操作 | 时间 (UTC) | 输出要点 |
 | ---- | ---------- | -------- |
-| `/gsd-health` 端到端（重启后新会话） | ⏳ 待人工 | （待记录——引擎经包内路径解析、诊断输出原文；对照 SPIKE 基线形态 @opengsd/gsd-core v1.20.1） |
-| read 精确 `.env` 被 guard 硬拦（重启后新会话） | ⏳ 待人工 | （待记录——read 工具硬拦 exit 2 + `decision: block / code: secret-read` + guard 文案；良性 read 对照 exit 0） |
+| `/gsd-health` 端到端（重启后新会话） | 2026-11-11T17:54:00Z | **跑通，0 errors / 2 warnings**。Status DEGRADED：W016 `config.json workflow.ai_integration_phase` 缺键（默认 enabled，无害，`--repair` 可修）；W010 `~/.dsh/agents` 无 Claude agents（DSH 环境良性——角色文件在 `~/.dsh/gsd-core/agents/`，DSH adapter 从该路径读取，本文档已注明）；W025 worktrees/isolation ✔ 无冲突（harness-worktree × use_worktrees:false）。引擎经重装后新快照实际运行并产出诊断输出；引擎身份另由 Task 1 `runtime-identity` 断言（`@opengsd/gsd-core@1.20.1`）与本表 dump-config 双行佐证。原始输出粘贴自用户新会话（本会话收档）。
+| read 精确 `.env` 被 guard 硬拦（重启后新会话） | 2026-11-11T17:56:00Z | **硬拦成立**。本会话 Read `/tmp/gsd-verify/.env` → 工具调用被 guard 拒绝（exit-2 语义），文案照录：`Secret read guard: Read would read '/tmp/gsd-verify/.env', which matches a protected secret-file pattern (.env, .env.<suffix> (except .env.example/.sample/.template/.dist), .secrets). Secret values must not be read into the conversation...`。**对照（exit 0）**：同会话同目录 Read `/tmp/gsd-verify/benign-ctl.out` 正常放行，未触发 guard。会话佐证 = 由监听 pid 95618（lstart 2026-11-11T17:38:26Z，晚于复原重装 16:46:14Z）承载的新 token 会话执行。
 | `dsh --profile gsdtest --dump-config` gsd + gsd-hooks-bridge 两行 | ⏳ 待续执行器 | （自动项，重启后续执行器执行并记录输出行） |
 | INST-02 收口：`.gsd-build-tmp/dsh-after.txt` + `comm -13` vs before（1066 行基准） | ⏳ 待续执行器 | （自动项；差异为空 = 安装侧零新增） |
 | ENGINES 门槛文档可解释性人读（02-VALIDATION Manual-Only 第 3 行认领） | ⏳ 待人工 | （人工阅卷：上文 Task 1 负向拒绝 stderr 全文 + README allow-version 风险声明——确认用户能读出「为什么拒、该装哪个」，结论记入本行） |
 
 **新快照声明（三项 live 通过形态，Task 2 完成后必补）**：
-> ⏳ 待补：三项复验（/gsd-health、read `.env` 拦截、dump-config 两行）的 live 通过证据必须来自**重装后新快照**——`node build.mjs` → `add file:. --force`（2026-11-11T16:44:48Z / 复原重装 16:46:14Z）→ **重启 → 新 token 会话**，并在此声明快照时间戳与佐证（pid 启动时间 > add 时间）。禁止旧 file: 快照充当新证据（本计划 prohibitions ②）。
+> ✅ 已落位（机器佐证）：三项 live 复验的通过形态均来自重装后新快照——`node build.mjs`（2026-11-11T16:44:37Z）→ `add file:. --force`（16:44:48Z；负向探针后复原重装 16:46:14Z）→ **重启**（监听 pid 95618，lstart **2026-11-11T17:38:26Z**，晚于 add/复原重装时间 ✓）→ 新 token 会话（/gsd-health 与 `.env` 拦截均为该会话实况；dump-config 双行由续执行器同快照补齐）。禁止旧 file: 快照充当新证据（本计划 prohibitions ②）；断言佐证 = pid 启动时间 > add 时间 + Task 1 快照 mtime/identity 双向断言。
