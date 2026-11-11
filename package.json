@@ -1,6 +1,6 @@
 {
   "name": "dsh-gsd",
-  "version": "0.1.0-gsd1.20.1",
+  "version": "1.20.1-1.dsh022",
   "private": true,
   "description": "GSD — spec-driven coding workflow (72 skills, engine, hooks guards) as a DeepSeek Harness plugin bundle. Install: dsh plugin --profile <name> add dsh-gsd",
   "type": "module",

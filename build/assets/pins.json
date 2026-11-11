@@ -1,0 +1,28 @@
+{
+  "node": ">=24",
+  "version": "1.20.1-1.dsh022",
+  "lines": {
+    "022": {
+      "dsh": "0.2.2-rc.1",
+      "dshRange": ">=0.2.2-rc.1 <0.3.0-0",
+      "bridge": {
+        "@deepseek-ai/dsh-hooks-claude-code": "0.2.2-rc.1",
+        "@deepseek-ai/dsh-hook-protocol": "0.2.2-rc.1"
+      },
+      "peer": "@deepseek-ai/dsh-skill-filesystem >=0.2.2-rc.1 <0.3.0-0"
+    },
+    "021": {
+      "dsh": "0.2.1-rc.5",
+      "dshRange": "<unsupported>",
+      "bridge": {
+        "@deepseek-ai/dsh-hooks-claude-code": "0.2.1-rc.5",
+        "@deepseek-ai/dsh-hook-protocol": "0.2.1-rc.5"
+      },
+      "peer": "@deepseek-ai/dsh-skill-filesystem >=0.2.1-rc.5 <0.2.2-0"
+    }
+  },
+  "matrix": {
+    "dsh": ["0.2.2-rc.1", "0.2.1-rc.5"],
+    "gsd": ["1.20.1", "1.19.0"]
+  }
+}

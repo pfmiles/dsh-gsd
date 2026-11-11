@@ -1,0 +1,36 @@
+name: compat-matrix
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      dsh: { description: 'DSH runtime version (manual override)', type: string, required: false }
+      gsd: { description: 'GSD engine version (manual override)', type: string, required: false }
+jobs:
+  compat-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { dsh: "0.2.2-rc.1", gsd: "1.20.1", expect: install-ok }
+          - { dsh: "0.2.2-rc.1", gsd: "1.19.0", expect: install-ok }
+          - { dsh: "0.2.1-rc.5", gsd: "1.20.1", expect: reject }
+          - { dsh: "0.2.1-rc.5", gsd: "1.19.0", expect: reject }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: pins 对齐校验（仓库侧静态）
+        run: node build/lib/check-pins.mjs --offline
+      - name: 宿主求值探针（install-ok/reject）
+        run: |
+          npm install --no-save --ignore-scripts --no-package-lock @deepseek-ai/dsh@${{ matrix.dsh }}
+          node build/lib/compat-probe.mjs --dsh ${{ matrix.dsh }} --expect ${{ matrix.expect }}
+      - name: build + gates（GSD 轴，gate A/B/C 内嵌）
+        run: GSD_VERSION=${{ matrix.gsd }} node build.mjs
+      - name: 完整测试（含真实构建 smoke）
+        run: node --test tests/*.test.mjs
