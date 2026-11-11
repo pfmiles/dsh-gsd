@@ -22,6 +22,7 @@
 - ✓ **INST（部分）— Phase 1**：安装面零 `~/.dsh` 写入（987→987 复证）；一条命令安装依赖 DSH 原生机制（P3 发布后全量验收）
 - ✓ **HOOK（部分）— Phase 1**：hooks 桥接真实拦截（live read 精确 `.env` hard-block exit 2；含 fail-open 回归修复与机器防线）
 - ✓ **DEV（部分）— Phase 1**：自举开发循环成立（本 phase 全部由本插件自己驱动，DEV-03 验证实例 gate 通过）
+- ✓ **VER — Phase 2**：待兼容矩阵体系落地——`engines.dsh` 拒绝语义源码级实证（宿主 preflight、allow-version 补救）；版本方案 `<gsd-ver>-<rev>.dsh<line>`（实例 1.20.1-1.dsh022）+ 升级/回滚=同命令换 exact；DSH 矩阵 [0.2.2-rc.1, 0.2.1-rc.5] × GSD [1.20.1, 1.19.0] 4 格 CI workflow；pin 真源 build/assets/pins.json + check-pins；Node ≥24 对齐与 README 双语声明；负向 doctored fixture 活体干净拒绝留证
 
 ### Active
 
@@ -30,7 +31,6 @@
 - INST：一条命令安装、零手工步骤、零 `~/.dsh` 写入
 - SKIL：72 个 gsd skills + 引擎独立可用（可移植路径）
 - HOOK：hooks 桥接经 bundle 层挂载并真实拦截
-- VER：engines.dsh 兼容门 + GSD/DSH 版本策略 + 升级回滚
 - PUB：GitHub + npm 发布、dshmarket registry 收录
 - MIG：脚本部署用户的迁移 runbook 与并存策略
 - UAT：干净机器 8 条端到端验收
@@ -59,6 +59,7 @@
 - PLAN.md：P0 已闭环（含 hooks 阳性拦截），P1-P5 规划 → 本 ROADMAP 的 5 个 phase 与之对应
 - 已决：命名 `dsh-gsd`（curated registry 主流形态）；引擎资产嵌入；全局 gsd_run 不再安装；守卫保持上游行为；dshmarket category=workflow
 - Phase 1 执行决策：目标版本 1.20.1（checkpoint 人类决策）；gate A 双锚 / gate B 三段式（1.20.1 形态）；hooks 桥接适配器 canonical 入库；sequential 执行模式（DSH 无 worktree 隔离原语）；`node --test` glob 形态（Node v24）
+- Phase 2 执行决策：矩阵轴 = 当前行 0.2.2-rc.1（install-ok）× 前一行 0.2.1-rc.5（expect-reject）× GSD [1.20.1, 1.19.0]；CI 首绿归 P3（D-R4）；版本编码去点 `dsh022`（semver 排序病理实测依据）；日提交工具移出 gitignored `scripts/` → `build/assets`+`build/lib`（选项 A，scripts/ 被 build.mjs 捕获段覆盖）；check-pins 进 test 不进 prepack；engines.dsh 窗口保持不动（>=0.2.2-rc.1 <0.3.0-0）
 - **dogfooding 约定（本项目独有）**：GSD 流程由 3091 验证实例（gsdtest profile + 本插件）驱动；3080 主实例只做基建协助（重启/刷新/提交兜底），不推进 GSD phase
 
 ## Constraints
@@ -68,4 +69,4 @@
 - 每次插件源码变更后必须 `--force` 重装 + 重启验证实例（file: 快照机制）
 
 ---
-*Last updated: 2026-11-11 after Phase 1*
+*Last updated: 2026-11-12 after Phase 2*

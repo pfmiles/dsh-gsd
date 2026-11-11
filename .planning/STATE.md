@@ -11,28 +11,28 @@ last_activity_desc: Phase 02 complete, transitioned to Phase 3
 state_head: b9961232d7b569302d637b3383bb406ab1740d85
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
   completed_plans: 6
-  percent: 20
+  percent: 40
 ---
 
 # STATE: dsh-gsd
 
 ## Current Position
 
-Phase: 3 — 发布（GitHub + npm + dshmarket）
-Plan: 3 of 3
+Phase: 3 of 5 (发布（GitHub + npm + dshmarket）)
+Plan: Not started
 Current Plan: Not started
-Total Plans in Phase: 3
+Total Plans in Phase: TBD
 Status: Ready to plan
 Last activity: 2026-11-12 — Phase 02 complete, transitioned to Phase 3
 
-Progress: ██░░░░░░░░ [██░░░░░░░░] 20%
+Progress: ████░░░░░░ [████░░░░░░] 40%
 
 ## Current Focus
 
-Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves · plan-checker 通过，advisories 4 条 INFO 留档）。Phase 1 已 100% 完成：3/3 plans 执行 + Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0 open + verifier 14/14 → UAT 3/3 人工确认 → phase.complete。
+Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 CONTEXT.md）。Phase 2 已 100% 完成：3/3 plans 执行（compat 矩阵/版本方案/验证实例 gate）+ Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0/4/3（4 warning 留档 open）+ verifier 13/13（13 truths VERIFIED）→ status passed → phase.complete。遗留追踪：WR-01..04/IN-01..03 开放发现、ROADMAP Requirements 行 `VER-01..04` 区间形式未被追溯展开（DEV-03 已归一）——由 /gsd-progress 追踪。
 
 ## Key Decisions（已锁定）
 
@@ -51,7 +51,7 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 - 已知修复：scripts/ 兄弟目录缺失 → 引擎 MODULE_NOT_FOUND（已并入 build.mjs）
 - 目标引擎版本：@opengsd/gsd-core 1.20.1（2026-11-10 执行期 checkpoint 人类决策；canonical shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd`，双 registry 一致）；repo 产物树已由 01-01 build 换源重建为 1.20.1（76 棵树）；本机 ~/.dsh 部署快照仍为 1.16.0
 - 构建产物不入 git：skills/ gsd-core/ hooks/ config/ scripts/
-- 测试锚点（01-02 落地）：npm test = `node --test tests/*.test.mjs`（7/7，含真实构建 smoke）；prepack = build && tests（gates 内嵌 build）；tests/run-gates.sh 双 env 契约（GSD_VERSION + GSD_STAGING_ROOT，缺失 exit 1）
+- 测试锚点（02 执行后现状）：npm test = `node --test tests/*.test.mjs`（5 文件 / 25 tests，含真实构建 smoke）；prepack = build && tests（gates 内嵌 build）；tests/run-gates.sh 双 env 契约（GSD_VERSION + GSD_STAGING_ROOT，缺失 exit 1）；build/assets/pins.json = 行↔pin 真源 + build/lib/check-pins.mjs（exit 0/1/2）；DSH 矩阵 [0.2.2-rc.1, 0.2.1-rc.5] × GSD [1.20.1, 1.19.0]（workflow 4 格，CI 首绿归 P3）
 
 ## Progress Log
 
@@ -99,6 +99,6 @@ Phase 2: 版本与兼容矩阵 —— **Ready to execute**（3 plans · 3 waves 
 
 ## Session
 
-**Last session:** 2026-11-11T18:13:24.084Z
+**Last session:** 2026-11-12T02:55:00+08:00
 **Stopped at:** Phase 02 complete, ready to plan Phase 3
 **Resume file:** None
