@@ -41,7 +41,7 @@ dsh: plugin command failed; diagnostics: /Users/yue.weny/.dsh/profiles/gsdtest/.
 
 ---
 
-## Task 2 — 交互段（重启后新 token 会话；本节证据待续，不得以旧快照充数）
+## Task 2 — 交互段（重启后新 token 会话；本节证据已齐，不得以旧快照充数）
 
 > 前置条件（user_setup）：Task 1 复原重装（2026-11-11T16:46:14Z）**之后**由主会话/orchestrator 重启 3091 验证实例（保持 gsdtest profile），并以**新 token 会话**继续。佐证 = 监听 pid 启动时间晚于 add 时间（BUILD.md §⑧ 第 3 步口径）。
 
@@ -49,9 +49,9 @@ dsh: plugin command failed; diagnostics: /Users/yue.weny/.dsh/profiles/gsdtest/.
 | ---- | ---------- | -------- |
 | `/gsd-health` 端到端（重启后新会话） | 2026-11-11T17:54:00Z | **跑通，0 errors / 2 warnings**。Status DEGRADED：W016 `config.json workflow.ai_integration_phase` 缺键（默认 enabled，无害，`--repair` 可修）；W010 `~/.dsh/agents` 无 Claude agents（DSH 环境良性——角色文件在 `~/.dsh/gsd-core/agents/`，DSH adapter 从该路径读取，本文档已注明）；W025 worktrees/isolation ✔ 无冲突（harness-worktree × use_worktrees:false）。引擎经重装后新快照实际运行并产出诊断输出；引擎身份另由 Task 1 `runtime-identity` 断言（`@opengsd/gsd-core@1.20.1`）与本表 dump-config 双行佐证。原始输出粘贴自用户新会话（本会话收档）。
 | read 精确 `.env` 被 guard 硬拦（重启后新会话） | 2026-11-11T17:56:00Z | **硬拦成立**。本会话 Read `/tmp/gsd-verify/.env` → 工具调用被 guard 拒绝（exit-2 语义），文案照录：`Secret read guard: Read would read '/tmp/gsd-verify/.env', which matches a protected secret-file pattern (.env, .env.<suffix> (except .env.example/.sample/.template/.dist), .secrets). Secret values must not be read into the conversation...`。**对照（exit 0）**：同会话同目录 Read `/tmp/gsd-verify/benign-ctl.out` 正常放行，未触发 guard。会话佐证 = 由监听 pid 95618（lstart 2026-11-11T17:38:26Z，晚于复原重装 16:46:14Z）承载的新 token 会话执行。
-| `dsh --profile gsdtest --dump-config` gsd + gsd-hooks-bridge 两行 | ⏳ 待续执行器 | （自动项，重启后续执行器执行并记录输出行） |
-| INST-02 收口：`.gsd-build-tmp/dsh-after.txt` + `comm -13` vs before（1066 行基准） | ⏳ 待续执行器 | （自动项；差异为空 = 安装侧零新增） |
+| `dsh --profile gsdtest --dump-config` gsd + gsd-hooks-bridge 两行 | 2026-11-11T18:06:53Z | **exit 0**；输出 1321 行、stderr 0 字节。两行独立命中（机械防子串误判：'gsd' 是 'gsd-hooks-bridge' 子串——按整行精确匹配 `^- id: gsd$` 与 `^- id: gsd-hooks-bridge$` 各自计数 1，不以子串命中充双行）：L1280 `- id: gsd` + `  name: dsh-gsd`（`# == dsh-gsd` 段起始）；L1282 `- id: gsd-hooks-bridge` + `  name: '@deepseek-ai/dsh-hooks-claude-code'`（bundle 层完好，Phase 1 挂载未破坏）。完整输出留档 `.gsd-build-tmp/dump-config-02-03.txt`（续执行器实测） |
+| INST-02 收口：`.gsd-build-tmp/dsh-after.txt` + `comm -13` vs before（1066 行基准） | 2026-11-11T18:06:53Z | **零新增成立**：after 重采集 = 1066 文件；`comm -13 .gsd-build-tmp/dsh-before.txt .gsd-build-tmp/dsh-after.txt` 输出为空 → `test -z` exit 0（安装侧零写入受管文件，Phase 1 INST-02 同基线；~/.dsh 受管集合 unchanged 1066） |
 | ENGINES 门槛文档可解释性人读（02-VALIDATION Manual-Only 第 3 行认领） | 2026-11-11T18:02:38Z（人工阅卷答复回传） | **人工阅卷完成，结论 = 可读**。用户复述三点：① 为什么拒——「dsh-gsd 版本不适配当前目标 dsh」（对应 stderr `installation rejected … requirements {"engines.dsh":">=0.2.0-rc.1 <0.2.1-0"}`）；② 该装哪个——用户提取出要求窗 `0.2.0-rc.1 ≤ dsh < 0.2.1-0` 并据此判断（观察笔记：复述方向以「fixture 插件要求什么 dsh」为主；同段原文亦给出直接指引 `install a plugin version compatible with this dsh runtime`，即窗口覆盖 0.2.2-rc.1 的正品 `dsh-gsd@1.20.1-1.dsh022`/dsh022 行——窗口信息本身可读无误）；③ 想硬装——`--accept-risk`（对应 allow-version 精确对命令与 README 风险声明）。三项追问均从文案得到回应，可解释性达标。 |
 
-**新快照声明（三项 live 通过形态，Task 2 完成后必补）**：
-> ✅ 已落位（机器佐证）：三项 live 复验的通过形态均来自重装后新快照——`node build.mjs`（2026-11-11T16:44:37Z）→ `add file:. --force`（16:44:48Z；负向探针后复原重装 16:46:14Z）→ **重启**（监听 pid 95618，lstart **2026-11-11T17:38:26Z**，晚于 add/复原重装时间 ✓）→ 新 token 会话（/gsd-health 与 `.env` 拦截均为该会话实况；dump-config 双行由续执行器同快照补齐）。禁止旧 file: 快照充当新证据（本计划 prohibitions ②）；断言佐证 = pid 启动时间 > add 时间 + Task 1 快照 mtime/identity 双向断言。
+**新快照声明（Task 2 全部证据齐，2026-11-11T18:06:53Z 收口）**：
+> ✅ 已落位（机器佐证）：两项 live 复验的通过形态均来自重装后新快照——`node build.mjs`（2026-11-11T16:44:37Z）→ `add file:. --force`（16:44:48Z；负向探针后复原重装 16:46:14Z）→ **重启**（监听 pid 95618，lstart **2026-11-11T17:38:26Z**，晚于 add/复原重装时间 ✓）→ 新 token 会话（/gsd-health 与 `.env` 拦截均为该会话实况）；dump-config 双行 + comm -13 零新增由续执行器于 **2026-11-11T18:06:53Z** 同快照实测补齐（执行时 3091 监听进程 pid 95618 持续存活、无重启插入，且早于 dump-config 前 18:05:22Z 的独立复跑断面一致）。禁止旧 file: 快照充当新证据（本计划 prohibitions ②）；断言佐证 = pid 启动时间 > add 时间 + Task 1 快照 mtime/identity 双向断言。
