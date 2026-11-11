@@ -20,17 +20,25 @@ jobs:
           - { dsh: "0.2.1-rc.5", gsd: "1.20.1", expect: reject }
           - { dsh: "0.2.1-rc.5", gsd: "1.19.0", expect: reject }
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # steps 级条件门（job 级 if: 无 matrix context，GitHub 语义/actionlint 双确认）：
+      # 空 inputs（push/PR 默认）→ 恒真全跑；手动 override 时定向跑匹配格，其余格跳过。
+      - if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
+        uses: actions/checkout@v7
+      - if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: pins 对齐校验（仓库侧静态）
+        if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
         run: node build/lib/check-pins.mjs --offline
       - name: 宿主求值探针（install-ok/reject）
+        if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
         run: |
           npm install --no-save --ignore-scripts --no-package-lock @deepseek-ai/dsh@${{ matrix.dsh }}
           node build/lib/compat-probe.mjs --dsh ${{ matrix.dsh }} --expect ${{ matrix.expect }}
       - name: build + gates（GSD 轴，gate A/B/C 内嵌）
+        if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
         run: GSD_VERSION=${{ matrix.gsd }} node build.mjs
       - name: 完整测试（含真实构建 smoke）
+        if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
         run: node --test tests/*.test.mjs

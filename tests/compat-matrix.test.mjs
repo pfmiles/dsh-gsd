@@ -1,7 +1,8 @@
 // tests/compat-matrix.test.mjs — 02-01 Task 2 静态防线（VER-03 静态面 + VER-02
 // pin 对齐面）：workflow 存在性 ① / 轴值 ⊆ pins.json ② / expect 列与支持窗一致
-// ③ / 选项 A 路径哨兵 ④ / 编排哨兵 ⑤ / check-pins --offline 消费 ⑥。
-// 零 YAML 依赖——全字符串/JSON 断言（断言面按 02-01-PLAN Task 2 action ①-⑥）。
+// ③ / 选项 A 路径哨兵 ④ / 编排哨兵 ⑤ / check-pins --offline 消费 ⑥ /
+// workflow_dispatch inputs 消费面哨兵 ⑦。
+// 零 YAML 依赖——全字符串/JSON 断言（断言面按 02-01-PLAN Task 2 action ①-⑦）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -80,4 +81,27 @@ test('⑥ check-pins --offline 消费（D-R5：tests 内 spawn，prepack 链不�
   const r = spawnSync(process.execPath, [join(ROOT, 'build', 'lib', 'check-pins.mjs'), '--offline'], { encoding: 'utf8' })
   assert.equal(r.status, 0, `check-pins --offline failed (exit ${r.status}): ${r.stdout} ${r.stderr}`)
   assert.ok((r.stdout || '').includes('pins: all consistent'), `missing success line: ${r.stdout}`)
+})
+
+// ⑦ inputs 消费面哨兵：workflow_dispatch 声明的 dsh/gsd「manual override」必须被
+//    真实接线消费——每个 run 步骤的上一行为单行 if: 条件门，同时引用
+//    inputs.dsh+matrix.dsh 与 inputs.gsd+matrix.gsd（消费面存在、工作步骤全覆盖；
+//    GitHub 语义下 job 级 if: 无 matrix context，故门落在 steps 级）。
+test('⑦ workflow_dispatch inputs 消费面哨兵（inputs ∩ matrix 条件门盖住全部 run 步骤）', () => {
+  const y = readWF()
+  const lines = y.split('\n')
+  const isGate = (l) =>
+    l.trim().startsWith('if:') &&
+    l.includes('inputs.dsh') && l.includes('matrix.dsh') &&
+    l.includes('inputs.gsd') && l.includes('matrix.gsd')
+  const runIndexes = lines
+    .map((l, i) => (/^\s+run:/.test(l) ? i : -1))
+    .filter((i) => i >= 0)
+  assert.ok(runIndexes.length >= 3, `expected >=3 run steps, found ${runIndexes.length}`)
+  for (const i of runIndexes) {
+    assert.ok(
+      isGate(lines[i - 1]),
+      `run step at line ${i + 1} is not gated by an inputs ∩ matrix if: on the previous line — previous: '${(lines[i - 1] || '').trim()}'`,
+    )
+  }
 })
