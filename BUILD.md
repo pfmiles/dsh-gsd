@@ -161,6 +161,45 @@ npm view @opengsd/gsd-core@1.20.1 dist.integrity dist.shasum --registry=https://
    - **read 精确 `.env` 被 guard 硬拦** → 预期 exit 2 + `decision: block / code: secret-read` + 文案，良性 read 对照 exit 0；
 5. 三项均留可观察输出并记录进 verify-evidence.md，声明证据来自**重装后新快照**（防旧 file: 快照假绿，SPIKE 教训）。
 
+## ⑨ 版本与 pin 对齐（Version & pin alignment，VER-02/HOOK-05 前置）
+
+插件版本号方案 `<gsd-ver>-<rev>.dsh<line>` 与桥接 pin 对齐的维护手续（ROADMAP SC2/SC4 文档位）。
+三层真源：**机器真源** [build/assets/pins.json](./build/assets/pins.json)（行↔pin 对照 / 矩阵轴值 / 期望 package version）→ **执行真值** package.json → **对照器** `build/lib/check-pins.mjs`（漂移 fail-closed exit 2）；README 的[版本号方案](../README.md)承载用户视角示例。
+
+| 字段 Field | 含义 Meaning | 示例 Example |
+| -- | -- | -- |
+| `gsd-ver` | 打包的 GSD Core 引擎版本 | `1.20.1`（`1.20.1-1.dsh022` 前缀） |
+| `rev` | 修订号：同一 (gsd-ver, DSH 行) 对内从 1 起、逐次 +1（换 gsd-ver 或换行则归 1） | `1`（`1.20.1-1.dsh022`） |
+| `dsh<line>` | DSH 发布行**去点**标签：dsh022 = DSH 0.2.2 行、dsh021 = DSH 0.2.1 行。rev 后须为独立数字 id（线号带点会产生 prerelease 排序病理） | `dsh022` |
+
+行 ↔ pin 对照（**指针式说明**：三件桥接 pin 与 peer 范围的逐字值真源在 [build/assets/pins.json](./build/assets/pins.json) 的 `lines.<line>.bridge/.peer`，本表只陈述语义，不硬抄第二份）：
+
+| 行 Line | 定位 Position | engines.dsh 窗口 Window | 矩阵格 Matrix cells |
+| -- | -- | -- | -- |
+| **022**（dsh022） | 当前行：DSH `0.2.2-rc.1` | `>=0.2.2-rc.1 <0.3.0-0`（踩线示例见 §② 语义） | `expect: install-ok`（2 个 GSD 版本） |
+| **021**（dsh021） | 前一行：DSH `0.2.1-rc.5` | `<unsupported>`（不宣称支持前一行） | `expect: reject`（负向格；前一行桥接包与本行不同号，行锁定 = 每行独立版本） |
+
+TL;DR —— check-pins 三种调用与升级回滚命令：
+
+```bash
+# pins.json ⇄ package.json 全项对照（registry 取样走 canonical）——exit 0 = pins: all consistent
+node build/lib/check-pins.mjs
+
+# 离线/CI 静态格：跳过 npm view 存在性取样
+node build/lib/check-pins.mjs --offline
+
+# 镜像取样（§⑦ 纪律：与 canonical 逐字节对照）
+node build/lib/check-pins.mjs --registry=https://registry.npmmirror.com
+
+# 升级 / 回滚 = 同命令换 exact 版本（prerelease 不参与 range 匹配，唯 exact 可安装）
+dsh plugin --profile web add dsh-gsd@1.20.2-1.dsh022   # 升级
+dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022   # 回滚
+```
+
+- **check-pins 退出语义**：0 = 全一致（`pins: all consistent (line dsh022)`）；1 = IO/解析失败；**2 = 校验失败（gate 口径）**——版本号格式、`dsh<line>` 行号不存在、package version ↔ pins.json 不等、engines.dsh 窗口串漂移、三件 pin 漂移、registry drift，文案逐项列明不动项。
+- **refresh 手续（DSH 发新行时，Pitfall 9）**：① `compat-probe` 先以 `expect: reject` 格验证新行（未 pin 前必拒）；② pins.json 刷新 `lines.<new>`（窗口/桥接 pin/peer）与 `matrix.dsh` 轴；③ `check-pins` 复跑全绿（含篡改负向）；④ compat-matrix workflow 相应格从 reject 升级为 install-ok；⑤ `(gsd-ver, 行)` 对 rev 递增，发新版本。改值永远先改 pins.json 单点，禁止在多处硬编码行号/版本（漂移面）。
+- **matrix 轴语义**：dsh 轴 = 当前行（0.2.2-rc.1）+ 前一行（0.2.1-rc.5，负向格）；gsd 轴 = `1.20.1` / `1.19.0`（[THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) 双行 canonical，02-02 起）。CI 首绿时点归 Phase 3（workflow 本地 actionlint 0 findings 已备，push 后激活）。
+
 ---
 
 *构建契约与上游形态按需演进：改 gate 语义先改 §⑥ 与 tests/run-gates.sh；改目标版本先走 §⑦。*

@@ -16,7 +16,7 @@ dsh-gsd 把 GSD——规格驱动的 AI 编码工作流（72 个 skills + 引擎
 
 ```bash
 # 1. 安装
-dsh plugin --profile web add dsh-gsd@0.1.0-gsd1.20.1
+dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022
 
 # 2. 重启 dsh web（或对应 profile 的服务）即生效
 ```
@@ -31,15 +31,28 @@ dsh plugin --profile web add dsh-gsd@0.1.0-gsd1.20.1
 # 卸载：下个进程启动后一切消失
 dsh plugin --profile web remove dsh-gsd
 
-# 升级 / 回滚：换一个版本号，重跑安装命令
-dsh plugin --profile web add dsh-gsd@<新版本>
+# 升级 / 回滚：同一条命令换一个精确版本号
+dsh plugin --profile web add dsh-gsd@1.20.2-1.dsh022   # 升级：GSD 引擎 1.20.2
+dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022   # 回滚：回到 GSD 1.20.1
 ```
+
+## 版本号方案
+
+版本号 = `<gsd-ver>-<rev>.dsh<line>`；升级与回滚永远是**同一条命令换一个精确版本号**。安装只认精确版本（prerelease 版本不参与 range 匹配，`@^`/`@~`/`@*`/`@latest` 形态匹配数为 0）。
+
+| 字段 | 含义 | 示例（`1.20.1-1.dsh022`） | EN |
+| ---- | ---- | -------------------------- | -- |
+| `gsd-ver` | 打包的 GSD Core 引擎版本 | `1.20.1` | bundled GSD Core engine version |
+| `rev` | 修订号：同一 (gsd-ver, DSH 行) 对内从 1 起、逐次递增 | `1` | revision id — starts at 1, +1 per release of the same pair |
+| `dsh<line>` | 适配的 DSH 发布行（去点标签）：dsh022 = DSH 0.2.2 行、dsh021 = DSH 0.2.1 行 | `dsh022` | dotless DSH line label |
 
 ## 环境要求
 
 - DeepSeek Harness `>=0.2.2-rc.1 <0.3.0-0`（`engines.dsh` 自动校验，不满足会拒绝安装）
 - Node ≥ 24
 - macOS / Linux / WSL
+
+> 版本不匹配被 `engines.dsh` 拒绝时，宿主给出的 `allow-version` 是**显式风险豁免**（精确 name@version × 精确 DSH 版本 + acceptRisk）——本插件不推荐使用，也绝不会自动触发。
 
 ## 当前状态
 
@@ -73,7 +86,7 @@ dsh-gsd packages GSD — a spec-driven AI coding workflow (72 skills + engine + 
 
 ```bash
 # 1. Install
-dsh plugin --profile web add dsh-gsd@0.1.0-gsd1.20.1
+dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022
 
 # 2. Restart dsh web (or the target profile's service) — done.
 ```
@@ -88,15 +101,28 @@ After restart, 72 `gsd-*` skills appear in the session skill catalog, and `/gsd-
 # Uninstall — everything disappears on the next process start
 dsh plugin --profile web remove dsh-gsd
 
-# Upgrade / rollback — re-run add with the desired version
-dsh plugin --profile web add dsh-gsd@<another-version>
+# Upgrade / rollback — re-run the same command with a different exact version
+dsh plugin --profile web add dsh-gsd@1.20.2-1.dsh022   # upgrade: GSD engine 1.20.2
+dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022   # rollback: back to GSD 1.20.1
 ```
+
+## Version scheme
+
+Version = `<gsd-ver>-<rev>.dsh<line>`; upgrade and rollback are always the **same command with a different exact version**. Install specs are exact only — prerelease versions do not participate in range matching, and `@^`/`@~`/`@*`/`@latest` forms match zero candidates.
+
+| Field | Meaning | Example (`1.20.1-1.dsh022`) | EN |
+| ----- | ------- | --------------------------- | -- |
+| `gsd-ver` | the bundled GSD Core engine version | `1.20.1` | bundled engine |
+| `rev` | revision id — starts at 1, increments within the same (gsd-ver, DSH line) pair | `1` | revision |
+| `dsh<line>` | dotless DSH line label — dsh022 = DSH 0.2.2 line, dsh021 = DSH 0.2.1 line | `dsh022` | line label |
 
 ## Requirements
 
 - DeepSeek Harness `>=0.2.2-rc.1 <0.3.0-0` (`engines.dsh` is enforced automatically; incompatible hosts are rejected)
 - Node ≥ 24
 - macOS / Linux / WSL
+
+> When a mismatch is rejected via `engines.dsh`, the host-offered `allow-version` is an **explicit risk exemption** (exact name@version × exact DSH version + acceptRisk) — this plugin does not recommend it and never triggers it automatically.
 
 ## Status
 
