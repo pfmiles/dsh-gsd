@@ -427,27 +427,29 @@ dsh plugin --profile gsdtest add file:<fixture-dir>    # 期望：exit 1 + insta
 
 ## Open Questions
 
-1. **前一行是否纳入"支持窗"**
+> 状态更新（planner revision iteration 1，2026-11）：Q1–Q5 均已在计划层决议并落地为 02-01/02-02 PLAN 的计划级设计决策 D-R1–D-R5（出处：各 PLAN 的 `<objective>` 决策块）。各条下方保留研究当时原文，标题行以 `(RESOLVED — D-Rx)` 标记决议归属。
+
+1. **前一行是否纳入"支持窗"**（RESOLVED — D-R1：前一行 0.2.1-rc.5 不进支持窗，矩阵前一行两格 = expect: reject 负向格）
    - What we know: pins 行锁定（registry 实测），双行支持 = 双版本；0.2.1-rc.5 的桥接包确已发布。
    - What's unclear: stakeholder 是否愿意为 0.2.1 行另发版本（dsh021）——那属后续发布行为，本 phase 只需负向格。
    - Recommendation: 本 phase 保持 `">=0.2.2-rc.1 <0.3.0-0"`，矩阵前一行格 `expect: reject`；把"支持 0.2.1 行"作为 discuss 议题，若同意也只落在「refresh 手续」文档里，不改本 phase 包。
 
-2. **GSD 轴的第二/第三取值**
+2. **GSD 轴的第二/第三取值**（RESOLVED — D-R2：GSD 轴 = ["1.20.1","1.19.0"]，本 phase 按 BUILD.md §⑦ 增补 1.19.0 NOTICES 行；1.16.0 不取为轴）
    - What we know: NOTICES 只 canonical 了 1.20.1 行（THIRD-PARTY-NOTICES.md:8）；1.19.0 与 1.16.0 的 dist.integrity/shasum/engines 均已实测可取样（registry），canonicalization 机械可行。
    - What's unclear: 轴取 {1.20.1, 1.19.0}（紧邻）还是加 1.16.0（migration 相关，生产 ~/.dsh 快照版本，STATE.md:38）。
    - Recommendation: 矩阵 GSD 轴 = ["1.20.1", "1.19.0"]，本 phase 按 BUILD.md §⑦ 增补 1.19.0 的 NOTICES 行；1.16.0 作为可选第三格（讨论点）。
 
-3. **`<line>` 编码：`dsh022`（去点）确认度**
+3. **`<line>` 编码：`dsh022`（去点）确认度**（RESOLVED — D-R3：dsh022 去点编码落为 package.json version 1.20.1-1.dsh022；README 版本表显式列 dsh022 = DSH 0.2.2 线映射行）
    - What we know: 带点编码合法但排序病理（实测输出见 §4）；VER-02 锁定的是语义模板，表达在 discretion。
    - What's unclear: 用户是否介意行号去点（"022" 对读不如 "0.2.2" 直观）。
    - Recommendation: 采用 `1.20.1-<rev>.dsh022`，README 版本表显式列出「dsh022 = DSH 0.2.2 线」的映射行。
 
-4. **CI 实际激活时点**
+4. **CI 实际激活时点**（RESOLVED — D-R4：Phase 2 只交付 workflow 文件 + 本地验证，push 与 CI 首绿遵循 Phase 3 建仓计划）
    - What we know: 本地 ahead 33 未推（STATE.md）；CONTEXT 明确"push 是 Phase 3 发布步的前置，不阻塞本 phase 交付 workflow 文件"。
    - What's unclear: 是否在本 phase 就 push（激活 CI 恰恰是 VER-03 的证据闭环）。
    - Recommendation: Phase 2 交付 workflow + 本地语法校验（actionlint，缺失则安装或人工 Review）+ 与 pins.json 的一致性测试；push 与首绿遵循 Phase 3 建仓计划，若 stakeholder 希望提前验证，push 一次 main 的 cost 可忽略（属发布域 decision）。
 
-5. **check-pins 是否进 prepack 链**
+5. **check-pins 是否进 prepack 链**（RESOLVED — D-R5：并入 test 套件——tests/compat-matrix.test.mjs ⑥ spawn --offline 消费；prepack 链不动）
    - What we know: prepack = `node build.mjs && node --test tests/*.test.mjs`（package.json:45）；发布链契约已固化。
    - What's unclear: pin 校验放 tests 内（CI/prepack 都覆盖）还是 prepack 前置（多一道独立 exit）。
    - Recommendation: 并入 test 套件（check-pins 自身作为 tests/ 的调用面），prepack 链不动——保持"发布契约唯一变化点最少"。
