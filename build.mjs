@@ -23,10 +23,10 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { makeRewrites } from './build/lib/rewrite-map.cjs'
+import { makeRewrites, PLUGIN_ROOT_REF } from './build/lib/rewrite-map.cjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)))
-const PLUGIN_ROOT_REF = '$DSH_PROFILE_DIR/node_modules/dsh-gsd'
+// PLUGIN_ROOT_REF（legacy 分支改写用）单一来源：build/lib/rewrite-map.cjs（IN-02）。
 
 // Single exit funnel for the whole file (main path + legacy branch).
 const finish = (code, msg) => {
@@ -156,10 +156,12 @@ async function legacyBuild(source, sourceHome) {
 // ---------------------------------------------------------------------------
 // Offline tier chain helpers
 // ---------------------------------------------------------------------------
-// ① 档完整性对照（T-1-01）：读 THIRD-PARTY-NOTICES.md 中该 GSD_VERSION 行的
+// ①/② 档完整性对照（T-1-01）：读 THIRD-PARTY-NOTICES.md 中该 GSD_VERSION 行的
 // canonical 值，对 tarball 做 SHA-512（对照 dist.integrity 解码值）与 SHA-1
 // （对照 dist.shasum）双重比对。未记录 / 任一不符 → exit 2 fail-closed。
-async function checkTarballIntegrity(tgzPath, version) {
+// ① 档（GSD_TARBALL）与 ② 档（.build-cache）共用此入口——缓存档与显式档同源
+// 校验，篡改缓存在解包执行前即被拦截（WR-01）。
+async function checkTarballIntegrity(tgzPath, version, tier = 'tarball') {
   const notices = await readFile(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8')
   const tableRows = notices
     .split('\n').map((l) => l.trim())
@@ -178,12 +180,14 @@ async function checkTarballIntegrity(tgzPath, version) {
   if (sha512hex !== expected512 || sha1hex !== shasum) {
     finish(2, `build: checksum mismatch (expected ${expected512} sha512 / ${shasum} sha1 per THIRD-PARTY-NOTICES.md)`)
   }
-  console.log('build: GSD_TARBALL integrity verified against THIRD-PARTY-NOTICES.md')
+  console.log(`build: ${tier} integrity verified against THIRD-PARTY-NOTICES.md (sha512 + sha1)`)
 }
 
 async function fetchEngine(GSD_VERSION, WORK) {
   // 探测顺序固定（01-RESEARCH Pattern 2），命中即止。
-  // ① GSD_TARBALL（显式档，shasum-gated）→ ② .build-cache（repo 内缓存）
+  // ① GSD_TARBALL（显式档，shasum-gated）→ ② .build-cache（repo 内缓存，同 ①
+  // 档 shasum-gated——WR-01：缓存为 gitignored 持久本地状态且无代码写入它，
+  // 被污染后必须 fail-closed 而非静默放行）
   // → ③ GSD_PACKAGE_DIR（unpacked；必须含 bin/install.js 与 package.json）
   // → ④ npm pack（在线）。npm cache 离线模式永不进入代码路径（ENOTCACHED 实测，
   // RESEARCH Pitfall 1——镜像 302 重定向使缓存键落在 cdn URL 上）。
@@ -197,10 +201,11 @@ async function fetchEngine(GSD_VERSION, WORK) {
   if (tarballEnv) {
     tgzPath = resolve(process.cwd(), tarballEnv)
     tier = 'GSD_TARBALL'
-    await checkTarballIntegrity(tgzPath, GSD_VERSION)
+    await checkTarballIntegrity(tgzPath, GSD_VERSION, tier)
   } else if (existsSync(cacheTgz)) {
     tgzPath = cacheTgz
     tier = '.build-cache'
+    await checkTarballIntegrity(tgzPath, GSD_VERSION, tier) // WR-01：与 ① 档同源校验，mismatch → exit 2 fail-closed
   } else if (pkgDirEnv) {
     const p = resolve(process.cwd(), pkgDirEnv)
     if (existsSync(join(p, 'bin', 'install.js')) && existsSync(join(p, 'package.json'))) {
@@ -340,7 +345,9 @@ async function main() {
 
 const legacySource = env('GSD_BUILD_SOURCE')
 if (legacySource) {
-  console.log('build: legacy GSD_BUILD_SOURCE path (compat only)')
+  // IN-03：兼容入口显式告警——legacy 分支不跑 tarball 完整性校验与 gate
+  // A/B/C，环境残留 GSD_BUILD_SOURCE 时不得静默降级为无门禁路径。
+  console.warn('build: legacy GSD_BUILD_SOURCE path (compat only) — skips tarball integrity checks and gates A/B/C')
   await legacyBuild(legacySource, env('GSD_BUILD_FROM') || legacySource)
     .catch((e) => finish(1, `build: legacy build failed — ${e?.message ?? e}`))
   process.exit(0)

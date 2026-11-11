@@ -2,10 +2,11 @@
 //
 // 覆盖 plan 01-02 Task 1 的六组断言：特异性顺序、staging 根基准、~/ 与
 // $HOME 回退形态、无 staging/机器残留、裸 $HOME 惯用语不清洗（Pitfall 5）。
+// 01-REVIEW 修复追加 ⑦：PLUGIN_ROOT_REF 单一来源导出断言（IN-02 漂移防线）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { makeRewrites } from '../build/lib/rewrite-map.cjs'
+import { makeRewrites, PLUGIN_ROOT_REF } from '../build/lib/rewrite-map.cjs'
 
 const STAGING = '/tmp/staging.A8f2Xq'
 const pairs = makeRewrites(STAGING)
@@ -76,4 +77,16 @@ test('⑥ 裸 $HOME 惯用语保持原样（Pitfall 5，不映射裸 $HOME）', 
   const idiom = '${CLAUDE_CONFIG_DIR:-$HOME/.claude}'
   assert.equal(apply(idiom), idiom)
   assert.equal(apply('cat $HOME/.claude/settings.json'), 'cat $HOME/.claude/settings.json')
+})
+
+test('⑦ PLUGIN_ROOT_REF 单一来源导出：值与改写目标前缀一致（IN-02 漂移防线）', () => {
+  assert.equal(PLUGIN_ROOT_REF, '$DSH_PROFILE_DIR/node_modules/dsh-gsd')
+  assert.ok(
+    apply(`${STAGING}/gsd-core/x`).startsWith(`${PLUGIN_ROOT_REF}/gsd-core/`),
+    'gsd-core rewrite target must derive from exported PLUGIN_ROOT_REF',
+  )
+  assert.ok(
+    apply(`${STAGING}/skills/y`).startsWith(`${PLUGIN_ROOT_REF}/skills/`),
+    'skills rewrite target must derive from exported PLUGIN_ROOT_REF',
+  )
 })

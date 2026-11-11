@@ -19,8 +19,13 @@
 // copied verbatim into .cjs — planner note from the pattern map).
 'use strict'
 
+// PLUGIN_ROOT_REF：部署前缀常量单一来源（IN-02）。build.mjs legacy 分支改写
+// 与主链 makeRewrites 均由此模块导出消费——此前 build.mjs:29 副本易双写漂移
+// 且无测试可查；现漂移面收敛为一个导出（rewrite-map.test.mjs ⑦ 断言其值）。
+const PLUGIN_ROOT_REF = '$DSH_PROFILE_DIR/node_modules/dsh-gsd'
+
 function makeRewrites(stagingRoot) {
-  const P = '$DSH_PROFILE_DIR/node_modules/dsh-gsd' // PLUGIN_ROOT_REF
+  const P = PLUGIN_ROOT_REF
   return [
     [`${stagingRoot}/gsd-core`, `${P}/gsd-core`],
     [`${stagingRoot}/skills`, `${P}/skills`],
@@ -34,4 +39,4 @@ function makeRewrites(stagingRoot) {
   ]
 }
 
-module.exports = { makeRewrites }
+module.exports = { makeRewrites, PLUGIN_ROOT_REF }

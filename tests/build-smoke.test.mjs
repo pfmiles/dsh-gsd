@@ -6,10 +6,12 @@
 // 01-validate-phase 审计追加 ⑥⑦⑧ 三组：hooks 桥接 fail-open 回归防线
 // （01-03 Task 2 / 2d45fac）机器化 —— wrapper 逐字节重放 + registry 经
 // wrapper 调度 + 注册命令行组件级 .env 拦截/放行契约。
+// 01-REVIEW 修复追加：WR-01 ②档 .build-cache 篡改 → exit 2 负向防线（本文件
+// 末条 test）；WR-02 真实构建前置探测（暖缓存/registry）→ 缺失时 t.skip。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,7 +28,26 @@ const buildEnv = () => {
   return env
 }
 
-test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 72×1 / hooks 桥接守卫）', { timeout: 420000 }, () => {
+// WR-02：真实构建的隐性前置 = 暖缓存（②档，gitignored，新克隆不存在）或
+// registry 可达（④档 npm pack）。两者皆无时真实构建会在 execFileSync 里以
+// 不透明的 exit 1 抛错，误报为构建失败——先探测，缺前置 → t.skip 并说明，
+// 静态断言不受影响（跟随该 test 内构建产物执行）。
+const CACHE_TGZ = join(ROOT, '.build-cache', `opengsd-gsd-core-${GSD_VERSION}.tgz`)
+const canBuild = (() => {
+  if (existsSync(CACHE_TGZ)) return true
+  try {
+    execFileSync('npm', ['view', `@opengsd/gsd-core@${GSD_VERSION}`, 'version'], { stdio: 'pipe', timeout: 15000 })
+    return true
+  } catch {
+    return false
+  }
+})()
+
+test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 72×1 / hooks 桥接守卫）', { timeout: 420000 }, (t) => {
+  if (!canBuild) {
+    t.skip(`full-build smoke requires warm ${CACHE_TGZ} or registry access — neither available (offline cold clone)`)
+    return
+  }
   // 对抗性前置（⑥ 的断言前提）：wrapper 由 build.mjs ⑤ 捕获段每轮重放；
   // 先删除再构建——若捕获段被删回归，其余 5 组断言与 gates 均不触碰该文件，
   // 只有本断言暴露（防 stale 文件假绿——01-03 第一轮快照教训）。
@@ -121,5 +142,33 @@ test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 7
     assert.equal(allowExample.status, 0, `.env.example (exempt family) must be allowed: ${allowExample.stderr}`)
   } finally {
     rmSync(probeDir, { recursive: true, force: true })
+  }
+})
+
+// WR-01 负向：②档 .build-cache 的 tgz 被篡改后，构建必须在解包/执行前被
+// NOTICES canonical 双重哈希校验拦截（exit 2 fail-closed），不得静默放行。
+// 与上一条 real-build 断言同文件 = node:test 文件内串行，不会与真实构建
+// 争用 .build-cache；fixture 用完即还原（含上次异常中断残留的 .smoke-backup）。
+test('WR-01 负向：②档 .build-cache 篡改 tgz → 完整性校验 fail-closed exit 2', () => {
+  const cacheDir = join(ROOT, '.build-cache')
+  const cacheTgz = join(cacheDir, `opengsd-gsd-core-${GSD_VERSION}.tgz`)
+  const backup = `${cacheTgz}.smoke-backup`
+  mkdirSync(cacheDir, { recursive: true })
+  if (!existsSync(cacheTgz) && existsSync(backup)) renameSync(backup, cacheTgz) // 上次中断残留：先恢复真身再备份
+  const hadReal = existsSync(cacheTgz)
+  try {
+    if (hadReal) renameSync(cacheTgz, backup)
+    writeFileSync(cacheTgz, `tampered fixture — NOT the real @opengsd/gsd-core@${GSD_VERSION} tarball\n`)
+    const r = spawnSync('node', ['build.mjs'], { cwd: ROOT, env: buildEnv(), encoding: 'utf8' })
+    const out = `${r.stderr}${r.stdout}`
+    assert.equal(r.status, 2, `tampered .build-cache tgz must fail-closed (exit 2), got ${r.status}: ${out.trim().slice(0, 300)}`)
+    assert.match(out, /checksum mismatch/, 'exit 2 must come from the NOTICES integrity check, not a downstream gate')
+  } finally {
+    if (hadReal) {
+      rmSync(cacheTgz, { force: true })
+      renameSync(backup, cacheTgz)
+    } else {
+      rmSync(cacheTgz, { force: true })
+    }
   }
 })

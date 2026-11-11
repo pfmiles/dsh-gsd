@@ -38,7 +38,7 @@ npm view @opengsd/gsd-core@1.20.1 dist.integrity dist.shasum --registry=https://
 
 - 版本**恒显式**：要么显式传 `GSD_VERSION`，要么用默认 `1.20.1`——构建链从不解析 `latest`，防上游新版本静默漂移（Tampering 面）。
 - 空值/空白按未设置处理（落入默认值）；格式非法（如 `banana`、`1.20`）在取源前即 exit 2，文案 `invalid GSD_VERSION '…' (must match \d+\.\d+\.\d+)`。
-- 目标版本变更的完整做法：先跑 §⑦ 交叉核对把新版本 canonical 值写进 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)，再改默认值/传入值——否则 ① 档离线完整性校验会因无记录而 exit 2。
+- 目标版本变更的完整做法：先跑 §⑦ 交叉核对把新版本 canonical 值写进 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)，再改默认值/传入值——否则 ①/② 档离线完整性校验会因无记录而 exit 2。
 
 ## ② staging 通道（Main staging chain）
 
@@ -60,12 +60,13 @@ npm view @opengsd/gsd-core@1.20.1 dist.integrity dist.shasum --registry=https://
 | # | 档位 Tier | 行为 Behavior | 失败 Failure |
 | -- | --------- | ------------- | ------------ |
 | ① | `GSD_TARBALL=<path.tgz>` | 解包前 **SHA-512 + SHA-1 双重对照** [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) 该版本行（`dist.integrity` base64 解码 + `dist.shasum`）→ 系统 `tar` 解包 | 任一不符 → exit 2 `checksum mismatch`（fail-closed）；无该版本记录 → exit 2 |
-| ② | `.build-cache/opengsd-gsd-core-<ver>.tgz`（repo 内缓存，gitignored） | 直接解包（该文件由过往成功构建留存） | 版本不符由 pre-gate（§②-2）拦截 |
+| ② | `.build-cache/opengsd-gsd-core-<ver>.tgz`（repo 内缓存，gitignored；**由维护者/CI 手工预置，build 从不写入**——无自愈/自更新语义） | 解包前 **SHA-512 + SHA-1 双重对照** [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) 该版本行（与 ① 档同一校验入口）→ 系统 `tar` 解包 | 任一不符 / 无该版本记录 → exit 2 `checksum mismatch`（fail-closed）；版本不符另由 pre-gate（§②-2）拦截 |
 | ③ | `GSD_PACKAGE_DIR=<unpacked dir>` | 已解包目录直接采用（无 tar 步骤）；目录必须含 `bin/install.js` **与** `package.json` | 缺任一 → 落到下一档；fetched≠requested 由 pre-gate exit 2 |
 | ④ | `npm pack @opengsd/gsd-core@<ver>`（在线） | 最后一档，在线取件到 `.gsd-build-tmp/` | 非零 → exit 1，stderr 列明 ①-④ 档位名并提示离线看本文 |
 
 - **npm cache `--offline` 不是离线档**：本机实测 `npm error code ENOTCACHED`（镜像 302 重定向使缓存键落在 cdn URL 上，Pitfall 1）——永不进入代码路径，勿依赖。
 - 断网离线重建的正确姿势：① 预置 `GSD_TARBALL`（完整 tarball，过双重完整性校验）或 ② 依赖 `.build-cache/`；两者都无则 exit 1。
+- **`.build-cache/` 不由 build 写入**（IN-01）：全仓无任何代码路径落盘该目录——在线 ④ 档成功后 tgz 只留在 `.gsd-build-tmp/`。缓存由维护者/CI 按 §⑦ canonical 值核对后**手工预置**（如先过 ① 档校验再 `cp` 进 `.build-cache/`）；缓存被篡改 → ② 档完整性校验 exit 2 fail-closed，不会静默自愈，需按 §⑦ 重新预置。
 
 ## ④ 失败模式与修复（Failure modes & fixes）
 
@@ -88,13 +89,14 @@ npm view @opengsd/gsd-core@1.20.1 dist.integrity dist.shasum --registry=https://
 | ---- | ------------ | ---------- |
 | **0** | 成功：构建完成、gates 全过；staging + fakehome 已清理 | success |
 | **1** | IO / 解包 / 安装器失败、或 gate 脚本无法运行（env 缺失 fail-closed）；**staging 树保留留痕** | failure (forensics kept) |
-| **2** | gate/校验失败：GSD_VERSION 格式非法、fetched≠requested、① 档 checksum mismatch、gate A/B/C 任一失败——**阻断 prepack/发布** | gate failure (blocks release) |
+| **2** | gate/校验失败：GSD_VERSION 格式非法、fetched≠requested、①/② 档 checksum mismatch、gate A/B/C 任一失败——**阻断 prepack/发布** | gate failure (blocks release) |
 
 判读与处置：
 
 - `node build.mjs` 以 **exit 0** 收尾 = 唯一可信任的成功信号；成功后才允许 `npm run prepack` 进入发布链。
 - **exit 1** 时错误文案会点出阶段（fetch 四档列明 / tar 不可用 / 官方安装器 failed / gate 脚本不可运行）并附 staging 路径——保留该目录诊断，修复后重跑即可（每次构建都会重建 staging）。
-- **exit 2** 时按文案分类：`invalid GSD_VERSION` → 传合法 `x.y.z`；`fetched version … != requested …` → 核对 ③ 档目录或改 GSD_VERSION；`checksum mismatch` → 走 §⑦ 核对 tarball 来源；`gate A/B/C failed` → 走 §④ gate 排查表。
+- **exit 2** 时按文案分类：`invalid GSD_VERSION` → 传合法 `x.y.z`；`fetched version … != requested …` → 核对 ③ 档目录或改 GSD_VERSION；`checksum mismatch` → 走 §⑦ 核对对应档位 tarball 来源（② 档 `.build-cache` 被篡改需人工重新预置，见 §③）；`gate A/B/C failed` → 走 §④ gate 排查表。
+- **staging/fakehome 取证留痕只增不清**（IN-04）：exit 1/2 时 `.gsd-build-tmp/staging.*` 与 `fakehome` 按取证语义保留（约 MB 级、无自动轮替/上限），便于按下表定位飞错；诊断完成后手工清理：`rm -rf .gsd-build-tmp/`（该目录仅 build 自身使用，下次构建会自动重建）。
 - exit code 契约同时适用于 `tests/run-gates.sh`（独立调用时）：exit 0 全过、exit 1 env 缺失、exit 2 gate 失败。
 
 ## ⑥ gates 与 prepack 契约（Gate & prepack contract）
@@ -122,6 +124,9 @@ GSD_VERSION=1.20.1 GSD_PACKAGE_DIR=<1.19.9 unpacked> node build.mjs
 
 # 篡改 tarball（① 档）→ exit 2 + checksum mismatch（fail-closed）
 GSD_VERSION=1.20.1 GSD_TARBALL=/tmp/gsd-tampered.tgz node build.mjs
+
+# 篡改 .build-cache 缓存（② 档，同一校验入口）→ 同样 exit 2 + checksum mismatch
+# （自动化负向防线见 npm test 的 "WR-01 负向"；修复 = 按 §⑦ 重新预置缓存）
 ```
 
 ## ⑦ 上游完整性交叉核对（Upstream integrity cross-check，RESEARCH Open Q1）
