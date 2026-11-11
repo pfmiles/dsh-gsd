@@ -110,6 +110,14 @@ async function main() {
     finish(2, `check-pins: line dsh${pv.line} not present in pins.json lines (present: ${Object.keys(pins.lines).join(', ')})`)
   }
 
+  // line-level schema: the declared line must carry a non-empty bridge object —
+  // three-pin equality (i) and registry sampling (k) anchor on it; a missing /
+  // malformed bridge must fail closed, not degenerate to a zero-iteration pass.
+  if (!line.bridge || typeof line.bridge !== 'object' || Array.isArray(line.bridge) || Object.keys(line.bridge).length === 0) {
+    finish(2, `check-pins: line dsh${pv.line}.bridge missing or not a non-empty object — three-pin equality requires a bridge map`)
+  }
+  const bridge = line.bridge
+
   // (f) declared line must not be '<unsupported>' → exit 2
   if (line.dshRange === '<unsupported>') {
     finish(2, `check-pins: line dsh${pv.line} is '<unsupported>' — package version '${pkg.version}' declares an unsupported DSH line`)
@@ -127,9 +135,14 @@ async function main() {
     finish(2, `check-pins: engines.node mismatch — package.json '${engines.node ?? '<missing>'}' vs pins.json node '${pins.node}'`)
   }
 
-  // (i) both bridge dependency pins strictly equal pins.lines[line].bridge → exit 2
+  // (i) dependency key set and values strictly equal pins.lines[line].bridge —
+  // bidirectional: package.json deps may not out-grow the bridge map → exit 2
   const deps = pkg.dependencies && typeof pkg.dependencies === 'object' ? pkg.dependencies : {}
-  const bridge = line.bridge && typeof line.bridge === 'object' ? line.bridge : {}
+  const depKeys = Object.keys(deps).sort()
+  const bridgeKeys = Object.keys(bridge).sort()
+  if (depKeys.join('\u0000') !== bridgeKeys.join('\u0000')) {
+    finish(2, `check-pins: dependency key set mismatch — package.json [${depKeys.join(', ')}] vs pins.json bridge [${bridgeKeys.join(', ')}]`)
+  }
   for (const [name, pin] of Object.entries(bridge)) {
     if (deps[name] !== pin) {
       finish(2, `check-pins: dependency ${name} mismatch — package.json '${deps[name] ?? '<missing>'}' vs pins.json pin '${pin}'`)
