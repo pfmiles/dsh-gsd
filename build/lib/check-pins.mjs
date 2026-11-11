@@ -160,8 +160,14 @@ async function main() {
       } catch {
         got = (p.stdout || '').trim()
       }
-      if (typeof got === 'string' ? got !== pin : true) {
-        finish(2, `check-pins: registry drift ${name} expected '${pin}' vs actual '${typeof got === 'string' ? got : JSON.stringify(got)}'`)
+      // npm --json emits an array of matching versions even for an exact
+      // specifier; a plain string is the non-json/edge shape. Both must
+      // resolve to exactly the pinned version — anything else is drift.
+      const drift = Array.isArray(got)
+        ? got.length !== 1 || got[0] !== pin
+        : typeof got === 'string' ? got !== pin : true
+      if (drift) {
+        finish(2, `check-pins: registry drift ${name} expected '${pin}' vs actual '${JSON.stringify(got)}'`)
       }
     }
   }
