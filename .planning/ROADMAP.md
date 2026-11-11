@@ -44,7 +44,7 @@ Plans:
 
 **Goal**: DSH 行 × GSD 版本的兼容矩阵体系，engines.dsh 与依赖 pin 策略固化，CI 冒烟。
 **Depends on**: Phase 1
-**Requirements**: VER-01..04, DEV-03
+**Requirements**: VER-01, VER-02, VER-03, VER-04, DEV-03
 **Success Criteria**:
   1. `.github/workflows` 存在矩阵 CI（当前 DSH 行 + 前一行 × GSD 版本）
   2. 版本号方案 `<gsd-ver>-<rev>-dsh<line>` 文档化并示例
