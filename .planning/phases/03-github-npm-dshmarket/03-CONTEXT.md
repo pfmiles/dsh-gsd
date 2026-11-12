@@ -60,9 +60,15 @@
 - **GitHub Release**：随发布动作在 Phase 5 执行（需要 tag + 已发布版本）；本 phase 只准备 tag 策略与 release notes 草稿。
 - 两者都**不排除**，plan 中必须有落点（不能沉默跳过）。
 
-### D-05 D-03 落点修订：改 manifest，L37 零改动
+### D-05 D-03 落点修订：改 manifest（**两处，不是一处**），L37 零改动
 
-- **用户裁决（2026-11-12，研究后）**：D-03 的判据（四格绿 + 不留红跑历史）保持不变；**实现位置改为 `package.json`** —— 根 `peerDependencies.dsh` 收紧为 **exact `"0.2.2-rc.1"`**。
+- **用户裁决（2026-11-12，研究后）**：D-03 的判据（四格绿 + 不留红跑历史）保持不变；**实现位置改为 manifest** —— `peerDependencies` 收紧为 **exact `0.2.2-rc.1`**。
+- **⚠ 纠偏（pattern-mapper 读源码实测，优先级高于本裁决的原始措辞）**：这**不是**"改一个 `package.json` 字符串"，而是**两处必须同时改**，只改一处会立刻红：
+  - `package.json:30` — `peerDependencies["@deepseek-ai/dsh-skill-filesystem"]`：`">=0.2.2-rc.1 <0.3.0-0"` → `"0.2.2-rc.1"`
+  - `build/assets/pins.json:12` — `lines.022.peer`：`"@deepseek-ai/dsh-skill-filesystem >=0.2.2-rc.1 <0.3.0-0"` → `"@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.1"`
+  - **执行依据**：`build/lib/check-pins.mjs` 步骤 (j) 断言 `` `${peerName} ${peerRange}` === line.peer ``，不等即 **exit 2**；`tests/compat-matrix.test.mjs` ⑥ 又 spawn `check-pins --offline` 要求 exit 0。只改一个文件 = 快速回路立刻红。
+  - **被收紧的 peer 是 `@deepseek-ai/dsh-skill-filesystem`，不是 `dsh`**（`peerDependencies` 里并没有 `dsh` 键）。本条早前草稿写的"`peerDependencies.dsh`"是笔误，以本段为准。
+  - **不得连带改动的邻近值**：`engines.dsh`、`pins.json` 的 `lines.022.dshRange`、README 的版本窗口字符串是**另一组**字符串，由 `tests/docs-consistency.test.mjs` 的 ② 钉住，动了就红。
 - **实测依据**（见 `03-RESEARCH.md`）：该变体 656 包全树 dedupe 到 `0.2.2-rc.1`，四格 install/probe 全 exit 0，`.github/workflows/compat-matrix.yml` 的 L37 **零改动**。
 - **拒绝的变体**：
   - `--force`：probe 虽绿，但根上解出 `skill-filesystem@0.2.2-rc.2`（706 包、三份并存）= **绿在错误树上**。仅作最后手段，且必须配正向断言。
@@ -87,8 +93,12 @@
 - **用户裁决（2026-11-12）**：`compat-matrix.yml` 在**同一次改动**里做完两项：
   1. 补 `permissions: { contents: read }` —— 当前整个文件**没有** `permissions:` 块，`GITHUB_TOKEN` 取仓库默认权限，属最小权限化缺口。
   2. 在既有 install+probe 的 `run: |` 块内补「解析结果 == `${{ matrix.dsh }}`」的**正向断言** —— 已点名于 Phase 2 的 `02-REVIEW.md`，且能封堵 `--force` 式假绿。
-- **约束**：`tests/compat-matrix.test.mjs` 对 workflow 的行集合/顺序有断言（"⑦ gate-line constraint"）。改 workflow **必须同步改该测试**，两侧一次改完，否则快速回路直接红。
-- 注：D-05 已使 L37 本身零改动，因此本条 diff 是**纯增量**（新增 permissions 块 + 新增断言），不是修复。
+- **约束**：见下方"落地形态"。注：D-05 已使 L37 本身零改动，因此本条 diff 是**纯增量**（新增 permissions 块 + 在既有 run 块内追加断言行），不是修复。
+- **⚠ 落地形态（pattern-mapper 读测试源码实测，必须遵守，否则首跑即红）**：
+  - 断言**必须写在既有的 `run: |` 块内部**，**绝不能新开一个 `run:` 步骤**。原因：`tests/compat-matrix.test.mjs:106-123` 的 `isGate()` 要求每个 `run:` 的**上一行**是 `if:`，且该行须同时含 `inputs.dsh` / `matrix.dsh` / `inputs.gsd` / `matrix.gsd` 四串；另有 `runIndexes.length >= 3`。
+  - 断言**必须用 `expect == install-ok` 作为门**。reject 格里根 peer 被声明为 exact `0.2.2-rc.1`，根层解析结果极可能 ≠ `matrix.dsh`（0.2.1-rc.5）；无条件断言会让**首次 CI run 就红**，直接违反 SC-5「无红跑历史」。
+  - 加 `permissions:` 块**是安全的**：它把 L37 推到 L39，但没有任何测试硬编码 workflow 行号。
+  - **本项不需要改任何测试**（与 D-08 早前草稿的说法相反，以此为准）。只需避开两个相邻陷阱：② 的 `CELL_RE` 与 `pins.matrix` 双向集合相等断言（`tests/compat-matrix.test.mjs:21-25`、`:41-53`）—— 即**不要动 matrix 的四行**；⑤ 的 `assert.ok(!readWF().includes('dsh plugin add'))`（`:90-92`）—— **任何注释或 echo 都不得出现 `dsh plugin add` 这个字面串**。
 
 ### Claude's Discretion
 
