@@ -1,108 +1,65 @@
 ---
 phase: 01-build-mjs
-reviewed: 2026-11-11T09:42:57Z
+reviewed: 2026-11-12T03:32:26Z
 depth: standard
-files_reviewed: 10
+files_reviewed: 12
 files_reviewed_list:
   - build.mjs
   - build/lib/rewrite-map.cjs
   - build/assets/gsd-hooks.json
   - build/assets/dsh-gsd-suite-run.cjs
   - tests/run-gates.sh
-  - tests/rewrite-map.test.mjs
   - tests/build-smoke.test.mjs
+  - tests/rewrite-map.test.mjs
   - package.json
   - .gitignore
   - THIRD-PARTY-NOTICES.md
+  - BUILD.md
+  - README.md
 findings:
   critical: 0
-  warning: 2
-  info: 4
-  total: 6
-status: issues_found
+  warning: 0
+  info: 0
+  total: 0
+status: clean
 ---
 
-# Phase 1: Code Review Report
+# Phase 1: Code Review Report（Re-review — 收敛轮）
 
-**Reviewed:** 2026-11-11T09:42:57Z
-**Depth:** standard（对 bench 内相互依赖的 build.mjs / rewrite-map.cjs / run-gates.sh / smoke 测试做了跨文件调用链核验）
-**Files Reviewed:** 10
-**Status:** issues_found
+**Reviewed:** 2026-11-12T03:32:26Z
+**Depth:** standard（对 build.mjs / build/lib/rewrite-map.cjs / run-gates.sh / build-smoke.test.mjs 做了跨文件调用链核验）
+**Files Reviewed:** 12（phase 01 三个 PLAN 的 key_files 并集，取当前 HEAD 状态）
+**Status:** clean
 
 ## Summary
 
-对 phase 01（build-mjs）十个核心变更文件做了对抗式审查:build.mjs 主链与离线四档、rewrite-map 纯模块、canonical hooks registry 与 hooks-bridge stdio 适配器、gate 脚本、两组测试、package.json 收口、.gitignore 与 SBOM notices。另抽查了 BUILD.md / README 的契约口径。
+本轮为 **re-review 收敛轮**：上一轮审查（2026-11-11T09:42:57Z，`01-REVIEW.md` 初版）共 6 项 findings（WR-01、WR-02、IN-01..IN-04），已由 REVIEW-FIX.md（iteration 1，commit `384b72a`）全部修复并 disposition 为 fixed（0 open）。本轮按 skill 的 scope 规则对 phase 01 全部 12 个源文件在**当前 HEAD（`71759eb`）** 状态做了一次全新对抗式复核：先逐项验证旧 findings 是否仍处于已修复状态，再对这些文件的 HEAD 形态重新找新缺陷。
 
-**客观核验通过项**(不复报,记录为审查依据):
-- THIRD-PARTY-NOTICES.md 的 canonical 值与实测 `.build-cache/opengsd-gsd-core-1.20.1.tgz` 逐字节一致(sha512 hex = integrity base64 解码值;sha1 = dist.shasum)——NOTICES 数据可信。
-- 产物树:零 `~/.dsh` 字面量残留、无 `$DSH_HOME-*` 改写歧义污染;`hooks/dsh-gsd-suite/run.cjs` 与 canonical 模板逐字节一致;`config/gsd-hooks.json` 与 canonical 一致。
-- `injectNote` 的第二个 `---` 定位:抽查 gsd-surface 等含 4+ 个 `---` 行的 SKILL.md,前两个确为 frontmatter 边界,注入位置正确(body 内的 `---` 位于其后,不受影响)。
-- 无硬编码密钥/`eval`/shell 插值注入面(spawnSync 全程无 `shell:true`);GSD_VERSION 正则强校验 + argv 数组传参。
-- 复核(已知口径,未作新 findings):gate A 双锚、gate B 三段式、`node --test` glob 形态、hooks 桥接 fail-open 修复链(2d45fac+e039939)、目标版本 1.20.1 决策、legacy 分支 exit 0 语义。
+**结论：6 项历史 findings 全部保持已修复（resolution log 见下），未发现任何新的真实缺陷。** `npm test` 在 HEAD 实测 **26/26 全绿（exit 0，5.3s，0 skip）**：真实构建（② 档缓存 + NOTICES 双重哈希通过、gates A/B/C 通过、72 skills 注入）、WR-01 篡改负向（exit 2 fail-closed，46ms）、IN-02 单一来源漂移防线测试 ⑦ 均实跑通过。
 
-**结论**:主链、改写、门禁与测试的工程质量整体良好,无 Critical。两个 Warning 集中在"②档缓存无完整性校验"与"smoke 测试对暖缓存/网络的隐性前置依赖";四个 Info 为文档失实、常量重复、legacy 旁路与失败留痕累积,均为低成本可修项。
+**Scope 说明（skill 规则下的收敛散焦处理）：** 本 phase 存在先审记录，evaluation-scope resolver 以 `--since <LAST_REVIEW_COMMIT>`（`392a5b6`）查询时返回 `status: degraded, reason: no-task-commits-since`——自上次审查以来 phase 01 没有新的 task commit，其 phase-range 放宽结果落入了 **phase 02** 的文件（build/lib/check-pins.mjs、build/lib/compat-probe.mjs、.github/workflows/compat-matrix.yml、tests/{compat-matrix,docs-consistency,version}.test.mjs、build/assets/pins.json）。这些文件归属 phase 02 且已有其独立的 review/fix/disposition（commits `71f696e`/`b819741`/`2ae98e6`），按 phase 归属排除出本轮 scope，避免跨 phase 重复报账。本轮 scope = phase 01 三个 SUMMARY 的 key_files 并集（上述 12 个），逐文件以 HEAD 内容复核——其中 build.mjs、rewrite-map.cjs、两个测试文件自修复提交 `384b72a` 后未被后续提交再触碰；BUILD.md、README.md、THIRD-PARTY-NOTICES.md、package.json 被 phase 02 提交后续修改过，已按 HEAD 最新形态核验（详见下文核验依据）。
 
----
+## Re-review Resolution Log（上轮 6 项 findings 复核）
 
-## Warnings
+| Finding | 标题 | 复核结果 | 核验依据（HEAD） |
+| --- | --- | --- | --- |
+| WR-01 | .build-cache ②档解包绕过完整性校验 | **resolved（维持 fixed）** | `build.mjs:205-208` ②档命中即 `await checkTarballIntegrity(tgzPath, GSD_VERSION, tier)`，与 ①档共用 NOTICES 双重哈希入口，mismatch/无记录 → `finish(2, …)` fail-closed；`tests/build-smoke.test.mjs:152-174` 负向测试实测 exit 2 + `checksum mismatch`（46ms）；`.build-cache/opengsd-gsd-core-1.20.1.tgz` 实测 sha512/sha1 与 THIRD-PARTY-NOTICES.md 1.20.1 行逐值相等（成功路径端到端验证）；BUILD.md:62-63 ②档行口径已同步 |
+| WR-02 | build-smoke 真实构建前置缺失 opaque fail | **resolved（维持 fixed）** | `tests/build-smoke.test.mjs:36-50` `canBuild` 前置探测（暖缓存 → 直接 true；否则 `npm view` 15s 上限）→ `t.skip(...)` 带原因文案并 `return`；HEAD 实测（暖缓存路径）真实构建断言 5.2s 通过 |
+| IN-01 | BUILD.md .build-cache 来源描述失实 | **resolved（维持 fixed）** | BUILD.md:63「由维护者/CI 手工预置，build 从不写入——无自愈/自更新语义」、BUILD.md:69 完整 bullet 均存在；全仓仍无任何代码路径写入 `.build-cache/`（grep 复核） |
+| IN-02 | PLUGIN_ROOT_REF 常量双写 | **resolved（维持 fixed）** | `build/lib/rewrite-map.cjs:25,42` 单一来源导出；`build.mjs:26` 改导入消费、本地副本已删（`build.mjs:29` 仅注释说明）；`tests/rewrite-map.test.mjs:82-91` 测试 ⑦ 实测通过（漂移防线） |
+| IN-03 | legacy GSD_BUILD_SOURCE 静默绕过校验 | **resolved（维持 fixed）** | `build.mjs:346-354` 入口 `console.warn('build: legacy GSD_BUILD_SOURCE path (compat only) — skips tarball integrity checks and gates A/B/C')`，不再静默降级；exit 0/1 语义未变 |
+| IN-04 | staging 取证留痕只增不清 | **resolved（维持 fixed）** | BUILD.md:99「staging/fakehome 取证留痕只增不清（IN-04）」段落存在，含清理指引 `rm -rf .gsd-build-tmp/`；留痕取证语义维持不变 |
 
-### WR-01: .build-cache(②档)不经完整性校验直接解包并执行
+## Fresh-pass 核验项（本轮的独立验证依据，非 findings）
 
-**File:** `build.mjs:201-203`(校验函数 `build.mjs:162-182`)
-**Issue:** `checkTarballIntegrity` 只为 ①档 `GSD_TARBALL` 接线。②档 `.build-cache/*.tgz` 命中即 `tgzPath = cacheTgz`,随后 `tar xzf` 解包并用 `node bin/install.js` 执行其中代码——唯一防线是解包后的 pre-gate(`package.json`.version === GSD_VERSION),而该字段对篡改者而言可随包覆写,不构成完整性证明。NOTICES 已备好该版本 canonical 哈希,却在该档位上未使用。BUILD.md:63 对该档的保护描述仅"版本不符由 pre-gate 拦截",与"构建期取源 SBOM 完整性对照"的整体口径存在落差。威胁模型:`.build-cache/` 为 gitignored 持久本地状态(且无任何代码写入它,见 IN-01),被污染后构建链静默放行并在构建机执行任意代码。
-**Fix:** 与 ①档共用同一校验入口,一行接线即可:
-```js
-} else if (existsSync(cacheTgz)) {
-  tgzPath = cacheTgz
-  tier = '.build-cache'
-  await checkTarballIntegrity(tgzPath, GSD_VERSION) // 复用 NOTICES canonical 双重哈希
-}
-```
-(③档目录按预 gate + 本机信任模型处理、④档由 npm 侧 integrity 元数据兜底,可维持现状;至少应同步修正 BUILD.md ②档行的 Failure 列口径。)
-
-### WR-02: npm test / prepack 依赖不可见的前置条件(暖缓存或网络),缺失时以不透明的 exit 1 失败而非跳过
-
-**File:** `tests/build-smoke.test.mjs:29-37`(环境构造 `tests/build-smoke.test.mjs:22-27`)
-**Issue:** smoke 测试 ①通过 `execFileSync('node', ['build.mjs'])` 真实构建,取源走 `.build-cache` → `npm pack` 在线档。`.build-cache/` 被 gitignored,新克隆离线/无缓存环境下 `npm pack` exit 1 → `execFileSync` 抛错,整组只有一个大 test(),失败信息仅是包裹后的子进程错误,不指明前置条件。这使 `npm test`(以及 `prepack`)在干净 CI 或离线机器上必然失败且难以诊断;测试可靠性问题按例入告警。
-**Fix:** 构建前探测前置条件,缺失时分流:
-```js
-const cacheTgz = join(ROOT, '.build-cache', `opengsd-gsd-core-${GSD_VERSION}.tgz`)
-const canBuild = existsSync(cacheTgz) || (() => {
-  try { execFileSync('npm', ['view', `@opengsd/gsd-core@${GSD_VERSION}`, 'version'], { stdio: 'pipe', timeout: 15000 }); return true } catch { return false }
-})()
-```
-不满足时 `t.skip('full-build smoke requires warm .build-cache or registry access')`(其余纯静态断言可拆成独立 test 继续跑);或在文档/注释中显式声明该前置,并在 buildEnv 中允许注入 `GSD_TARBALL` 作离线基座。
+- **HEAD 全链实跑**：`npm test` 26/26 绿（exit 0，5.32s，fail/skip 0）——真实构建（②档完整性校验通过 → unpack → pre-gate → staging → 捕获 → 改写 → 注入 → gates A/B/C 全过）、WR-01 负向、IN-02 ⑦ 全部在含两行（1.20.1 + 1.19.0）NOTICES 表的当前 HEAD 上通过。
+- **`checkTarballIntegrity` 对 phase-02 新增行的兼容性**：`THIRD-PARTY-NOTICES.md` 现有 1.20.1/1.19.0 两行，1.19.0 行（commit `28c68c0`）未改变表格列序；解析逻辑 `cells[3]`=shasum、`cells[4]`=integrity，`find` 精确匹配 `| @opengsd/gsd-core | 1.20.1 |` 行——HEAD 实测无误（两行 integrity 均为 64 字节 sha512 base64、shasum 均 40 hex）。
+- **被 phase-02 后续修改的 phase-01 文件（HEAD 形态）**：`package.json`（version `1.20.1-1.dsh022`，scripts 链 prepack/test 未变）与 README 双语安装/版本号方案互洽（version.test 哨兵全绿）；BUILD.md 的 WR-01/IN-01/IN-04 修复行未被 phase-02 的 TL;DR（26/26，实测准确）与 §⑨ 追加破坏；README:65,135 自举构建段 → BUILD.md / THIRD-PARTY-NOTICES.md 双语互链仍在（plan 01-03 契约）。
+- **未再复报的既有口径**（首轮已核验，本轮复核仍成立）：gate A 双锚、gate B 三段式、`node --test tests/*.test.mjs` glob 形态、hooks 桥接 fail-open 修复链、目标版本 1.20.1、legacy 分支 exit 0 语义、`npm view`/网络探测超时设计（phase-02 fix `df81330` 的 compat-probe 120s 上限属 phase-02 scope，此处仅确认不交叉影响 build-smoke 的 15s 探测）。
+- **测试执行对工作树的洁净性**：`npm test` 仅重建 gitignored 产物树并在 WR-01 负向结束后还原 `.build-cache` fixture（`finally` 分支含中断残留恢复），未产生除编排方存量变更（STATE.md / .planning 未跟踪文件）外的任何 tracked 漂移。
 
 ---
 
-## Info
-
-### IN-01: BUILD.md 声称 .build-cache"由过往成功构建留存",但没有任何代码路径写入该文件
-
-**File:** `BUILD.md:63`
-**Issue:** 全仓 grep 证实 build.mjs 只读 `.build-cache`,从未写入(在线 ④档成功只落盘到 `.gsd-build-tmp/`);D-3 证据里的缓存是手工置入的。文档描述与实际行为不符,会误导后续维护者以为缓存会自愈/自更新。
-**Fix:** 二选一:在线档打包成功后(经 npm integrity 校验)回填 `cp` 至 `.build-cache` 并同步过 NOTICES 校验;或将该行措辞改为"由维护者手工预置(见 §⑦ 交叉核对)的缓存"。
-
-### IN-02: PLUGIN_ROOT_REF 常量双写(build.mjs 与 rewrite-map.cjs 各一份)
-
-**File:** `build.mjs:29` 与 `build/lib/rewrite-map.cjs:23`
-**Issue:** `$DSH_PROFILE_DIR/node_modules/dsh-gsd` 字面量在两处独立维护,漂移后改写目标与 legacy 分支/文档口径不一致,且无测试能查出这种漂移(两处测试各自独立断言)。
-**Fix:** 由 rewrite-map.cjs 一并导出 `PLUGIN_ROOT_REF`(`module.exports = { makeRewrites, PLUGIN_ROOT_REF }`),build.mjs 改为导入消费。
-
-### IN-03: legacy GSD_BUILD_SOURCE 分支复制了一套改写表(7 对),且静默绕过全部完整性校验与 gate A/B/C
-
-**File:** `build.mjs:115-154`(`legacyBuild`;入口 `build.mjs:341-347`)
-**Issue:** 该兼容分支维护着与 `makeRewrites` 不同步的第二份映射,且不跑任何门禁。作为 spike 兼容入口问题不大,但目前仅打一条 `console.log('legacy ... compat only')`,`GSD_BUILD_SOURCE` 一旦被环境意外残留,构建会静默降级为无门禁路径(与 buildEnv 测试特意 delete 该变量的防御意图呼应——测试防了,生产入口没防)。
-**Fix:** 保留兼容但显式告警:`console.warn('build: legacy path skips integrity checks and gates A/B/C')`;或将 7 对映射也收敛到 rewrite-map 模块的参数化形态,并考虑在 ROADMAP 中排期移除该分支。
-
-### IN-04: 失败路径的 staging/fakehome 留痕只增不清
-
-**File:** `build.mjs:240-241, 336-337`
-**Issue:** WORK(`.gsd-build-tmp`)只在成功收尾时清理本轮 staging(约数 MB 级);exit 1/exit 2 留痕是刻意的取证语义,但多次失败会持续累积,且没有轮替/上限提示。
-**Fix:** 维持留痕语义,但在 `mkdir(WORK)` 时提示存量目录数/大小(`readdir(WORK)` 统计 `staging.*`),或提供显式的 `build.mjs --cleanup-staging` 副命令(超阈值的清理动作仍保留最近 N 个)。
-
----
-
-_Reviewed: 2026-11-11T09:42:57Z_
-_Reviewer: Claude (gsd-code-reviewer)_
+_Reviewed: 2026-11-12T03:32:26Z_
+_Reviewer: DeepSeek Harness agent (gsd-code-reviewer 契约，re-review 收敛轮)_
 _Depth: standard_
