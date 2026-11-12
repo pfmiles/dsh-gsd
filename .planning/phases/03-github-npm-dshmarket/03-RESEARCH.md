@@ -45,6 +45,11 @@ D-03 的 L37 漂移有一个比 CONTEXT 预设更省的解：**把根 `peerDepen
   - 候选方案 = exact peer 或 `<0.2.2-rc.2`。
 - 判据：push 后 Actions 首次 run 全绿，**不留红跑历史**。
 
+> **⚠ 前向注记（2026-11-12，ROADMAP 表述已陈旧——勿据此改判，也勿据此改 ROADMAP）**
+> `ROADMAP.md` 的 Phase 3 **SC-5 括注仍写着「L37 上游漂移修复后 push」**，而 **D-05 已把修复位置挪到 manifest**：`package.json` 的 `peerDependencies` 收紧为 exact `0.2.2-rc.1` + `build/assets/pins.json` 的 `lines.022.peer` 同步，**L37（现在的 L39）一字未改**。
+> **判据本身未变**：四格全绿、无红跑历史——变的只是实现位置，「先修后推」的顺序与 SC-5 的验收含义都不受影响。
+> 本次**不**改 ROADMAP 的 Success Criteria 文本：那是用户面契约，改措辞需用户授权。**记为后续 ROADMAP 改写的候选**（把括注改成「manifest 侧 peer 收紧 + workflow 加固后 push」即可，无判据变化）。
+
 #### D-04 CHANGELOG + GitHub Release 纳入
 
 - **CHANGELOG**：本 phase 成文 —— `CHANGELOG.md`（Keep a Changelog 形态），首条目对应 `1.20.1-1.dsh022`。
@@ -645,31 +650,39 @@ and this project adheres to a `<gsd-ver>-<rev>.dsh<line>` versioning scheme.
 
 **If this table is empty:** —（非空，见上）
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> 六问全部结案（2026-11-12，plan 定稿前）。逐条 `**Resolution:**` 记在各自条目末尾；`What we know` / `Recommendation` 原文保留为决策依据，不改写。Q1–Q6 的裁决分别落到 D-05 / D-06 / Phase 5 移交 / D-07 / D-08 / 有意的未结案（A2），因此本阶段**没有**遗留的开放问题。
 
 1. **D-03 的字面要求（改 workflow）与推荐解（改 manifest）不一致——需要一次显式确认。**
    - What we know: B 变体（peer → exact `0.2.2-rc.1`）四格实测全绿且 L37 零改动；C 变体（L37 追加显式 pin）同样全绿但有 workflow diff。
    - What's unclear: 用户是否接受「L37 不改也能满足 D-03 的判据」。
    - Recommendation: 采用 B，并在 plan 的决策段写明「D-03 的判据（四格绿 + 无红跑历史）全满足，实现位置由 workflow 移到 manifest」；若用户要求 workflow 必须有 diff，切 C（已实测）。
+   - **Resolution: 已由 D-05 结案（用户裁决，2026-11-12）**——采用 B 变体：`package.json` 的 `peerDependencies['@deepseek-ai/dsh-skill-filesystem']` 收紧为 exact `0.2.2-rc.1`，`build/assets/pins.json` 的 `lines.022.peer` 同一次提交内同改，**L37 一字不改**。D-03 的判据（四格绿 + 无红跑历史）不变，变的是实现位置；C 变体不再考虑。落点：03-01 Task 1。
 
 2. **SC-3「install 命令与 README 逐字一致」如何落地。**
    - What we know: catalog 生成的命令**不带版本号**（`dsh plugin --profile web add dsh-gsd`），README 规范命令带精确版本。
    - What's unclear: 是把「无版本形态」写进 README（解法 a），还是把 SC-3 解释为「材料记录生成物即可」（解法 b）。
    - Recommendation: 解法 a——README 增一处无版本示例（不改既有规范命令，不触犯 ③⑤ 哨兵），材料逐字引用该串；同时把「Phase 5 publish 必须设 `latest` tag」列为硬移交项。
+   - **Resolution: 已由 D-06 结案（用户裁决，2026-11-12）**——采用解法 a：README 增一处裸名示例（`dsh plugin --profile web add dsh-gsd`），既有带版本号的规范命令逐字不动；`docs/dshmarket/` 材料逐字引用该裸名串。`latest` tag 义务定为硬移交项，落在 03-03 的 Phase 5 移交清单第 ② 条。落点：03-02。
 
 3. **包名抢注窗口。** `dsh-gsd` 在 `registry.npmjs.org` 与 `npmmirror` 双 404（实测 2026-11-12），但真发布在 Phase 5。若他人在此窗口注册同名包，Phase 5 会失败且 `name` 不能改（三处同名是 PROJECT 已锁决策）。
    - Recommendation: 不提前发布（D-02 明令），但 plan 应在 Phase 5 移交里写明「发布前重跑 `npm view dsh-gsd version --registry=https://registry.npmjs.org`，404 才继续」；若已被占用，升级为用户决策（改名 vs 收买/等待）。
+   - **Resolution: 结案为 Phase 5 的发布前义务（非本 phase 阻塞项）**——采纳上述 Recommendation，不提前发布（D-02 约束）。义务已铸成 03-03 Task 3 的 Phase 5 移交清单第 ③ 条：发布前重跑 `npm view dsh-gsd version --registry=https://registry.npmjs.org`，仍 404 才继续；若已被占用则升级为用户决策。本 phase 不再追踪此项。
 
 4. **dshmarket 条目要不要配 `icon`。**
    - What we know: 只收 GitHub 托管位图；本仓只有 `icon.svg`（会被拒）。
    - Recommendation: Phase 3 留空（回退作者头像）；若日后要卡片图标，另加一张方形 PNG（如 `assets/icon-180.png`）并从 README 相对链接——注意：该 PNG **不必**进 npm 包，别顺手改 `files`。
+   - **Resolution: 已由 D-07 结案（用户裁决，2026-11-12）**——`icon` 保持**空**（回退作者头像）；本 phase 不新增 PNG、不动 `files`、不填 SVG。03-02 的 `docs/dshmarket/pfmiles__dsh-gsd.yml` 明确不写 `icon:` 字段。落点：03-02。
 
 5. **是否追加两项加固（都会新增 workflow diff 或测试计数）。**
    - (i) `compat-matrix.yml` 目前**没有 `permissions:` 块**（实测 L1-44）⇒ `GITHUB_TOKEN` 取仓库默认权限；加 `permissions: {contents: read}` 是最小权限化。
    - (ii) 在 L36-38 的 `run: |` 块内补「解析结果 == `${{ matrix.dsh }}`」的正向断言（02-REVIEW.md:187 已点名建议）。
    - Recommendation: 两项都建议做，但**放在同一次 workflow 改动里**并把计数/结构哨兵一次跑过；若求最小 diff，可只做 (ii)（它直接封堵 `--force` 式假绿）。
+   - **Resolution: 已由 D-08 结案（用户裁决，2026-11-12）**——（i）(ii) **两项都做**，同一次 workflow 改动、不新开 `run:` 步骤：顶层 `permissions: { contents: read }`，且正向解析断言写进既有『宿主求值探针（install-ok/reject）』的 `run: |` 块内，门控条件为 `matrix.expect == install-ok`，取值失败 `|| true` 兜住后显式 `exit 2`。matrix 四行与 6 条 `if:` 门零改动。落点：03-01 Task 2。
 
 6. **`pnpm approve` 的真实影响面未验证（见 A2）。** Recommendation: 不阻塞 Phase 3；在 SC-1 的 boot 步骤里观测并记录，Phase 5 UAT-01 定性。
+   - **Resolution: 有意保持未结案（`[ASSUMED]`，A2 继续挂在 Assumptions Log）**——这不是遗漏：本 phase 无法先验证明「agent skills 待审批」是否阻断会话内技能可见性，任何本地结论都只是猜测。处置定为**观测 + 如实记录**：03-01 Task 3 的 tarball 安装步骤原样记录安装日志里是否出现 `Agent skills awaiting approval`（不改任何 boot 判据），定性责任移交 Phase 5 UAT-01。本 phase 的判据只到「包内声明齐备」为止。
 
 ## Environment Availability
 

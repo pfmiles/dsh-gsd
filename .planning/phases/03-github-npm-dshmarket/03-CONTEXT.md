@@ -27,78 +27,68 @@
 <decisions>
 ## Implementation Decisions
 
-以下四条为**用户裁决**（2026-11-12），planner 必须逐条映射进 plan，不得重新论证：
+以下八条为**用户裁决**（2026-11-12），planner 必须逐条映射进 plan，不得重新论证：
 
-### D-01 License = MIT（PUB-04 改写）
+- **D-01 — License = MIT（PUB-04 改写）**：全仓**已**以 MIT 落地，本裁决确认现状、不改任何文件。
+  - `LICENSE` 首行 `MIT License`（`Copyright (c) 2026 pf_miles`）、`package.json:15` `"license": "MIT"`。
+  - **PUB-04 与 `PLAN.md:46` 的 Apache-2.0 是过期表述，以本裁决为准。** PUB-04 改写为「LICENSE（MIT）+ 上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）」。
+  - **不做**：不改 `LICENSE` 文件、不改 `package.json` 的 `license` 字段。`THIRD-PARTY-NOTICES.md` 记录的是各上游自己的许可，不受本裁决影响，不动。
+  - 已知缺陷（顺带修正）：PUB-04 原文 `GSD MИT` 中的 `И` 是 U+0418 西里尔大写字母，非 ASCII `I` —— 任何 `grep MIT` 式一致性检查都会漏掉它。改写条目时一并修真。
 
-- 全仓**已**以 MIT 落地：`LICENSE` 首行 `MIT License`（`Copyright (c) 2026 pf_miles`）、`package.json:15` `"license": "MIT"`。
-- **PUB-04 与 `PLAN.md:46` 的 Apache-2.0 是过期表述，以本裁决为准。** PUB-04 改写为「LICENSE（MIT）+ 上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）」。
-- **不做**：不改 `LICENSE` 文件、不改 `package.json` 的 `license` 字段。`THIRD-PARTY-NOTICES.md` 记录的是各上游自己的许可，不受本裁决影响，不动。
-- 已知缺陷（顺带修正）：PUB-04 原文 `GSD MИT` 中的 `И` 是 U+0418 西里尔大写字母，非 ASCII `I` —— 任何 `grep MIT` 式一致性检查都会漏掉它。改写条目时一并修真。
+- **D-02 — 对外发布推迟到 Phase 5**：本 phase 只交付「发布就绪」，所有对外写入动作移交 Phase 5。
+  - 本 phase **不执行** `npm publish`、**不**建 GitHub Release、**不**提 dshmarket PR。
+  - Phase 3 产出「发布就绪」：发布面无阻塞 + 本地 tarball 可装 + CI 首绿。
+  - Phase 5 在干净机器 8 项 UAT（UAT-01..06）通过后执行：`npm publish` → GitHub Release → dshmarket PR → 1.0 收官。
+  - **推论**：PUB-01 的"npm 发布"、PUB-03 的"PR 已开"从 Phase 3 判据降级为 Phase 5 动作；本 phase 保留二者的**准备**部分。registry 安装验证（原 Success Criterion 1）在 Phase 3 用 tarball 等价替代，Phase 5 用真 registry 复验。
 
-### D-02 对外发布推迟到 Phase 5
+- **D-03 — 先修 L37 再 push**：push 之前必须先消除上游漂移，且判据是「四格绿 + 不留红跑历史」。
+  - 顺序锁定：修 `compat-matrix.yml` L37 上游漂移 → 本地 4 格验证绿 → `git push`（规划期领先 origin **88** 提交，执行期以实测为准）→ CI 首跑即绿。
+  - **落点已由 D-05 修订**（2026-11-12 研究后裁决）：判据不变，但实现位置从 workflow 移到 manifest —— peer 收紧为 exact `0.2.2-rc.1` 后 L37 一字不改即四格全绿。见 **D-05**。
+  - **约束继承（Phase 02 用户裁决，不得违反）**：
+    - `--force` 可用（两向探针实测绿）；
+    - **`--legacy-peer-deps` 禁用**（跳过 host peer → 缺 `dsh-app-boot` → probe exit 1 `cannot resolve the DSH host boot module`）；
+    - 上界陷阱：`<0.2.2-rc.2-0` **排除不了** rc.2（rc.2 < rc.2-0）；
+    - 候选方案 = exact peer 或 `<0.2.2-rc.2`。
+  - 判据：push 后 Actions 首次 run 全绿，**不留红跑历史**。
 
-- 本 phase **不执行** `npm publish`、**不**建 GitHub Release、**不**提 dshmarket PR。
-- Phase 3 产出「发布就绪」：发布面无阻塞 + 本地 tarball 可装 + CI 首绿。
-- Phase 5 在干净机器 8 项 UAT（UAT-01..06）通过后执行：`npm publish` → GitHub Release → dshmarket PR → 1.0 收官。
-- **推论**：PUB-01 的"npm 发布"、PUB-03 的"PR 已开"从 Phase 3 判据降级为 Phase 5 动作；本 phase 保留二者的**准备**部分。registry 安装验证（原 Success Criterion 1）在 Phase 3 用 tarball 等价替代，Phase 5 用真 registry 复验。
+- **D-04 — CHANGELOG + GitHub Release 纳入**：两者都不排除，plan 中必须有落点（不能沉默跳过）。
+  - **CHANGELOG**：本 phase 成文 —— `CHANGELOG.md`（Keep a Changelog 形态），首条目对应 `1.20.1-1.dsh022`。
+  - **GitHub Release**：随发布动作在 Phase 5 执行（需要 tag + 已发布版本）；本 phase 只准备 tag 策略与 release notes 草稿。
 
-### D-03 先修 L37 再 push
-
-- 顺序锁定：修 `compat-matrix.yml` L37 上游漂移 → 本地 4 格验证绿 → `git push`（当前领先 origin **88** 提交）→ CI 首跑即绿。
-- **落点已由 D-05 修订**（2026-11-12 研究后裁决）：判据不变（四格绿 + 不留红跑历史），但实现位置从 workflow 移到 `package.json` manifest —— peer 收紧为 exact `0.2.2-rc.1` 后 L37 一字不改即四格全绿。见 **D-05**。
-- **约束继承（Phase 02 用户裁决，不得违反）**：
-  - `--force` 可用（两向探针实测绿）；
-  - **`--legacy-peer-deps` 禁用**（跳过 host peer → 缺 `dsh-app-boot` → probe exit 1 `cannot resolve the DSH host boot module`）；
-  - 上界陷阱：`<0.2.2-rc.2-0` **排除不了** rc.2（rc.2 < rc.2-0）；
-  - 候选方案 = exact peer 或 `<0.2.2-rc.2`。
-- 判据：push 后 Actions 首次 run 全绿，**不留红跑历史**。
-
-### D-04 CHANGELOG + GitHub Release 纳入
-
-- **CHANGELOG**：本 phase 成文 —— `CHANGELOG.md`（Keep a Changelog 形态），首条目对应 `1.20.1-1.dsh022`。
-- **GitHub Release**：随发布动作在 Phase 5 执行（需要 tag + 已发布版本）；本 phase 只准备 tag 策略与 release notes 草稿。
-- 两者都**不排除**，plan 中必须有落点（不能沉默跳过）。
-
-### D-05 D-03 落点修订：改 manifest（**两处，不是一处**），L37 零改动
-
-- **用户裁决（2026-11-12，研究后）**：D-03 的判据（四格绿 + 不留红跑历史）保持不变；**实现位置改为 manifest** —— `peerDependencies` 收紧为 **exact `0.2.2-rc.1`**。
-- **⚠ 纠偏（pattern-mapper 读源码实测，优先级高于本裁决的原始措辞）**：这**不是**"改一个 `package.json` 字符串"，而是**两处必须同时改**，只改一处会立刻红：
-  - `package.json:30` — `peerDependencies["@deepseek-ai/dsh-skill-filesystem"]`：`">=0.2.2-rc.1 <0.3.0-0"` → `"0.2.2-rc.1"`
-  - `build/assets/pins.json:12` — `lines.022.peer`：`"@deepseek-ai/dsh-skill-filesystem >=0.2.2-rc.1 <0.3.0-0"` → `"@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.1"`
-  - **执行依据**：`build/lib/check-pins.mjs` 步骤 (j) 断言 `` `${peerName} ${peerRange}` === line.peer ``，不等即 **exit 2**；`tests/compat-matrix.test.mjs` ⑥ 又 spawn `check-pins --offline` 要求 exit 0。只改一个文件 = 快速回路立刻红。
+- **D-05 — D-03 落点修订：改 manifest（两处，不是一处），L37 零改动**：判据不变，实现位置改为 `peerDependencies` 收紧为 exact `0.2.2-rc.1`。
+  - **⚠ 纠偏（pattern-mapper 读源码实测，优先级高于本裁决的原始措辞）**：这**不是**"改一个 `package.json` 字符串"，而是**两处必须同时改**，只改一处会立刻红：
+    - `package.json:30` — `peerDependencies["@deepseek-ai/dsh-skill-filesystem"]`：`">=0.2.2-rc.1 <0.3.0-0"` → `"0.2.2-rc.1"`
+    - `build/assets/pins.json:12` — `lines.022.peer`：`"@deepseek-ai/dsh-skill-filesystem >=0.2.2-rc.1 <0.3.0-0"` → `"@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.1"`
+    - **执行依据**：`build/lib/check-pins.mjs` 步骤 (j) 断言 `` `${peerName} ${peerRange}` === line.peer ``，不等即 **exit 2**；`tests/compat-matrix.test.mjs` ⑥ 又 spawn `check-pins --offline` 要求 exit 0。只改一个文件 = 快速回路立刻红。
   - **被收紧的 peer 是 `@deepseek-ai/dsh-skill-filesystem`，不是 `dsh`**（`peerDependencies` 里并没有 `dsh` 键）。本条早前草稿写的"`peerDependencies.dsh`"是笔误，以本段为准。
   - **不得连带改动的邻近值**：`engines.dsh`、`pins.json` 的 `lines.022.dshRange`、README 的版本窗口字符串是**另一组**字符串，由 `tests/docs-consistency.test.mjs` 的 ② 钉住，动了就红。
-- **实测依据**（见 `03-RESEARCH.md`）：该变体 656 包全树 dedupe 到 `0.2.2-rc.1`，四格 install/probe 全 exit 0，`.github/workflows/compat-matrix.yml` 的 L37 **零改动**。
-- **拒绝的变体**：
-  - `--force`：probe 虽绿，但根上解出 `skill-filesystem@0.2.2-rc.2`（706 包、三份并存）= **绿在错误树上**。仅作最后手段，且必须配正向断言。
-  - C 变体（L37 追加显式 pin）：同样实测全绿，但只护 CI、不护用户侧。备案为 fallback，不采用。
-- **登记维护义务（不得省略）**：`<0.2.2-rc.2` 在 semver 上**同时排除 0.2.2 正式版**（实测 `satisfies('0.2.2', '>=0.2.2-rc.1 <0.2.2-rc.2') === false`）。采用 exact peer 后，rc.2 转正或 0.2.2 正式发布时**必须**同步抬 peer —— 写入 `CHANGELOG` 与 Phase 5 移交清单。
-- **`engines.dsh` 与 peer 的分工（planner 必须写明，防执行者"顺手对齐"）**：`engines.dsh` 保持 `>=0.2.2-rc.1 <0.3.0-0` **不随之收紧**，它面向用户的友好报错与 `--allow-version`；`peerDependencies.dsh` 是 npm 解析层。两者职责不同，取值不同是**有意为之**，不是不一致。
+  - **实测依据**（见 `03-RESEARCH.md`）：该变体 656 包全树 dedupe 到 `0.2.2-rc.1`，四格 install/probe 全 exit 0，`.github/workflows/compat-matrix.yml` 的 L37 **零改动**。
+  - **拒绝的变体**：
+    - `--force`：probe 虽绿，但根上解出 `skill-filesystem@0.2.2-rc.2`（706 包、三份并存）= **绿在错误树上**。仅作最后手段，且必须配正向断言。
+    - C 变体（L37 追加显式 pin）：同样实测全绿，但只护 CI、不护用户侧。备案为 fallback，不采用。
+  - **登记维护义务（不得省略）**：`<0.2.2-rc.2` 在 semver 上**同时排除 0.2.2 正式版**（实测 `satisfies('0.2.2', '>=0.2.2-rc.1 <0.2.2-rc.2') === false`）。采用 exact peer 后，rc.2 转正或 0.2.2 正式发布时**必须**同步抬 peer —— 写入 `CHANGELOG` 与 Phase 5 移交清单。
+  - **`engines.dsh` 与 peer 的分工（planner 必须写明，防执行者"顺手对齐"）**：`engines.dsh` 保持 `>=0.2.2-rc.1 <0.3.0-0` **不随之收紧**，它面向用户的友好报错与 `--allow-version`；`peerDependencies["@deepseek-ai/dsh-skill-filesystem"]` 是 npm 解析层。两者职责不同，取值不同是**有意为之**，不是不一致。
 
-### D-06 SC-3 口径：README 补无版本示例
+- **D-06 — SC-3 口径：README 补无版本示例**：catalog 卡片的 install 命令是运行时生成、不带版本号的，与 README 的 pinned 命令字面不同（见 `03-RESEARCH.md`）。
+  - **用户裁决（2026-11-12）**：README 增一处**无版本示例**；catalog 生成的是 `dsh plugin --profile web add dsh-gsd`，README 规范命令是 pinned 的 `dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022`。
+  - **落地方式**：新增的**无版本示例**须明确标注"catalog 卡片生成的形式"，既有 pinned 命令**一字不动**；提交材料逐字引用这个无版本串，从而满足 SC-3 的"逐字一致"。**不得**为对齐而删改既有 pinned 命令。
+  - **硬移交项（Phase 5，不得省略）**：`npm publish` 时必须让 `dist-tags.latest` 指向首发版本，否则卡片生成的无版本命令会 404。
 
-- **用户裁决（2026-11-12）**：catalog 卡片的 install 命令是**运行时生成、不带版本号**的 `dsh plugin --profile web add dsh-gsd`；而 README 的规范命令是 pinned 的 `dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022`。二者字面不同（见 `03-RESEARCH.md`）。
-- **落地方式**：在 README 增一处**无版本示例**（明确标注"catalog 卡片生成的形式"），既有 pinned 命令**一字不动**；提交材料逐字引用这个无版本串，从而满足 SC-3 的"逐字一致"。**不得**为对齐而删改既有 pinned 命令。
-- **硬移交项（Phase 5，不得省略）**：`npm publish` 时必须让 `dist-tags.latest` 指向首发版本，否则卡片生成的无版本命令会 404。
+- **D-07 — dshmarket 条目 icon 留空**：本 phase **不**给 catalog 条目配 `icon` 字段，也不新增位图资源。
+  - **原因**：catalog 的 `icon` 只接受 GitHub 托管的**位图**，SVG 明确被拒；本仓只有 `icon.svg`。留空时 catalog 回退默认图/作者头像。
+  - **两个消费方不同，不要混同**：`package.json` 的 `icon` 字段与 `exports["./icon"]` 服务的是 DSH 插件管理器（INST-06），与 catalog 无关。
+  - **不做**：不新增 PNG 资源；**尤其不要**把 PNG 加进 `package.json` 的 `files`（会触发 pack 测试的 `ALLOWED_TOP_LEVEL` 白名单红）。
 
-### D-07 dshmarket 条目 icon 留空
-
-- **用户裁决（2026-11-12）**：本 phase **不**给 catalog 条目配 `icon` 字段。
-- **原因**：catalog 的 `icon` 只接受 GitHub 托管的**位图**，SVG 明确被拒；本仓只有 `icon.svg`。留空时 catalog 回退默认图/作者头像。注意 `package.json` 的 `icon` 字段与 `exports["./icon"]` 服务的是 DSH 插件管理器（INST-06），与 catalog 无关，**不是同一个消费方**。
-- **不做**：不新增 PNG 资源；**尤其不要**把 PNG 加进 `package.json` 的 `files`（会触发 pack 测试的 `ALLOWED_TOP_LEVEL` 白名单红）。
-
-### D-08 workflow 两项加固纳入
-
-- **用户裁决（2026-11-12）**：`compat-matrix.yml` 在**同一次改动**里做完两项：
-  1. 补 `permissions: { contents: read }` —— 当前整个文件**没有** `permissions:` 块，`GITHUB_TOKEN` 取仓库默认权限，属最小权限化缺口。
-  2. 在既有 install+probe 的 `run: |` 块内补「解析结果 == `${{ matrix.dsh }}`」的**正向断言** —— 已点名于 Phase 2 的 `02-REVIEW.md`，且能封堵 `--force` 式假绿。
-- **约束**：见下方"落地形态"。注：D-05 已使 L37 本身零改动，因此本条 diff 是**纯增量**（新增 permissions 块 + 在既有 run 块内追加断言行），不是修复。
-- **⚠ 落地形态（pattern-mapper 读测试源码实测，必须遵守，否则首跑即红）**：
-  - 断言**必须写在既有的 `run: |` 块内部**，**绝不能新开一个 `run:` 步骤**。原因：`tests/compat-matrix.test.mjs:106-123` 的 `isGate()` 要求每个 `run:` 的**上一行**是 `if:`，且该行须同时含 `inputs.dsh` / `matrix.dsh` / `inputs.gsd` / `matrix.gsd` 四串；另有 `runIndexes.length >= 3`。
-  - 断言**必须用 `expect == install-ok` 作为门**。reject 格里根 peer 被声明为 exact `0.2.2-rc.1`，根层解析结果极可能 ≠ `matrix.dsh`（0.2.1-rc.5）；无条件断言会让**首次 CI run 就红**，直接违反 SC-5「无红跑历史」。
-  - 加 `permissions:` 块**是安全的**：它把 L37 推到 L39，但没有任何测试硬编码 workflow 行号。
-  - **本项不需要改任何测试**（与 D-08 早前草稿的说法相反，以此为准）。只需避开两个相邻陷阱：② 的 `CELL_RE` 与 `pins.matrix` 双向集合相等断言（`tests/compat-matrix.test.mjs:21-25`、`:41-53`）—— 即**不要动 matrix 的四行**；⑤ 的 `assert.ok(!readWF().includes('dsh plugin add'))`（`:90-92`）—— **任何注释或 echo 都不得出现 `dsh plugin add` 这个字面串**。
+- **D-08 — workflow 两项加固纳入**：`compat-matrix.yml` 在**同一次改动**里做完 permissions 与门控正向断言两项。
+  - **用户裁决（2026-11-12）**：
+    - 补 `permissions: { contents: read }` —— 当前整个文件**没有** `permissions:` 块，`GITHUB_TOKEN` 取仓库默认权限，属最小权限化缺口。
+    - 在既有 install+probe 的 `run: |` 块内补「解析结果 == `${{ matrix.dsh }}`」的**正向断言** —— 已点名于 Phase 2 的 `02-REVIEW.md`，且能封堵 `--force` 式假绿。
+  - **约束**：见下方"落地形态"。注：D-05 已使 L37 本身零改动，因此本条 diff 是**纯增量**（新增 permissions 块 + 在既有 run 块内追加断言行），不是修复。
+  - **⚠ 落地形态（pattern-mapper 读测试源码实测，必须遵守，否则首跑即红）**：
+    - 断言**必须写在既有的 `run: |` 块内部**，**绝不能新开一个 `run:` 步骤**。原因：`tests/compat-matrix.test.mjs:106-123` 的 `isGate()` 要求每个 `run:` 的**上一行**是 `if:`，且该行须同时含 `inputs.dsh` / `matrix.dsh` / `inputs.gsd` / `matrix.gsd` 四串；另有 `runIndexes.length >= 3`。
+    - 断言**必须用 `expect == install-ok` 作为门**，且门的写法必须是 canonical 形态 `if [ "${{ matrix.expect }}" = "install-ok" ]; then`（`!=` / `&&` / `||` / 多余操作数一律不行）。reject 格里根 peer 被声明为 exact `0.2.2-rc.1`，根层解析结果极可能 ≠ `matrix.dsh`（0.2.1-rc.5）；无条件断言会让**首次 CI run 就红**，直接违反 SC-5「无红跑历史」。
+    - 加 `permissions:` 块**是安全的**：它把 L37 推到 L39，但没有任何测试硬编码 workflow 行号。
+    - **本项不需要改任何测试**（与 D-08 早前草稿的说法相反，以此为准）。只需避开两个相邻陷阱：② 的 `CELL_RE` 与 `pins.matrix` 双向集合相等断言（`tests/compat-matrix.test.mjs:21-25`、`:41-53`）—— 即**不要动 matrix 的四行**；⑤ 的 `assert.ok(!readWF().includes('dsh plugin add'))`（`:90-92`）—— **任何注释或 echo 都不得出现 `dsh plugin add` 这个字面串**。
 
 ### Claude's Discretion
 
