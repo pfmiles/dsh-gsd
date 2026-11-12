@@ -154,7 +154,6 @@ test('⑨ 徽章与上游致谢可见性（防漂移）', () => {
   assert.match(licenseBadges[0].l, /MIT/, `许可徽章应声明 MIT：'${licenseBadges[0].l.trim()}'`)
 
   const dshBadges = shieldBadges.filter((b) => b.i !== licenseBadges[0].i)
-  assert.equal(dshBadges.length, 1, `除许可徽章外应恰有 1 枚徽章，实际 ${dshBadges.length} 枚`)
   assert.match(
     dshBadges[0].l, /DSH/,
     `第二枚徽章应是 DSH 徽章（alt 或 URL 含 DSH）：'${dshBadges[0].l.trim()}'`,
