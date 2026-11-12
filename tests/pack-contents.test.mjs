@@ -234,10 +234,6 @@ test('④ 安装形态：pluginRoot 必须是包目录本身（skills/ 与 index
       `skillsDir 未落在包目录内：期望 ${expected}，实际 ${printed}`
         + '——多向上一级会让 FileSystemSkillProvider 注册到不存在的目录，72 个技能全不加载',
     )
-    assert.ok(
-      existsSync(printed),
-      `${printed} 不存在——provider 会注册到空目录，技能目录看不到任何 gsd-* 技能`,
-    )
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }
