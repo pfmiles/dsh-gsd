@@ -28,11 +28,11 @@ Total Plans in Phase: 3
 Status: Ready to plan
 Last activity: 2026-11-12 — Phase 01 complete, transitioned to Phase 3
 
-Progress: ████░░░░░░ [████░░░░░░] 40%
+Progress: [████████████████████] 6/6 plans (100%) — 2/5 phases (40%)
 
 ## Current Focus
 
-Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 CONTEXT.md）。Phase 2 已 100% 完成：3/3 plans 执行（compat 矩阵/版本方案/验证实例 gate）+ Nyquist COMPLIANT + SECURE（threats_open 0）+ code-review 0/4/3（4 warning 留档 open）+ verifier 13/13（13 truths VERIFIED）→ status passed → phase.complete。遗留追踪：WR-01..04/IN-01..03 开放发现、ROADMAP Requirements 行 `VER-01..04` 区间形式未被追溯展开（DEV-03 已归一）——由 /gsd-progress 追踪。
+Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 CONTEXT.md）。2026-11-12 复核：Phase 01 verification 已完成 stale→passed 续跑（VERIFICATION 14/14，digest ab8770cb；Nyquist/SECURE/UI 三钩子复审全绿；code-review 重审 clean），phase.complete 再确认。Phase 02 完成态不变（3/3 plans + 13/13 + 全修复），唯其 VERIFICATION 同为 stale（review-fix 触碰 covered files）——建议入 Phase 3 规划前或并行补跑 `/gsd-execute-phase 02`。其余遗留（WR-01..04/IN-01..03 已全 fixed、REQUIREMENTS 追溯行缺省）由 /gsd-progress 追踪。
 
 ## Key Decisions（已锁定）
 
@@ -55,6 +55,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Progress Log
 
+- 2026-11-12 verification 续跑（Phase 01）：review-fix（384b72a 及 02 修复序列）触碰 01/02 的 covered files 致两阶段 verification stale；/gsd-execute-phase 01 走 #4682 复用产物路径——verify:post 三钩子（Nyquist validate 复审 0 gap `ff645cb`、SECURE 复审 threats_open 0 `48cb443`、UI audit 全 N/A `71759eb`）→ code-review 重审 HEAD clean 0 findings（前 6 findings 保持已修 `51ee48c`）→ verifier 全量 live 复验 14/14 passed（新 digest ab8770cb）→ phase.complete（`4d18d11`，STATE 推进至 Phase 3）。Phase 02 的 stale 待同法续跑（/gsd-execute-phase 02）
 - 2026-11-10 bootstrapping：`.planning/` 由主会话按 GSD 模板生成；GSD 流程随后移交 3091 验证实例驱动
 - 2026-11-10 planning（3091 实例）：Phase 1 经 PRD express path 跳过 discuss → 轻量 research + pattern map → 3 plans 产出并通过 plan-checker 两轮验证（1 blocker + 2 warnings 已修，0 剩余）；需求覆盖 4/4（SKIL-03/04、INST-02、DEV-03）；决策覆盖门 skipped（无 D-ID）
 - 2026-11-10 execution 01-01（3091 实例）：staging 取源管线完成（commits ebf35b4 + 0305b6e）——npm tarball 主链 + 离线三档 + 双 gate + exit 0/1/2 + THIRD-PARTY-NOTICES；3 处 1.20.1 形态差内联适配（gate A 双锚、gate B 三段式、① 档双哈希）记入 01-01-SUMMARY；SKIL-03/04 因共享 ID（01-02/01-03 同声明）按门未落 Complete
@@ -75,6 +76,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Decisions
 
+- [Phase 01]: 2026-11-12 续跑口径：stale→execute-phase 路由下 verify:post 钩子按各 skill 的 State A（audit existing）执行——既存 VALIDATION/SECURITY 复审并追加审计块而非重建；UI-REVIEW 对零 UI 面给 6-pillar 全 N/A 忠实结论（不虚构分数）；code-review 重审以 phase-01 key_files 为界（02 文件已有自属处置，排除），clean 0 findings；verifier 以旧 14 truths 为基线全量 live 复验（含负向矩阵），原 human_verification 由 01-UAT/verify-evidence 闭合不复发
 - [Phase 01]: 取源目标版本 = @opengsd/gsd-core@1.20.1（执行期 checkpoint 人类决策，2026-11-10；GSD_VERSION 默认值与全链判据落 1.20.1）
 - [Phase 01]: gate A（产物版本交叉校验）在 1.20.1 落为 gsd-core/VERSION + runtime-identity 引擎自报双锚（1.20.1 staged 树无 gsd-core/package.json，1.16.0 有；预 gate ③ 已 pin tarball package.json version）
 - [Phase 01]: gate B 三段式：staging 根前缀（4 树）+ 本机 homedir 前缀残留（4 树）+ /Users|home 字面正则（仅 skills 树=SKIL-04 字面范围）；upstream 1.20.1 的 8 处叙述例径属可移植内容不拒
@@ -99,6 +101,6 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Session
 
-**Last session:** 2026-11-12T02:55:00+08:00
+**Last session:** 2026-11-12T11:55:00+08:00
 **Stopped at:** Phase 01 complete, ready to plan Phase 3
 **Resume file:** None
