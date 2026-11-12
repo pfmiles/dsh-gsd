@@ -5,6 +5,9 @@
 // ③ README/BUILD 全部 dsh-gsd@ 示例 parseVersion 合法；④ 迁移前旧编码零出现；
 // ⑤ refuse-by-design：range/tag 安装规格零出现；⑥ Pitfall 7 哨兵（version 已迁新方案
 // 且 private 未发布前仍 true）；⑦ allow-version 风险声明双语存在。
+// ⑧⑨⑩：CHANGELOG 首条目/小节闭集、徽章与致谢、INST-06 插件管理器元数据。
+// ⑪⑫（G-2）：dshmarket 条目 schema 与裸名 install 串逐字一致性；⑬（R-1）：
+// manifest 六个元数据键的全等守卫。catalog 条目亦走行级正则，不引入 YAML 依赖。
 // 版本号解析只消费 build/lib/check-pins.mjs 导出（单一真值，02-PATTERNS key_link）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -158,4 +161,134 @@ test('⑩ INST-06 插件管理器元数据合规（locale 双语键 + icon 双�
   assert.equal(pkg.exports['./icon'], './icon.svg', 'exports["./icon"] 缺失或指向漂移（INST-06 第二通道）')
   assert.ok(pkg.files.includes('locale'), 'files 未收录 locale/ ⇒ 宿主静默降级为技术名与英文兜底')
   assert.ok(pkg.files.includes('icon.svg'), 'files 未收录 icon.svg ⇒ 宿主静默降级为默认头像')
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G-2（PUB-03）与 R-1（PUB-03 npm 元数据面）：03-VALIDATION 的两个 Nyquist 缺口。
+// 零 YAML 依赖——catalog 条目走行级正则自检（`js-yaml` 有意不引入）。
+// ─────────────────────────────────────────────────────────────────────────────
+
+// catalog 的 23 类闭集（目标仓 schema 的词表；与 03-02 Task 2 的一次性自检同源）。
+const DSHMARKET_CATEGORIES = [
+  'agi', 'ui', 'usage', 'theme', 'model', 'identity', 'session', 'memory', 'tools', 'wsl',
+  'browser', 'vision', 'voice', 'docs', 'skill', 'workflow', 'git', 'notify', 'dev',
+  'security', 'remote', 'market', 'fun',
+]
+
+const DSHMARKET_ENTRY = 'docs/dshmarket/pfmiles__dsh-gsd.yml'
+const DSHMARKET_README = 'docs/dshmarket/README.md'
+
+// 去掉单/双引号包裹（YAML 标量的最小可用子集；不追求完整 YAML 语义）。
+const unquote = (s) => {
+  const t = s.trim()
+  const q = /^(['"])([\s\S]*)\1$/.exec(t)
+  return q ? q[2] : t
+}
+
+test('⑪ G-2 dshmarket 条目 schema（4 顶层键 / category 闭集 / 双语 description 句末标点）', () => {
+  const entry = read(DSHMARKET_ENTRY)
+
+  // 顶层键：恰 4 个且集合/顺序精确——多键（含 `icon`）、少键、键名漂移都红。
+  const keys = [...entry.matchAll(/^([A-Za-z][\w-]*):/gm)].map((x) => x[1])
+  assert.deepEqual(
+    keys,
+    ['url', 'name', 'category', 'description'],
+    `顶层键应恰为 url/name/category/description 四项，实际 [${keys.join(', ')}]`,
+  )
+  assert.equal(keys.length, 4, `顶层键数量应恰 4，实际 ${keys.length}`)
+  assert.ok(!/^icon:/m.test(entry), 'dshmarket 条目出现 icon 顶层键（目标仓 schema 无此字段，恒为宿主派生）')
+
+  // 标量叶子（行级正则，不经 YAML 解析）。
+  const scalar = (k) => {
+    const mm = new RegExp(`^${k}:\\s*(.+)$`, 'm').exec(entry)
+    assert.ok(mm, `dshmarket 条目缺 ${k} 标量`)
+    return unquote(mm[1])
+  }
+  assert.equal(scalar('url'), 'https://github.com/pfmiles/dsh-gsd', 'url 与目标仓库地址漂移')
+  assert.equal(scalar('name'), 'pfmiles/dsh-gsd', 'name 与 slug（pfmiles__dsh-gsd.yml / slugFor(url)）漂移')
+
+  const category = scalar('category')
+  assert.equal(category, 'workflow', `category 应为 workflow，实际 '${category}'`)
+  assert.ok(
+    DSHMARKET_CATEGORIES.includes(category),
+    `category '${category}' 不在 23 类闭集内（新类目须先改目标仓 schema）`,
+  )
+  assert.equal(DSHMARKET_CATEGORIES.length, 23, 'catalog 类目闭集本应是 23 项')
+
+  // description.{en,zh}：非空 + 句末标点（en 用 '.'，zh 用 '。'）。
+  const descStart = entry.search(/^description:\s*$/m)
+  assert.ok(descStart >= 0, 'dshmarket 条目缺 description: 块')
+  const descBody = entry.slice(descStart).split('\n').slice(1).filter((l) => /^\s+\S/.test(l))
+  const leaf = (k) => {
+    const hit = descBody.map((l) => new RegExp(`^\\s+${k}:\\s*(.+)$`).exec(l)).find(Boolean)
+    assert.ok(hit, `description 缺 ${k} 叶子`)
+    return unquote(hit[1])
+  }
+  const en = leaf('en')
+  const zh = leaf('zh')
+  assert.ok(en.trim().length > 0, 'description.en 为空')
+  assert.ok(en.trim().endsWith('.'), `description.en 未以句号结尾：…${en.slice(-24)}`)
+  assert.ok(zh.trim().length > 0, 'description.zh 为空')
+  assert.ok(zh.trim().endsWith('。'), `description.zh 未以句号结尾：…${zh.slice(-24)}`)
+})
+
+test('⑫ G-2 裸名 install 串逐字一致（README 整行 2 次 / dshmarket ≥1 次 / 与 README byte 相等）', () => {
+  const NAKED_INSTALL = 'dsh plugin --profile web add dsh-gsd'
+  // 命中面 = trim 后整行相等（缩进/尾随空格的「近似行」仍会被选中，随后由 byte 断言否决）。
+  const hits = (s) => s.split('\n').filter((l) => l.trim() === NAKED_INSTALL)
+  const readmeHits = hits(readme)
+  const marketHits = hits(read(DSHMARKET_README))
+
+  assert.equal(
+    readmeHits.length, 2,
+    `README.md 的裸名 install 整行应恰 2 行（zh + en 两半各一），实际 ${readmeHits.length}`,
+  )
+  assert.ok(
+    marketHits.length >= 1,
+    `docs/dshmarket/README.md 的裸名 install 整行应 ≥1 行，实际 ${marketHits.length}`,
+  )
+  // byte 相等：README 每行必须逐字节等于 canonical 文本，docs 副本再与 README 副本对齐。
+  for (const hit of readmeHits) {
+    assert.equal(hit, NAKED_INSTALL, `README.md 的裸名 install 行与 canonical 文本不 byte 相等：'${hit}'`)
+  }
+  for (const hit of marketHits) {
+    assert.equal(
+      hit, readmeHits[0],
+      `docs/dshmarket/README.md 的裸名 install 行与 README 副本不 byte 相等：'${hit}' vs '${readmeHits[0]}'`,
+    )
+  }
+  assert.ok(
+    !readme.includes('dsh-gsd@latest'),
+    "README.md 含 'dsh-gsd@latest'（refuse-by-design：裸名命令不带 tag）",
+  )
+})
+
+test('⑬ R-1 manifest 元数据守卫（repository/homepage/bugs/keywords/author/publishConfig）', () => {
+  assert.deepEqual(
+    pkg.repository,
+    { type: 'git', url: 'git+https://github.com/pfmiles/dsh-gsd.git' },
+    'package.json repository 漂移（npm 页面的源码链接与 dshmarket 审阅入口依赖它）',
+  )
+  assert.equal(
+    pkg.homepage,
+    'https://github.com/pfmiles/dsh-gsd#readme',
+    'package.json homepage 漂移',
+  )
+  assert.deepEqual(
+    pkg.bugs,
+    { url: 'https://github.com/pfmiles/dsh-gsd/issues' },
+    'package.json bugs 漂移',
+  )
+  assert.deepEqual(
+    pkg.keywords,
+    ['deepseek', 'harness', 'dsh', 'dsh-plugin', 'gsd', 'skills', 'workflow'],
+    'package.json keywords 与 7 项闭集漂移（改词表须同步 Phase 5 的 catalog 检索口径）',
+  )
+  assert.equal(pkg.keywords.length, 7, `keywords 应恰 7 项，实际 ${pkg.keywords.length}`)
+  assert.equal(pkg.author, 'pf_miles', 'package.json author 漂移')
+  assert.deepEqual(
+    pkg.publishConfig,
+    { registry: 'https://registry.npmjs.org/' },
+    'package.json publishConfig 丢失或漂移 ⇒ 发布会落到本机默认只读镜像（registry.npmmirror.com）而非 npmjs',
+  )
 })

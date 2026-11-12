@@ -1,8 +1,10 @@
 // tests/compat-matrix.test.mjs — 02-01 Task 2 静态防线（VER-03 静态面 + VER-02
 // pin 对齐面）：workflow 存在性 ① / 矩阵格集合恰等于 pins.json 笛卡尔积 ② /
 // expect 列与支持窗一致 ③ / 选项 A 路径哨兵 ④ / 编排哨兵 ⑤ /
-// check-pins --offline 消费 ⑥ / workflow_dispatch inputs 消费面哨兵 ⑦。
-// 零 YAML 依赖——全字符串/JSON 断言（断言面按 02-01-PLAN Task 2 action ①-⑦）。
+// check-pins --offline 消费 ⑥ / workflow_dispatch inputs 消费面哨兵 ⑦ /
+// 门控形态守卫 ⑧（G-1，03-VALIDATION 的 Nyquist 缺口）。
+// 零 YAML 依赖——全字符串/JSON 断言（断言面按 02-01-PLAN Task 2 action ①-⑦，
+// ⑧ 按 03-VALIDATION G-1 补测）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -120,4 +122,100 @@ test('⑦ workflow_dispatch inputs 消费面哨兵（inputs ∩ matrix 条件门
       `run step at line ${i + 1} is not gated by an inputs ∩ matrix if: on the previous line — previous: '${(lines[i - 1] || '').trim()}'`,
     )
   }
+})
+
+// ⑧ 门控形态守卫（G-1）：探针 `run: |` 块内「解析树 == matrix.dsh」断言必须被
+//    canonical 门行 `if [ "${{ matrix.expect }}" = "install-ok" ]; then` 门控。
+//    理由是实测的：reject 两格根解析到 manifest exact peer 占位的 0.2.2-rc.1，
+//    无条件断言 ⇒ 首跑即红（直违 SC-5 无红跑历史）。本仓史里「证明断言存在」的
+//    检查被 4 个连续变异（|| 形 / != 反写 / && 形 / brace 形 `[ … ] && { …; exit 2; }`）
+//    逐一绕过，直到门行被整行锚定才收敛——故此处：(1) 端到端锚定 canonical 门行
+//    （不接受任何尾随内容）；(2) `matrix.expect` 全文件恰 2 次（门 + 探针调用），
+//    杜绝第二处未门控用法；(3) 解析断言与 `exit 2` 各恰 1 条且都落在（门, 收口 fi）
+//    之间；(4) 逐个拒绝已知退化形态（含「门只在注释里」）。
+const GATE_RE = /^\s+if \[ "\$\{\{ matrix\.expect \}\}" = "install-ok" \]; then$/m
+const GATE_LINE_RE = /^\s+if \[ "\$\{\{ matrix\.expect \}\}" = "install-ok" \]; then$/
+
+test('⑧ G-1 门控形态守卫（canonical gate 端到端锚定，解析断言与 exit 2 在门内）', () => {
+  const y = readWF()
+  const lines = y.split('\n')
+
+  // (1) canonical 门行存在，且整行锚定——尾随 junk、`||`/`!=`/`&&`/brace 形均在此红。
+  const m = GATE_RE.exec(y)
+  assert.ok(
+    m,
+    'canonical 门行缺失或非整行锚定：期望 /^\\s+if \\[ "${{ matrix.expect }}" = "install-ok" \\]; then$/m '
+      + '（`||` / `!=` / `&&` / `[ … ] && { … }` 等退化形态一律不接受）',
+  )
+  const gateIdx = y.slice(0, m.index).split('\n').length - 1
+  const gateLine = lines[gateIdx]
+  assert.ok(!/^\s*#/.test(gateLine), `门行只出现在注释里（L${gateIdx + 1}）：'${gateLine}'`)
+
+  // 唯一性：全文件只允许一行「if [ … matrix.expect …」形态，防止旁路门。
+  const gateish = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => /^\s*if\s+\[/.test(l) && l.includes('matrix.expect'))
+  assert.equal(
+    gateish.length, 1,
+    `matrix.expect 门行应恰 1 行，实际 ${gateish.length} 行（L${gateish.map((g) => g.i + 1).join('/L')}）`,
+  )
+  assert.equal(gateish[0].i, gateIdx, '命中的 canonical 门行不是唯一的 matrix.expect 门行')
+
+  // (2) 全文件 `matrix.expect` 恰 2 次：门行 + 探针调用参数，无第二处未门控用法。
+  const expectUses = [...y.matchAll(/matrix\.expect/g)].length
+  assert.equal(
+    expectUses, 2,
+    `matrix.expect 应恰出现 2 次（门 + 探针调用），实际 ${expectUses} 次`
+      + `${expectUses > 2 ? '——疑似新增未门控用法' : ''}`,
+  )
+
+  // (3) 解析断言 + exit 2 各恰 1 条，且都在（门行, 收口 fi）之间。
+  const gateIndent = gateLine.match(/^\s*/)[0].length
+  const closingFi = lines.findIndex(
+    (l, i) => i > gateIdx && l.trim() === 'fi' && (l.match(/^\s*/)[0].length <= gateIndent),
+  )
+  assert.ok(
+    closingFi > gateIdx,
+    `门行 L${gateIdx + 1}（indent ${gateIndent}）之后找不到同层收口 fi`,
+  )
+
+  const resolveHits = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => l.includes("require.resolve('@deepseek-ai/dsh-skill-filesystem/package.json')"))
+  assert.equal(resolveHits.length, 1, `解析断言（require.resolve … package.json）应恰 1 条，实际 ${resolveHits.length} 条`)
+  assert.ok(
+    resolveHits[0].l.includes('RESOLVED'),
+    `解析断言行未绑定到 RESOLVED：'${resolveHits[0].l.trim()}'`,
+  )
+  assert.ok(
+    resolveHits[0].i > gateIdx && resolveHits[0].i < closingFi,
+    `解析断言在门控区外：L${resolveHits[0].i + 1} 不落在（L${gateIdx + 1}, L${closingFi + 1}）内`,
+  )
+
+  const exitHits = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => /^\s*exit 2\s*$/.test(l))
+  assert.equal(exitHits.length, 1, `exit 2 应恰 1 条（未门控的 exit 2 会让 reject 格红），实际 ${exitHits.length} 条`)
+  assert.ok(
+    exitHits[0].i > gateIdx && exitHits[0].i < closingFi,
+    `exit 2 被挪到门控区外：L${exitHits[0].i + 1} 不落在（L${gateIdx + 1}, L${closingFi + 1}）内`
+      + '——reject 格会解析失败并 exit 2，首跑即红',
+  )
+
+  // (4) 逐个拒绝已知退化形态（每个都给可区分的红消息）。
+  assert.ok(!gateLine.includes('||'), `门行含 '||'（fail-open 形态）：'${gateLine.trim()}'`)
+  assert.ok(!gateLine.includes('!='), `门行含 '!='（条件反写形态）：'${gateLine.trim()}'`)
+  assert.ok(!gateLine.includes('&&'), `门行含 '&&'（组合条件形态）：'${gateLine.trim()}'`)
+  assert.equal(
+    GATE_LINE_RE.exec(gateLine)?.[0], gateLine,
+    `门行未整行匹配 canonical 形态（尾随 junk）：'${gateLine}'`,
+  )
+  const braceForm = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => /^\s*if\s+\[.*\]\s*&&\s*\{/.test(l))
+  assert.equal(
+    braceForm.length, 0,
+    `出现 brace 形门（\`[ … ] && { …; exit 2; }\`，曾在「证明断言存在」检查下漏过）：`
+      + `L${braceForm.map((b) => b.i + 1).join('/L')}`,
+  )
 })
