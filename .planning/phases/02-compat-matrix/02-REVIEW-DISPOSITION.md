@@ -31,9 +31,21 @@ findings:
     severity: info
     disposition: fixed
     title: "check-pins registry 取样 spawnSync 无显式 timeout"
-open: 0
-total: 7
-recorded: 2026-11-11T19:21:43.159Z
+  - id: WR-05
+    severity: warning
+    disposition: open
+    title: "dispatch 输入零匹配时 4 格 × 6 步全 skip，run 不红——WR-03 的误导换了形态"
+  - id: WR-06
+    severity: warning
+    disposition: open
+    title: "pins.matrix.dsh 轴值未要求回溯 pins.lines——幽灵轴可静默通过"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "矩阵门哨兵 ⑦ 只断 token 存在，不断布尔语义，且未覆盖 uses 步"
+open: 3
+total: 10
+recorded: 2026-11-12T04:40:00.000Z
 ---
 
 # Phase 02: Code Review Disposition
@@ -47,6 +59,9 @@ recorded: 2026-11-11T19:21:43.159Z
 | IN-01 | info | fixed | 02-REVIEW-FIX.md |
 | IN-02 | info | fixed | 02-REVIEW-FIX.md |
 | IN-03 | info | fixed | 02-REVIEW-FIX.md |
+| WR-05 | warning | open | 02-REVIEW.md（HEAD 复审新增）· 与 02-SECURITY.md T-2-09 同一缺陷的独立双重发现 |
+| WR-06 | warning | open | 02-REVIEW.md（HEAD 复审新增） |
+| IN-04 | info | open | 02-REVIEW.md（HEAD 复审新增） |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
