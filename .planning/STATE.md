@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: 发布（GitHub + npm + dshmarket）
 current_plan: 3
-status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-11-12T11:13:54.036Z"
+status: verifying
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-11-12T12:40:00.000Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 03 plan 02 executed
-state_head: 0340e46e2483110b9ef4e13dfa73e432886045d1
+last_activity_desc: Phase 03 plan 03 executed (first push + CI first run green)
+state_head: 20e20c0283f764864474b7d6a2dfd48f22a0c6b9
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 40
 ---
 
@@ -22,19 +22,21 @@ progress:
 ## Current Position
 
 Phase: 03 (发布（GitHub + npm + dshmarket）) — EXECUTING
-Plan: 3 of 3
+Plan: 3 of 3 — COMPLETE
 Current Plan: 3
 Total Plans in Phase: 3
-Status: Ready to execute
-Last activity: 2026-11-12 — Phase 03 execution started
+Status: Phase complete — ready for verification
+Last activity: 2026-11-12 — 03-03 executed（首次 push + CI 首跑绿）
 
-Progress: [██████████████████░░] 8/9 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
+Progress: [████████████████████] 9/9 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
 
 ## Current Focus
 
+> **2026-11-12 执行 03-03 完成（本 phase 最后一个计划）**：push 前六项证据当场复跑（四格 4/4、三档构建、actionlint 0 findings、全量 32/32、zero-state、待推 106）→ Task 2 blocking-human 裁决 = **「先在一个临时仓库干跑一次，绿了再推」** → 探针私仓 `pfmiles/dsh-gsd-ci-probe` 同 SHA 跑绿（run 43218482632，1m36s）后删仓 → 真仓推送 `d3c8e89..20e20c0`（HTTPS + `gh` credential helper）→ Actions 史上第一跑 **`43218878911` / conclusion=success / total_count=1**（4 格 × 6 步全绿，run_attempt=1，无红跑历史）。**SC-5 成立；PUB-01 闭合。下一步 = `/gsd-verify-work 03`。** 通道现实：**SSH 不可用**（`~/.ssh/id_rsa` 非 `pfmiles` 账号有效 key，`Permission denied (publickey)`），`origin` 保持 SSH 未改写 ⇒ 后续推送须显式 HTTPS URL + credential helper，`origin/main` 跟踪 ref 不会自动更新（权威值用 `gh api …/commits/main`）。
+
 > **2026-11-12 执行 03-02 完成**：manifest 补 `repository`/`homepage`/`bugs`/`keywords`/`author` + `publishConfig.registry`（钉 npmjs.org）；README 顶部 MIT/DSH 徽章 + zh/en 各一条裸名示例 + 「当前状态」改 Phase 5；`CHANGELOG.md` 首条目 `1.20.1-1.dsh022`（不进 `files`）；`docs/dshmarket/` 5 字段条目 + 提交说明；⑧⑨⑩ 落盘后 `docs-consistency` **10/10**、全量串行 **32/32**（两次同值），`BUILD.md:16` 已写 32/32。**下一步 = 03-03（首次 push 与 CI 首绿）**。
 
-Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to plan**（`03-CONTEXT.md` 已落盘；四条裁决 **D-01..D-04**：License=**MIT**（PUB-04 的 Apache-2.0 作废）、**对外发布推迟到 Phase 5**（P3 只交"发布就绪"）、**先修 L37 再 push**、**CHANGELOG+Release 纳入**。REQUIREMENTS 的 PUB-01/PUB-03/PUB-04 与 ROADMAP Phase 3/5 已同步修订）。2026-11-12 复核：**Phase 01 与 Phase 02 的 verification 均已 stale→passed 续跑完毕**，无遗留 stale——Phase 01 14/14（digest ab8770cb）、Phase 02 13/13（digest fe299fa9，17 covered files），两轮均走 #4682 复用产物路径（Nyquist/SECURE/UI 三钩子 State A 复审 → code-review 重审 → regression gate → verifier）。**入 Phase 3 前须处理的上游漂移**：`@deepseek-ai/dsh-skill-filesystem@0.2.2-rc.2` / `dsh-fs@0.2.2-rc.2` 于 2026-11-12T01:54–02:00Z 发布，落入根 peer 开区间 `>=0.2.2-rc.1 <0.3.0-0` 与 rc.1 钉住的 bridge 链冲突，`compat-matrix.yml` L37 的无豁免 install 步会 4 格全 ERESOLVE（已用户裁决归档为已知漂移、移交 Phase 3 修复，`--force` 可用、`--legacy-peer-deps` 不可用）。其余遗留：3 条 known debt（WR-05 零匹配 dispatch 假绿 = 安全侧 T-2-09；WR-06 幽灵轴未回溯 pins.lines；IN-04 门哨兵断言偏弱）、REQUIREMENTS 追溯行缺省、本地 main 领先 origin 未推 —— 由 /gsd-progress 追踪。
+Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to plan**（`03-CONTEXT.md` 已落盘；四条裁决 **D-01..D-04**：License=**MIT**（PUB-04 的 Apache-2.0 作废）、**对外发布推迟到 Phase 5**（P3 只交"发布就绪"）、**先修 L37 再 push**、**CHANGELOG+Release 纳入**。REQUIREMENTS 的 PUB-01/PUB-03/PUB-04 与 ROADMAP Phase 3/5 已同步修订）。2026-11-12 复核：**Phase 01 与 Phase 02 的 verification 均已 stale→passed 续跑完毕**，无遗留 stale——Phase 01 14/14（digest ab8770cb）、Phase 02 13/13（digest fe299fa9，17 covered files），两轮均走 #4682 复用产物路径（Nyquist/SECURE/UI 三钩子 State A 复审 → code-review 重审 → regression gate → verifier）。**入 Phase 3 前须处理的上游漂移**：`@deepseek-ai/dsh-skill-filesystem@0.2.2-rc.2` / `dsh-fs@0.2.2-rc.2` 于 2026-11-12T01:54–02:00Z 发布，落入根 peer 开区间 `>=0.2.2-rc.1 <0.3.0-0` 与 rc.1 钉住的 bridge 链冲突，`compat-matrix.yml` L37 的无豁免 install 步会 4 格全 ERESOLVE（已用户裁决归档为已知漂移、移交 Phase 3 修复，`--force` 可用、`--legacy-peer-deps` 不可用）。其余遗留：3 条 known debt（WR-05 零匹配 dispatch 假绿 = 安全侧 T-2-09；WR-06 幽灵轴未回溯 pins.lines；IN-04 门哨兵断言偏弱）、REQUIREMENTS 追溯行缺省、本地 main 领先 origin 未推 —— 由 /gsd-progress 追踪。（2026-11-12 03-03 后：**「未推」已解除** —— main 已推送，远端 main = `20e20c0`；但 SSH 仍不可用，推送通道见 Current Focus 的 03-03 段。）
 
 ## Key Decisions（已锁定）
 
@@ -59,6 +61,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 
 ## Progress Log
 
+- 2026-11-12 execution 03-03（3091 实例）：**首次 push 与 CI 首绿完成**（推送 `d3c8e89..20e20c0`，run `43218878911` conclusion=success，`total_count` 0→1，无红跑历史）——Task 1 六项证据当场串行复跑（四格 4/4：install-ok 656 包 / reject 601 包；三档构建 1.20.1→1.19.0→默认 1.20.1，均 gates 全过 + `copied 76 trees`；actionlint 0 findings；全量 32/32 与 `BUILD.md:16` 等值；status 0 行 / 无 tgz / origin=SSH / `total_count`=0；待推 106）。Task 2 blocking-human 由人类裁决为 **「先在一个临时仓库干跑一次，绿了再推」**；执行期发现三层阻塞：① **SSH 不可用**（`~/.ssh/id_rsa` 非 `pfmiles` 有效 key；`PubkeyAcceptedAlgorithms` 三档算法均无效）② HTTPS 缺 `workflow` scope（人类执行 `gh auth refresh -s workflow -s delete_repo`）③ `osxkeychain` 提供旧 token（须 `git -c credential.helper= -c credential.helper='!gh auth git-credential'`）。探针私仓 `pfmiles/dsh-gsd-ci-probe` 同 SHA 跑绿（run 43218482632，1m36s）后删除（API 404）；真仓只推一次、只有一条 run（`run_attempt=1`）。`origin` 保持 SSH **未改写**（仍不可用；`origin/main` 跟踪 ref 停在 `d3c8e89`，权威远端 sha 用 `gh api`）。PUB-01 闭合；本 phase 3/3 计划完成，待 `/gsd-verify-work 03`。4 条 first-class 偏离 + 4 条记录性差异记入 03-03-SUMMARY
 - 2026-11-12 execution 03-02（3091 实例）：元数据与提交材料完成（commits 3f2c909 + 8d0e9c6 + f061bc0 + SUMMARY 0340e46）——package.json 纯新增 8 行（repository/homepage/bugs/keywords/author + publishConfig.registry，`git diff --numstat` = 8 0）；README 徽章/裸名示例/Phase 5 文案（`# dsh-gsd` 仍 2、裸名行 2、pin 示例 4、无 `dsh-gsd@latest`）；CHANGELOG 首条目 `1.20.1-1.dsh022`（Added×2 / Changed×2 / Fixed×1，未进 `files`）；docs/dshmarket 5 字段条目（category=workflow、无 icon）+ 提交说明；docs-consistency 追加 ⑧⑨⑩（10/10），全量串行 32/32 两次同值，BUILD.md:16 写 32/32。PUB-03 / PUB-04 / INST-06 落 Complete。0 auto-fixed、2 条记录性差异记入 SUMMARY；01-VERIFICATION / 02-VALIDATION / STATE 的历史 26/26 未改写
 - 2026-11-12 execution 03-01（3091 实例）：发布管线与 CI 首绿完成（commits 6ce5360 + 19911d1 + c304c76）——peer 收紧 exact `0.2.2-rc.1`（package.json + pins.json 同提交，workflow L37 零改动；副本内 npm 通道 656 包全树 dedupe、install-ok confirmed）、workflow 顶层 `permissions: {contents: read}` + install-ok 格门控正向解析断言（`run:` 行数仍 4，落位由 PLAN 自带命令机器证明并对 6 个退化变体 fail-closed）、`tests/pack-contents.test.mjs` 纯重命名纳管（100% similarity、0 行改动；全量 29/29）、真 tarball 958 文件在 profile `gsd-p3-release` 装成并 boot（引擎 1.20.1 / 72 skills / dump-config 两 id）。PUB-02 落 Complete；PUB-01 与 03-03 共享 ID，按共享门待 03-03 SUMMARY 后落 Complete。2 条记录性差异（workflow diff 10 行 vs 括注 6-8 行；`--force` 回退支路未触发）记入 SUMMARY
 - 2026-11-12 verification 续跑（Phase 02）：review-fix 七提交（55191da/6356ff4/88d213d/b2e351b/4fe265a/df81330/e8e9d73）触碰 02 的 covered files 致 stale；/gsd-execute-phase 02 走 #4682 复用产物路径（0 plan 重跑）——Nyquist validate State A 复审（26/26 + 17/17 现场复跑、计数 25→26 与 16→17 订正、12 项事实修正、上游漂移 ESCALATE `70e54e4`）→ secure-phase 复审（9 found / 8 closed / 1 open-non-blocking，新登记 T-2-09 `b0c11c5` + 步数订正 `84784f1`）→ ui-review 非 UI 判定维持、两门本次重测（`9cf7907`）→ code-review 重审 HEAD（7/7 前次发现全 resolved、0 regressed，突变实验验证；新发现 WR-05/WR-06/IN-04 `4e81517`）→ disposition 三条新发现入账 open（`e309703`）→ regression gate 26/26 exit 0（含 Phase 01 套件）→ verifier 13/13 passed（新 digest fe299fa9，17 covered files `b800db2`）→ phase.complete（next=Phase 3，`roadmap_updated: false` 属预期因 ROADMAP 早已 `[x]`）。**本轮最重要的产物 = 上游 registry 漂移发现**：四格 install 步在当前 HEAD 全 ERESOLVE，已复现、已用户裁决移交 Phase 3
@@ -82,6 +85,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 02 P02-03 | 86 | 2 tasks | 1 files |
 | Phase 03 P01 | 10 min | 3 tasks | 5 files |
 | Phase 03 P02 | 7min | 3 tasks | 7 files |
+| Phase 03 P03 | 9 min（Task 1）/~67 min（Task 2/3 线下） | 3 tasks | 4 files（SUMMARY + STATE + ROADMAP + REQUIREMENTS；产品面 0） |
 
 ## Decisions
 
@@ -120,8 +124,13 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 03]: D-06 落地：README zh/en 各补一条裸名示例 dsh plugin --profile web add dsh-gsd（market 卡片形态），pinned 命令 4 处逐字不动；docs/dshmarket 材料逐字引用裸名串，YAML 只留 5 字段、不承载 install 字段、无 icon。 — specCaptures 的 /dsh-gsd@(\S+)/g 对裸名零捕获，⑤ 不动；卡片命令由目标仓 CI 生成且不带版本号，SC-3 的逐字一致只能靠两侧同一行字面串 grep -F 证明；catalog 只收 GitHub 托管位图，本仓只有 icon.svg 会被拒。
 - [Phase 03]: 计数按实测收口：⑧ CHANGELOG 版本等值、⑨ 徽章与双语致谢、⑩ INST-06 元数据三条断言零依赖落盘后，两次独立串行全量均为 ℹ tests 32，BUILD.md:16 写 32/32（git diff 恰 1 增 1 删），算术 29+3 只作交叉核对；01-VERIFICATION/02-VALIDATION/STATE 的历史 26/26 未改写。 — 它们是被签名的审计结论，仓内惯例只追加带日期的前向注记；全仓唯一可改写的活体计数是 BUILD.md:16（⛔-E）。
 
+- [Phase 03]: 推送通道 = **HTTPS 显式 URL + `gh` credential helper**，`origin` 保持 SSH **不改写**（仍是 `git@github.com:pfmiles/dsh-gsd.git`，且在本机不可用）。 — SSH 实测不可用：`~/.ssh/id_rsa`（`SHA256:X6AR4nBc…`）被 GitHub `Server accepts key` 后仍 `Permission denied (publickey)`，`rsa-sha2-512/256/+ssh-rsa` 三档算法均无效 ⇒ key 非 `pfmiles` 账号有效 key。把 broken SSH 换成为 HTTPS+token 会把凭据通道固化进 `.git/config`，属更重的变更；代价是 `origin/main` 跟踪 ref 不随推送更新（停在 `d3c8e89`），**权威远端 sha 用 `gh api repos/pfmiles/dsh-gsd/commits/main`**。
+- [Phase 03]: `workflow` scope 与 `delete_repo` 由**人类**在 checkpoint 授权后执行 `gh auth refresh -h github.com -s workflow -s delete_repo` 追加（现 scope：`delete_repo, gist, read:org, repo, workflow`）。 — P-03-j 明令执行器不得自行 refresh（改 token = 对外动作）；缺 workflow scope 时 GitHub 拒绝创建/更新 `.github/workflows/*`。`delete_repo` 仅用于删除探针仓。
+- [Phase 03]: refresh 之后仍失败的原因不是 scope 而是 **stale `osxkeychain` 凭据**；成功形态固定为 `git -c credential.helper= -c credential.helper='!gh auth git-credential' push <https-url> main`。 — `credential.helper=osxkeychain` 把旧 token 顶在 gh 的新 token 之前；`gh auth status` 的 `Git operations protocol: ssh` 又让默认路径继续走坏掉的 SSH。清空 helper 链后只接 gh 的 helper 即通。
+- [Phase 03]: 首跑前增加**探针私仓干跑**（用户裁决「先在一个临时仓库干跑一次，绿了再推」）：`pfmiles/dsh-gsd-ci-probe` 推同一 SHA → run `43218482632` success（4 格全绿，1m36s）→ `gh repo delete --yes` → API 404。 — 用一次可删除的 run 换掉「真仓首跑变红」的不可逆风险；探针仓不留在任何公开历史上。真仓随后只推一次（`run_attempt=1`、`total_count=1`）。
+
 ## Session
 
-**Last session:** 2026-11-12T11:13:53.951Z
-**Stopped at:** Completed 03-02-PLAN.md
+**Last session:** 2026-11-12T12:40:00.000Z
+**Stopped at:** Completed 03-03-PLAN.md
 **Resume file:** None
