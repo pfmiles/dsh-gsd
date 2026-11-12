@@ -10,3 +10,7 @@
 # 工作流运行期草稿：init/hooks 载荷、wave 日志、verify-*.json。
 # 由工作流自行 mkdir -p 生成，docs-update 收尾即清理。
 /tmp/
+# 里程碑变更锁：state 步骤持有的运行期互斥文件，内容只有 {phase, session, pid,
+# updated_at}，随宿主进程生死、不可重建为任何持久信息。入库会让
+# 「工作树是否干净」这类 push 前置判据永久失真（03-03 Task 1 的干净树断言尤其依赖它）。
+/milestone.lock
