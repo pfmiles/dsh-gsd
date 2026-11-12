@@ -45,7 +45,8 @@
 
 ### D-03 先修 L37 再 push
 
-- 顺序锁定：修 `compat-matrix.yml` L37 上游漂移 → 本地 4 格验证绿 → `git push`（当前领先 origin **84** 提交）→ CI 首跑即绿。
+- 顺序锁定：修 `compat-matrix.yml` L37 上游漂移 → 本地 4 格验证绿 → `git push`（当前领先 origin **88** 提交）→ CI 首跑即绿。
+- **落点已由 D-05 修订**（2026-11-12 研究后裁决）：判据不变（四格绿 + 不留红跑历史），但实现位置从 workflow 移到 `package.json` manifest —— peer 收紧为 exact `0.2.2-rc.1` 后 L37 一字不改即四格全绿。见 **D-05**。
 - **约束继承（Phase 02 用户裁决，不得违反）**：
   - `--force` 可用（两向探针实测绿）；
   - **`--legacy-peer-deps` 禁用**（跳过 host peer → 缺 `dsh-app-boot` → probe exit 1 `cannot resolve the DSH host boot module`）；
@@ -59,15 +60,49 @@
 - **GitHub Release**：随发布动作在 Phase 5 执行（需要 tag + 已发布版本）；本 phase 只准备 tag 策略与 release notes 草稿。
 - 两者都**不排除**，plan 中必须有落点（不能沉默跳过）。
 
+### D-05 D-03 落点修订：改 manifest，L37 零改动
+
+- **用户裁决（2026-11-12，研究后）**：D-03 的判据（四格绿 + 不留红跑历史）保持不变；**实现位置改为 `package.json`** —— 根 `peerDependencies.dsh` 收紧为 **exact `"0.2.2-rc.1"`**。
+- **实测依据**（见 `03-RESEARCH.md`）：该变体 656 包全树 dedupe 到 `0.2.2-rc.1`，四格 install/probe 全 exit 0，`.github/workflows/compat-matrix.yml` 的 L37 **零改动**。
+- **拒绝的变体**：
+  - `--force`：probe 虽绿，但根上解出 `skill-filesystem@0.2.2-rc.2`（706 包、三份并存）= **绿在错误树上**。仅作最后手段，且必须配正向断言。
+  - C 变体（L37 追加显式 pin）：同样实测全绿，但只护 CI、不护用户侧。备案为 fallback，不采用。
+- **登记维护义务（不得省略）**：`<0.2.2-rc.2` 在 semver 上**同时排除 0.2.2 正式版**（实测 `satisfies('0.2.2', '>=0.2.2-rc.1 <0.2.2-rc.2') === false`）。采用 exact peer 后，rc.2 转正或 0.2.2 正式发布时**必须**同步抬 peer —— 写入 `CHANGELOG` 与 Phase 5 移交清单。
+- **`engines.dsh` 与 peer 的分工（planner 必须写明，防执行者"顺手对齐"）**：`engines.dsh` 保持 `>=0.2.2-rc.1 <0.3.0-0` **不随之收紧**，它面向用户的友好报错与 `--allow-version`；`peerDependencies.dsh` 是 npm 解析层。两者职责不同，取值不同是**有意为之**，不是不一致。
+
+### D-06 SC-3 口径：README 补无版本示例
+
+- **用户裁决（2026-11-12）**：catalog 卡片的 install 命令是**运行时生成、不带版本号**的 `dsh plugin --profile web add dsh-gsd`；而 README 的规范命令是 pinned 的 `dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022`。二者字面不同（见 `03-RESEARCH.md`）。
+- **落地方式**：在 README 增一处**无版本示例**（明确标注"catalog 卡片生成的形式"），既有 pinned 命令**一字不动**；提交材料逐字引用这个无版本串，从而满足 SC-3 的"逐字一致"。**不得**为对齐而删改既有 pinned 命令。
+- **硬移交项（Phase 5，不得省略）**：`npm publish` 时必须让 `dist-tags.latest` 指向首发版本，否则卡片生成的无版本命令会 404。
+
+### D-07 dshmarket 条目 icon 留空
+
+- **用户裁决（2026-11-12）**：本 phase **不**给 catalog 条目配 `icon` 字段。
+- **原因**：catalog 的 `icon` 只接受 GitHub 托管的**位图**，SVG 明确被拒；本仓只有 `icon.svg`。留空时 catalog 回退默认图/作者头像。注意 `package.json` 的 `icon` 字段与 `exports["./icon"]` 服务的是 DSH 插件管理器（INST-06），与 catalog 无关，**不是同一个消费方**。
+- **不做**：不新增 PNG 资源；**尤其不要**把 PNG 加进 `package.json` 的 `files`（会触发 pack 测试的 `ALLOWED_TOP_LEVEL` 白名单红）。
+
+### D-08 workflow 两项加固纳入
+
+- **用户裁决（2026-11-12）**：`compat-matrix.yml` 在**同一次改动**里做完两项：
+  1. 补 `permissions: { contents: read }` —— 当前整个文件**没有** `permissions:` 块，`GITHUB_TOKEN` 取仓库默认权限，属最小权限化缺口。
+  2. 在既有 install+probe 的 `run: |` 块内补「解析结果 == `${{ matrix.dsh }}`」的**正向断言** —— 已点名于 Phase 2 的 `02-REVIEW.md`，且能封堵 `--force` 式假绿。
+- **约束**：`tests/compat-matrix.test.mjs` 对 workflow 的行集合/顺序有断言（"⑦ gate-line constraint"）。改 workflow **必须同步改该测试**，两侧一次改完，否则快速回路直接红。
+- 注：D-05 已使 L37 本身零改动，因此本条 diff 是**纯增量**（新增 permissions 块 + 新增断言），不是修复。
+
 ### Claude's Discretion
 
-planner 研究后定夺、在 plan 中显式落成设计决策（不静默假设）：
+planner 定夺、在 plan 中显式落成设计决策（不静默假设）。**下列前三项已由研究结案，不再是自由裁量**，保留是为了记录"曾经在哪里悬空"：
 
-- **dshmarket 提交流程细节**（唯一确认的外部缺口）：PR 目标仓、必填字段、`category` 词表、审核周期、是否要求 npm 已发布或 GitHub stars。注意 `dshmarket` 本身是 npm 包（v1.73.18，"Visual plugin market inside DeepSeek Harness"），curated 清单与字段很可能直接在 tarball 内 —— 先解包读，再决定是否需要外部查证。
-- **INST-06 元数据合规的 schema 判定**：本地可查 —— DSH 装内含 `dsh-client-ui-plugin-manager`、`dsh-client-ui-plugin-market`、`dsh-client-ui-plugin-recommendations`、`@deepseek-ai/dsh-plugin-manager@0.1.6-alpha.2`；判定 `locale/{en,zh}.json` 的键位与 `icon.svg` 是否满足展示要求（现 en/zh 只有 `meta.title` + `meta.description`）。
-- **L37 豁免的具体形态**：exact peer vs `<0.2.2-rc.2`，以及是否同时收紧根 `peerDependencies`。
-- **package.json 元数据补全范围**：`private: true` 移除时点、`repository`/`homepage`/`bugs`/`keywords`/`author` 是否需要以及字段取值。
-- **pack 清单防线的纳管方式**：`tests/pending-phase-3/pack-contents.test.mjs`（3 个测试）移回 `tests/` glob 后，需同步 BUILD.md TL;DR、`02-VALIDATION.md` 与 `tests/docs-consistency.test.mjs` 的计数断言（26 → 29）。
+- ~~**dshmarket 提交流程细节**~~ → **已结案**，见 `03-RESEARCH.md`。目标仓 `awesome-dsh-plugin/awesome-dsh-plugin`；收录单位 = 单文件 `data/plugins/pfmiles__dsh-gsd.yml`；字段 `url`/`name`/`category`/`description.{en,zh}`，仅 `description.en` 必填；`category` 是闭合 23 值词表，`workflow` 合法；排序由 catalog 生成，提交物无排序字段；CI 四检（≤3 条/PR、`dsh.bundle` 存在、仓龄 ≥1 天、awesome-lint + site build）；**不要求 npm 已发布**。web 上的 `dshbase.com` / `awesome-dsh-plugin-2` 等均为矛盾源，已弃用。
+- ~~**INST-06 元数据合规的 schema 判定**~~ → **已结案**：**现状已合规，不要加字段**。契约取自 `dsh-plugin-manager@0.2.2-rc.1`（注意：不是 `0.1.6-alpha.2`，CONTEXT 此前的版本号已过期）的 `meta.title` / `meta.description`（string 或 `{en:…}`）+ `icon`。`locale/{en,zh}.json` 的双语 `meta.title`/`meta.description` 与 `package.json` 的 `icon` + `exports["./icon"]` 均已就位且在 pack 清单内。
+- ~~**L37 豁免的具体形态**~~ → **已结案为 D-05**（exact peer）。补充事实：`engines.dsh` **不**随之收紧；`--legacy-peer-deps` 永久禁用。
+
+仍属自由裁量（planner 必须在 plan 中显式落成）：
+
+- **package.json 元数据补全范围**：`repository`/`homepage`/`bugs`/`keywords`/`author` 哪些要补、取值如何；`publishConfig` 的 `registry`（本机默认指向 `registry.npmmirror.com`，必须钉 `https://registry.npmjs.org`）与 `tag`（prerelease 必须显式 tag，否则 `npm publish` 报错）。**`private: true` 在 Phase 3 保留不动**（D-02：本 phase 不发布）；同时注意 `npm publish --dry-run` 在 `private: true` 下**照样通过**，它不是可发布性的判据。
+- **pack 清单防线的纳管方式**：`tests/pending-phase-3/pack-contents.test.mjs` 必须**移到 `tests/pack-contents.test.mjs`** —— 现址的 `ROOT` 解析到 `tests/`，实测 `ENOENT tests/package.json`，这个测试**现在跑不起来**（研究前记录的"3/3 绿"只在 ROOT 被覆盖时成立）。计数同步范围已收窄：仓内**唯一活体计数**是 `BUILD.md:16` 的 26/26 → 29/29；`tests/docs-consistency.test.mjs` **没有**计数断言（此前判断有误）；`02-VALIDATION.md` 的 26/26 是历史审计记录，按仓内惯例**只追加带日期的前向注记，不改写历史**。
+- **CHANGELOG 是否进 npm 包**：默认**不进**（加进 `files` 会触发 pack 测试的 `ALLOWED_TOP_LEVEL` 红）。plan 需明确这一点，避免"补全发布面"时顺手把 `CHANGELOG.md` 塞进 `files`。
 </decisions>
 
 <canonical_refs>
@@ -77,23 +112,26 @@ planner 研究后定夺、在 plan 中显式落成设计决策（不静默假设
 
 ### 规划与需求
 - `.planning/ROADMAP.md` — Phase 3 goal / success criteria / requirements 指派（含 D-02 修订须在此落地）
-- `.planning/REQUIREMENTS.md` — PUB-01..04、INST-06 原文（PUB-04 有 U+0418 缺陷）
+- `.planning/REQUIREMENTS.md` — PUB-01..04、INST-06 原文（PUB-04 的 U+0418 已修）
 - `.planning/PROJECT.md` — 技术上下文、已决事项（命名、引擎嵌入、category=workflow）、约束
-- `.planning/STATE.md` — 已锁决策、上游漂移裁决、并发纪律、84 提交未推
+- `.planning/STATE.md` — 已锁决策、上游漂移裁决、并发纪律、88 提交未推
+- `.planning/phases/03-github-npm-dshmarket/03-RESEARCH.md` — **本研究阶段的唯一事实源**：dshmarket 全链、L37 根因与四变体实测、pack 面实测数字、GitHub/CI 现状
+- `.planning/phases/03-github-npm-dshmarket/03-VALIDATION.md` — 本 phase 的验证契约（由 RESEARCH 的 Validation Architecture 派生）
 
 ### 发布面现状
-- `package.json` — `private: true`、`license: MIT`、`version: 1.20.1-1.dsh022`、`files` 白名单、`prepack = build && test`、`engines.dsh`（直接改造对象）
+- `package.json` — `private: true`（D-02 下**保留**）、`license: MIT`、`version: 1.20.1-1.dsh022`、`files` 白名单、`prepack = build && test`、`engines.dsh`（**不收紧**）、`peerDependencies.dsh`（D-05 的改造对象：收紧为 exact `0.2.2-rc.1`）
 - `LICENSE` — MIT 全文（D-01 的落地物，不改）
-- `locale/en.json`、`locale/zh.json`、`icon.svg` — INST-06 元数据现状
-- `THIRD-PARTY-NOTICES.md` — 上游致谢（GSD MIT / DSH MIT / 第三方各自许可）
-- `README.md` — 安装/升级/回滚命令原文（Success Criterion 3 的"install 命令真实"的比对基准）
-- `CHANGELOG.md` — **不存在**，本 phase 新建
+- `locale/en.json`、`locale/zh.json`、`icon.svg` — INST-06 现状，**已合规**，不加字段
+- `THIRD-PARTY-NOTICES.md` — 上游致谢（GSD MIT / DSH MIT / 第三方各自许可）；README 的致谢段落应先查它是否已有等价内容，避免造第二处真源
+- `README.md` — 安装/升级/回滚命令原文（SC-3 的"install 命令真实"比对基准；D-06 要在此补一处**无版本**示例）
+- `CHANGELOG.md` — **不存在**，本 phase 新建；默认**不进** `files`
 
 ### 构建与 CI
-- `build.mjs` + `BUILD.md` — 构建四档 / gates / exit 0-1-2 / 计数现状
-- `.github/workflows/compat-matrix.yml` — L37 漂移修复点；4 格 × 六步结构
+- `build.mjs` + `BUILD.md` — 构建四档 / gates / exit 0-1-2 / 计数现状（`BUILD.md:16` 是仓内唯一活体计数 26/26）
+- `.github/workflows/compat-matrix.yml` — 4 格 × 六步结构。**L37 本身已由 D-05 免除改动**；本 phase 对它只有两类**纯增量**改动（D-08）：`permissions` 块 + install/probe 的解析正向断言
+- `tests/compat-matrix.test.mjs` — 对上述 workflow 的行集合/顺序有断言（"⑦ gate-line constraint"）；改 workflow 必须同步改它
 - `build/assets/pins.json` + `build/lib/check-pins.mjs` — 行↔pin 真源与校验入口
-- `tests/pending-phase-3/pack-contents.test.mjs` + 同目录 `README.md` — 待纳管的发布面防线
+- `tests/pending-phase-3/pack-contents.test.mjs` + 同目录 `README.md` — 待纳管的发布面防线；**必须移到 `tests/pack-contents.test.mjs`**，否则 `ROOT` 解析错层、测试根本跑不起来
 
 ### 背景
 - `SPIKE.md` — 宿主机制证据（bundle 声明、零安装脚本约束、pnpm 生命周期拦截）
@@ -105,17 +143,21 @@ planner 研究后定夺、在 plan 中显式落成设计决策（不静默假设
 
 ### 已查实的事实（planner 不必重查，但可复核）
 
-- **npm 名 `dsh-gsd` 未被占用**：`npm view dsh-gsd version` → `E404`（2026-11-12 实测）。
+- **npm 名 `dsh-gsd` 未被占用**：`npm view dsh-gsd version` → `E404`，`registry.npmjs.org` 与 `npmmirror` **双 404**（2026-11-12 实测）。
+- **抢注窗口是真实风险**：真发布在 Phase 5（D-02），中间窗口内若他人注册同名包，Phase 5 会失败且 `name` 不可改（三处同名是 PROJECT 已锁决策）。**移交义务**：Phase 5 发布前必须先重跑 `npm view dsh-gsd version --registry=https://registry.npmjs.org`，404 才继续；若已被占用，升级为用户决策（改名 vs 等待），不得擅自继续。
 - **`dshmarket` 是 npm 包**：`dshmarket@1.73.18`，描述 "Visual plugin market inside DeepSeek Harness — browse, search, and one-click install community plugins." 即它**本身是一个 DSH 插件（市场 UI）**，不是独立的 registry 服务。PUB-03 的 "curated registry" 指这个插件的收录清单。
-- **DSH 侧元数据消费方就在本机**：`@deepseek-ai/dsh-client-ui-plugin-manager`、`dsh-client-ui-plugin-market`、`dsh-client-ui-plugin-recommendations`、`dsh-plugin-manager@0.1.6-alpha.2`。
-- **GitHub 仓已建**：`origin = git@github.com:pfmiles/dsh-gsd.git`；当前本地 ahead 84、未 push，CI 从未跑过。
+- **DSH 侧元数据消费方就在本机**：`@deepseek-ai/dsh-client-ui-plugin-manager`、`@deepseek-ai/dsh-client-ui-plugin-market`、`@deepseek-ai/dsh-client-ui-plugin-recommendations`、`@deepseek-ai/dsh-plugin-manager@0.2.2-rc.1`（**版本号已更正**，此前记为 `0.1.6-alpha.2` 是错的）。
+- **GitHub 仓已存在且公开**：`origin = git@github.com:pfmiles/dsh-gsd.git`。仓建于 2026-11-10，`origin/main` 已含 10 个提交但**没有** `.github/workflows` 目录。当前本地 ahead **88**、未 push；Actions `total_count = 0` —— 本 phase 的 push 会产生**史上第一次** run（D-03 的顺序正是为此）。
+- **push 的凭据路径**：`origin` 是 SSH，故推入新 workflow 文件不受 gh token scope 限制；`gh` 当前登录 `pfmiles`（scope `gist, read:org, repo`，**无 `workflow`**）—— 只有改走 HTTPS 才需要 `gh auth refresh -s workflow`。
 - **不可信来源警告**：检索 dshmarket 流程时 web 结果全是互相矛盾的 SEO 变体（`dshbase.com`、`Anil-matcha/awesome-dsh-plugin`、`fuyiyun666/awesome-dsh-plugin-2` 等），**无可信 spec** —— 以 tarball 实读为准，不采信这些来源。
 
 ### 现状锚点
 
 - `package.json`：`private: true`（阻碍发布）、`version: 1.20.1-1.dsh022`、`files` 已含 `index.js cordis.patch.yml locale icon.svg skills gsd-core hooks config scripts`、`prepack: node build.mjs && node --test tests/*.test.mjs`。
 - 测试锚点：`npm test` = `node --test tests/*.test.mjs` = 5 文件 / **26 tests**；纳管 `pending-phase-3` 后应为 **29**。
-- ROADMAP 已预列三条 plan 方向：`建仓`、`prepack 校验`、`发布 + registry PR` —— D-02 后第 3 条须重切为"材料就绪"。
+- ROADMAP 现版已收敛为 **2 条计划**（D-02 后重切）：`03-01 发布管线与 CI 首绿`、`03-02 元数据与提交材料`。早期"建仓 / prepack 校验 / 发布 + registry PR"三条式已废弃 —— 仓早已存在，PUB-01 的建仓部分已完成，只剩推送。
+- `npm pack` 实测面（研究期，命令可复跑）：**958 文件 / 12 顶层项 / 4.58 MB**（解包 15.96 MB）；`.planning`、`tests`、`build.mjs`、`BUILD.md` 均**零泄漏**。防线断言应写"泄漏集合为空 + 必含集合齐全"，**不要硬编码 958**（研究项 A4）。
+- 两个已实测的 npm 12 陷阱：`npm pack --dry-run --json` 返回的是**以包名为键的对象**而非数组；`npm publish --dry-run` 在 `private: true` 下**照样通过**，不能当作可发布性判据。
 - 并发纪律（STATE 已锁）：`build-smoke.test.mjs` 重写构建树，**禁止与其他测试/build 并跑**，否则假红 `gate C: no SKILL.md under skills/gsd-*`。
 </specifics>
 
