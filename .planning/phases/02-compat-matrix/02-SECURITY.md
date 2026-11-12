@@ -37,7 +37,7 @@ created: "2026-11-12"
 | T-2-06 | Spoofing | 文档 range/tag 规格诱导装错版本 | high | mitigate | docs-consistency ③④⑤ 哨兵全绿；README 全部 exact 示例；版本映射表 dsh022/dsh021 | closed |
 | T-2-07 | Spoofing | stale file: 快照假绿（旧产物充当新证据） | high | mitigate | --force 重装 + 实例重启 + 新 token；新快照声明落地（pid 95618 lstart 17:38:26Z > 复原重装 16:46:14Z）；身份断言逐次复核 | closed |
 | T-2-08 | Tampering | doctored 负向 fixture 污染 profile | medium | mitigate | fixture 仅用 /tmp/gsd-compat-fixture 临时目录、用后即弃；探针后无条件复原重装 + 身份复检（02-03 实测） | closed |
-| T-2-09 | Denial of Service | `workflow_dispatch` 输入与矩阵轴零匹配 → 零格执行仍收绿 | medium | mitigate | **未实现**（88d213d 引入面）：yml L25/27/32/35/40/43 五步共用一个 `if:` 门；`inputs.dsh` 或 `inputs.gsd` 为矩阵外值（如 `0.2.3` / `1.21.0`）→ 4 格 × 5 步全 skip → 4 job success、workflow success，零验证出绿。预期缓解 = dispatch 前置 guard job（输入∩matrix 为空即 fail）。现状仅 `compat-matrix.test` ⑦ 断言「run 步被门盖住」，**未**断言「至少一格真实执行」 | open — below high threshold (non-blocking) |
+| T-2-09 | Denial of Service | `workflow_dispatch` 输入与矩阵轴零匹配 → 零格执行仍收绿 | medium | mitigate | **未实现**（88d213d 引入面）：yml L25/27/32/35/40/43 **六步全量**（2 个 `uses:` + 4 个 `run:`）各自挂同一条 `if:` 门；`inputs.dsh` 或 `inputs.gsd` 为矩阵外值（如 `0.2.3` / `1.21.0`，含尾空格）→ 4 格 × 6 步全 skip → 4 job success、workflow success，零验证出绿。预期缓解 = dispatch 前置 guard job（输入∩matrix 为空即 fail）。现状仅 `compat-matrix.test` ⑦ 断言「4 个 run 步被门盖住」，**未**断言「至少一格真实执行」 | open — below high threshold (non-blocking) |
 
 *Status: open · closed · open — below {block_on} threshold (non-blocking)*
 *Severity: critical > high > medium > low — only open threats at or above workflow.security_block_on count toward threats_open*
