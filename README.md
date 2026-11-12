@@ -1,5 +1,8 @@
 <!-- generated-by: gsd-doc-writer -->
 
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![DSH](https://img.shields.io/badge/DSH-0.2.2--rc.1-blue)](https://github.com/pfmiles/dsh-gsd#requirements)
+
 # dsh-gsd
 
 **给 DeepSeek Harness 一条命令装上 GSD。**
@@ -19,6 +22,9 @@ dsh-gsd 把 GSD——规格驱动的 AI 编码工作流（72 个 skills + 引擎
 dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022
 
 # 2. 重启 dsh web（或对应 profile 的服务）即生效
+
+# 市场（dshmarket）与宿主 Discover 的卡片给的是不带版本号的等价命令：
+dsh plugin --profile web add dsh-gsd
 ```
 
 装好后会话内的 skill 目录会出现 72 个 `gsd-*`，执行 `/gsd-health` 可直接自检。接下来像平常一样对话即可：`/gsd-new-project`、`/gsd-quick` 等命令随手可用，直接开始推进开发。
@@ -56,7 +62,7 @@ dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022   # 回滚：回到 GSD 1.2
 
 ## 当前状态
 
-P0 spike 已全链路验证（2026-11-10，含守卫 hooks 阳性拦截）；版本化安装通道与 dshmarket 收录随 [ROADMAP](./.planning/ROADMAP.md) Phase 3 开放，干净机器 8 项 UAT 收官安排在 Phase 5。
+P0 spike 已全链路验证（2026-11-10，含守卫 hooks 阳性拦截）；首个正式版本随 Phase 5 在干净机器 8 项 UAT 通过后发布，届时一并开放 npm 首发、GitHub Release 与 dshmarket 收录（见 [ROADMAP](./.planning/ROADMAP.md)）。
 
 ## 自举构建（顺带一提）
 
@@ -89,6 +95,9 @@ dsh-gsd packages GSD — a spec-driven AI coding workflow (72 skills + engine + 
 dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022
 
 # 2. Restart dsh web (or the target profile's service) — done.
+
+# The dshmarket / host Discover card generates the version-less equivalent:
+dsh plugin --profile web add dsh-gsd
 ```
 
 After restart, 72 `gsd-*` skills appear in the session skill catalog, and `/gsd-health` runs a self-check. From there just talk to your agent as usual — `/gsd-new-project`, `/gsd-quick`, and 70 more commands are ready to drive your development.
@@ -126,7 +135,7 @@ Version = `<gsd-ver>-<rev>.dsh<line>`; upgrade and rollback are always the **sam
 
 ## Status
 
-The P0 spike is fully verified end-to-end (2026-11-10), including positive guard-hook interception. Versioned install channels and the dshmarket listing open with [ROADMAP](./.planning/ROADMAP.md) Phase 3; clean-machine UAT (8 items) closes at Phase 5.
+The P0 spike is fully verified end-to-end (2026-11-10), including positive guard-hook interception. The first public release ships with Phase 5, after the clean-machine UAT (8 items) passes — npm first publish, GitHub Release, and the dshmarket listing land then (see [ROADMAP](./.planning/ROADMAP.md)).
 
 ## Bootstrapped (a fun aside)
 
