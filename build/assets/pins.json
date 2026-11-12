@@ -9,7 +9,7 @@
         "@deepseek-ai/dsh-hooks-claude-code": "0.2.2-rc.1",
         "@deepseek-ai/dsh-hook-protocol": "0.2.2-rc.1"
       },
-      "peer": "@deepseek-ai/dsh-skill-filesystem >=0.2.2-rc.1 <0.3.0-0"
+      "peer": "@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.1"
     },
     "021": {
       "dsh": "0.2.1-rc.5",

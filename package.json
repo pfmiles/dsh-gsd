@@ -27,7 +27,7 @@
     "@deepseek-ai/dsh-hook-protocol": "0.2.2-rc.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-skill-filesystem": ">=0.2.2-rc.1 <0.3.0-0"
+    "@deepseek-ai/dsh-skill-filesystem": "0.2.2-rc.1"
   },
   "files": [
     "index.js",
