@@ -1,0 +1,12 @@
+# 本文件属于项目规划树，规则作用域限于 .planning/ 内部（前导 / 锚定于此目录）。
+# 为何不写进仓库根 .gitignore：根 .gitignore 是 Phase 01 的 covered file，
+# 任何改动都会让 01-VERIFICATION.md 的 covered_digest 失配 → verification.status 变
+# stale（引擎按 #4981 invariant 5 拒绝在 verifier 之外 restamp 摘要）。规则放这里、
+# 作用域反而更准，且 .gitignore 不以 .md 结尾，不会被 gsd-health W019 判为未识别产物。
+
+# 派生快照，不是真值：引擎在每个 step 边界自动重写（state contract #3227），
+# 内容可由 PROJECT.md / ROADMAP.md / STATE.md 重建，且带 updated_at 时间戳。
+/state.json
+# 工作流运行期草稿：init/hooks 载荷、wave 日志、verify-*.json。
+# 由工作流自行 mkdir -p 生成，docs-update 收尾即清理。
+/tmp/
