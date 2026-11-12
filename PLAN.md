@@ -43,7 +43,7 @@
   DSH 行(exact pin + 文档,与旧安装器同策略)。
 
 ### P3 发布
-- 建独立 GitHub 仓库(git init 已在本地完成);README、LICENSE(Apache-2.0)、
+- 建独立 GitHub 仓库(git init 已在本地完成);README、LICENSE(MIT)、
   CHANGELOG;`private` 移除;`dshmarket` 注册(awesome-dsh-plugin.com 流程调研后执行,
   GitHub 仓库本身已支持 `dsh plugin add github:owner/repo` 安装)。
 - npm 发布:`npm publish`;建议同时发 GitHub Release。

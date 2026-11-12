@@ -10,7 +10,7 @@
 
 - [x] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备 (completed 2026-11-11)
 - [x] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化 (completed 2026-11-12)
-- [ ] **Phase 3: 发布（GitHub + npm + dshmarket）** - 建仓、prepack 校验、发布、registry PR
+- [ ] **Phase 3: 发布（GitHub + npm + dshmarket）** - 发布就绪：建仓并推送、prepack 校验、CHANGELOG、L37 修复后 CI 首绿
 - [ ] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链
 - [ ] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录
 
@@ -63,19 +63,21 @@ Plans:
 
 ### Phase 3: 发布（GitHub + npm + dshmarket）
 
-**Goal**: repo/npm/registry 三处同名 dsh-gsd 上线，市场可搜可装。
+**Goal**: 发布就绪 —— repo 建仓并推送、packaging 面符合 npm 规范、CI 首绿；真正的 `npm publish` / GitHub Release / dshmarket PR 移交 Phase 5（干净机器 UAT 通过后）执行。
 **Depends on**: Phase 2
 **Requirements**: PUB-01..04, INST-06
 **Success Criteria**:
-  1. `dsh plugin add dsh-gsd@<ver>`（registry 而非 file:）在干净 profile 装成
+  1. `npm pack` 产出的 tarball 在干净 profile 装成并 boot（registry 通道 `dsh plugin add dsh-gsd@<ver>` 由 Phase 5 复验）
   2. npm pack 清单 = files 白名单且含 scripts/、locale、icon
-  3. awesome-dsh-plugin PR 已开（双语文案、category=workflow）
-  4. README 徽章/许可/致谢齐备
+  3. dshmarket 提交材料就绪（双语文案、category=workflow、install 命令与 README 逐字一致）+ 提交流程已查实（PR 本体由 Phase 5 提交）
+  4. README 徽章/许可（MIT）/上游致谢齐备
+  5. CI 首次激活 run 全绿（L37 上游漂移修复后 push，无红跑历史）
+  6. CHANGELOG.md 首个条目成文（对应 1.20.1-1.dsh022）
 
 **Plans**: TBD
 Plans:
-- [ ] 03-01: GitHub 建仓与发布管线
-- [ ] 03-02: npm 发布与 registry 提交
+- [ ] 03-01: 发布管线与 CI 首绿（L37 修复、pack 清单防线纳管）
+- [ ] 03-02: 元数据与提交材料（MIT/README/CHANGELOG、dshmarket 材料与流程）
 
 ### Phase 4: 迁移与并存
 
@@ -96,12 +98,13 @@ Plans:
 
 **Goal**: 干净机器全量验收，发布 1.0。
 **Depends on**: Phase 4
-**Requirements**: UAT-01..06, INST-01..06 全量复验
+**Requirements**: UAT-01..06, INST-01..06 全量复验, PUB-01（npm 首发部分）, PUB-03（PR 本体部分）
 **Success Criteria**:
   1. UAT-01..05 全绿（干净 DSH_HOME 安装、skills、健康、拦截、scaffold、升级回滚）
   2. hooks 回归（commit 校验拦截错误格式、injection 扫描落日志）
   3. 启动开销数字与技能 watch 行为记录入 README
   4. 1.0 发布 + UAT 报告
+  5. 对外动作执行：`npm publish`（registry 通道复验）+ GitHub Release + dshmarket PR 本体（Phase 3 备料的落地）
 
 **Plans**: TBD
 Plans:

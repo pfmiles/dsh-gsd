@@ -13,12 +13,13 @@
 - **⚠️ D-02 对该 Goal 的修订**：本 phase 完成判据 = 「发布面无阻塞 + CI 首绿 + 提交材料就绪」；"上线"由 Phase 5 在干净机器 UAT 通过后执行。
 - **Depends on**：Phase 2（`build/assets/pins.json`、`check-pins`、`compat-matrix.yml` 已就位）
 - **Requirements in scope**：PUB-01..04、INST-06（其中 PUB-01、PUB-04 按 D-01/D-02 修订，见「Requirements 修订建议」）
-- **Success Criteria（修订后，必须全真）**：
+- **Success Criteria（修订后，必须全真；与 ROADMAP Phase 3 逐条一致）**：
   1. `npm pack` 产出的 tarball 在干净 profile 装成并 boot（`dsh plugin add ./<tarball>`）；registry 通道（`dsh plugin add dsh-gsd@<ver>`）留 Phase 5
   2. npm pack 清单 = `files` 白名单，且含 `scripts/`、`locale/`、`icon.svg`
   3. dshmarket 提交材料就绪（双语文案、`category=workflow`、install 命令与 README 逐字一致）+ 提交流程已查实；PR 本体留 Phase 5
-  4. CI 首次激活 run 全绿（4 格 × 六步 gated steps，无红跑历史）
-  5. `CHANGELOG.md` 首个条目成文（D-04）
+  4. README 徽章 / 许可（MIT）/ 上游致谢齐备
+  5. CI 首次激活 run 全绿（4 格 × 六步 gated steps，无红跑历史）
+  6. `CHANGELOG.md` 首个条目成文（对应 `1.20.1-1.dsh022`）
 
 **不在本 phase**：`npm publish` / GitHub Release / dshmarket PR 本体（→ P5）、迁移 runbook 与差异表（→ P4）、干净机器 UAT（→ P5）。
 </domain>
@@ -119,16 +120,19 @@ planner 研究后定夺、在 plan 中显式落成设计决策（不静默假设
 </specifics>
 
 <requirements_amendments>
-## Requirements 修订建议（待确认）
+## Requirements / ROADMAP 修订（已落盘 2026-11-12）
 
-D-01 与 D-02 使两行需求与现状矛盾，建议按下表改写（**提案，尚未落盘**）：
+D-01 与 D-02 使三行需求与 ROADMAP 的 Goal/SC 与实物矛盾；经用户确认后已按下表改写：
 
-| 行 | 现文 | 建议改为 |
-|---|---|---|
-| PUB-01 | `GitHub 仓库（dsh-gsd）+ npm 发布，repo/npm/registry 三处同名` | `GitHub 仓库（pfmiles/dsh-gsd）建仓并推送，repo 名与 npm 包名同名；npm 首次发布推迟到 Phase 5（UAT 通过后）执行` |
-| PUB-04 | `LICENSE（Apache-2.0）与上游致谢（GSD MИT、DSH MIT、第三方组件各自许可）` | `LICENSE（MIT）与上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）`（顺带修 U+0418） |
+| 位置 | 现文（改后） |
+|---|---|
+| PUB-01 | `GitHub 仓库（pfmiles/dsh-gsd）建仓并推送，repo 名 = npm 包名 dsh-gsd；npm 首次发布推迟到 Phase 5（UAT 通过后）执行` |
+| PUB-03 | `dshmarket curated registry 提交材料与流程就绪（双语描述、category=workflow、install 命令真实）；PR 本体随 npm 首发于 Phase 5 提交` |
+| PUB-04 | `LICENSE（MIT）与上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）`（原 `GSD MИT` 的 U+0418 已修正） |
 
-连带影响：ROADMAP Phase 3 的 Goal 行"…三处同名 dsh-gsd 上线，市场可搜可装"与 Success Criterion 1/3 需按 `<domain>` 的修订版同步；PUB-01 的"npm 发布"分量应移到 Phase 5 的需求清单。
+ROADMAP 连带同步：Phase 3 Goal 改为「发布就绪」、Success Criteria 重排为 6 条（含 CI 首绿与 CHANGELOG）、计划名改为「发布管线与 CI 首绿」/「元数据与提交材料」；Phase 5 Requirements 追加 `PUB-01（npm 首发部分）`、`PUB-03（PR 本体部分）`，并在 Success Criteria 增第 5 条「对外动作执行」。
+
+**PUB-01 与 PUB-03 为跨 phase 需求**：Phase 3 交付准备部分，Phase 5 交付对外动作部分。二者不是重复声明，是同一需求的计时切分。
 </requirements_amendments>
 
 <deferred>
