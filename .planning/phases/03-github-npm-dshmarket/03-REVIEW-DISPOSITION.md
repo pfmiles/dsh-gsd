@@ -3,6 +3,22 @@ phase: 03
 review: 03-REVIEW.md
 titles: json
 findings:
+  - id: IN-03
+    severity: info
+    disposition: fixed
+    title: "⑧ 的「门行只在注释里」断言不可能失败（GATE_RE 已蕴含该性质）"
+  - id: IN-04
+    severity: info
+    disposition: fixed
+    title: "⑨ 的「除许可徽章外应恰 1 枚」断言是恒真的"
+  - id: IN-05
+    severity: info
+    disposition: fixed
+    title: "④ 的 `existsSync(printed)` 在等值断言通过后恒真"
+  - id: IN-06
+    severity: info
+    disposition: fixed
+    title: "BUILD.md 的套件规模在两处自相矛盾（37/37 vs 实测 7/7）"
   - id: CR-01
     severity: critical
     disposition: fixed
@@ -28,20 +44,24 @@ findings:
     disposition: skipped
     title: "绿色 CI 只覆盖到 `20e20c0`；HEAD 的 5 条提交（含全部新守卫）从未在 CI 执行；本地 `origin/main` 是陈旧引用"
 open: 0
-total: 6
-recorded: 2026-11-12T14:15:57.258Z
+total: 10
+recorded: 2026-11-12T17:50:11.757Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | fixed in 49c0efe — pluginRoot 改为 dirname(fileURLToPath(import.meta.url))，同时删掉未用的 resolve 导入；守卫 = tests/pack-contents.test.mjs ④，重新引入 '..' 恰 ④ 红（tests 4 / pass 3 / fail 1），复原 4/4 |
-| WR-01 | warning | fixed | fixed in 49c0efe — ① 补上包含方向：必需集 = ALLOWED_TOP_LEVEL 减去 NPM_ALWAYS_INCLUDED（package.json / README.md / LICENSE）；删掉 skills+gsd-core+scripts 时仅 ① 红 |
-| WR-02 | warning | fixed | fixed in 49c0efe — ⑨ 断言恰 2 枚徽章、都在首个 # dsh-gsd 之前，且一枚 ./LICENSE+MIT、一枚 DSH；删 DSH 徽章或把两枚整体下移都会红 |
-| WR-03 | warning | fixed | fixed in 49c0efe — ⑫ 追加 readmeZh 恰 1、readmeEn 恰 1；2/0 分布变异会红 |
-| IN-01 | info | fixed | fixed in 49c0efe — ⑧ 先剥整行注释再计数：注释里提到 matrix.expect 仍绿，真实的第二处未门控用法仍红 |
-| IN-02 | info | skipped | accepted / won't-fix（本 phase 不修）— 权威远端 sha 取自 gh api repos/pfmiles/dsh-gsd/commits/main，而不是陈旧的 origin/main tracking ref；再次 push 会产生第二个 CI run，属人工决策而非缺陷 |
+| IN-03 | info | fixed | 03-REVIEW-FIX.md |
+| IN-04 | info | fixed | 03-REVIEW-FIX.md |
+| IN-05 | info | fixed | 03-REVIEW-FIX.md |
+| IN-06 | info | fixed | 03-REVIEW-FIX.md |
+| CR-01 | critical | fixed | fixed in 49c0efe — pluginRoot 改为 dirname(fileURLToPath(import.meta.url))，同时删掉未用的 resolve 导入；守卫 = tests/pack-contents.test.mjs ④，重新引入 '..' 恰 ④ 红（tests 4 / pass 3 / fail 1），复原 4/4 (not in the current review) |
+| WR-01 | warning | fixed | fixed in 49c0efe — ① 补上包含方向：必需集 = ALLOWED_TOP_LEVEL 减去 NPM_ALWAYS_INCLUDED（package.json / README.md / LICENSE）；删掉 skills+gsd-core+scripts 时仅 ① 红 (not in the current review) |
+| WR-02 | warning | fixed | fixed in 49c0efe — ⑨ 断言恰 2 枚徽章、都在首个 # dsh-gsd 之前，且一枚 ./LICENSE+MIT、一枚 DSH；删 DSH 徽章或把两枚整体下移都会红 (not in the current review) |
+| WR-03 | warning | fixed | fixed in 49c0efe — ⑫ 追加 readmeZh 恰 1、readmeEn 恰 1；2/0 分布变异会红 (not in the current review) |
+| IN-01 | info | fixed | fixed in 49c0efe — ⑧ 先剥整行注释再计数：注释里提到 matrix.expect 仍绿，真实的第二处未门控用法仍红 (not in the current review) |
+| IN-02 | info | skipped | accepted / won't-fix（本 phase 不修）— 权威远端 sha 取自 gh api repos/pfmiles/dsh-gsd/commits/main，而不是陈旧的 origin/main tracking ref；再次 push 会产生第二个 CI run，属人工决策而非缺陷 (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
