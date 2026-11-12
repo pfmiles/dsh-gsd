@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: 发布（GitHub + npm + dshmarket）
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-11-12T10:59:32.795Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-11-12T11:13:54.036Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 03 execution started
-state_head: c304c76f2b80a8da4e8cbe1631c67960900fb76f
+last_activity_desc: Phase 03 plan 02 executed
+state_head: 0340e46e2483110b9ef4e13dfa73e432886045d1
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 8
   percent: 40
 ---
 
@@ -22,17 +22,17 @@ progress:
 ## Current Position
 
 Phase: 03 (发布（GitHub + npm + dshmarket）) — EXECUTING
-Plan: 2 of 3
-Current Plan: 2
+Plan: 3 of 3
+Current Plan: 3
 Total Plans in Phase: 3
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 03 execution started
 
-Progress: [████████████████████] 6/6 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
+Progress: [██████████████████░░] 8/9 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
 
 ## Current Focus
 
-> **2026-11-12 执行 03-01 完成**：peer 收紧 exact `0.2.2-rc.1`（manifest + pins 同提交，L37 零改动）、workflow 顶层 `permissions` + install-ok 格门控正向解析断言（`run:` 仍 4）、pack 防线纳管 `tests/`（全量 29/29）、真 tarball 958 文件在 profile `gsd-p3-release` 装成并 boot。**下一步 = 03-02（元数据与提交材料）**；`BUILD.md:16` 的计数终值由 03-02 写。
+> **2026-11-12 执行 03-02 完成**：manifest 补 `repository`/`homepage`/`bugs`/`keywords`/`author` + `publishConfig.registry`（钉 npmjs.org）；README 顶部 MIT/DSH 徽章 + zh/en 各一条裸名示例 + 「当前状态」改 Phase 5；`CHANGELOG.md` 首条目 `1.20.1-1.dsh022`（不进 `files`）；`docs/dshmarket/` 5 字段条目 + 提交说明；⑧⑨⑩ 落盘后 `docs-consistency` **10/10**、全量串行 **32/32**（两次同值），`BUILD.md:16` 已写 32/32。**下一步 = 03-03（首次 push 与 CI 首绿）**。
 
 Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to plan**（`03-CONTEXT.md` 已落盘；四条裁决 **D-01..D-04**：License=**MIT**（PUB-04 的 Apache-2.0 作废）、**对外发布推迟到 Phase 5**（P3 只交"发布就绪"）、**先修 L37 再 push**、**CHANGELOG+Release 纳入**。REQUIREMENTS 的 PUB-01/PUB-03/PUB-04 与 ROADMAP Phase 3/5 已同步修订）。2026-11-12 复核：**Phase 01 与 Phase 02 的 verification 均已 stale→passed 续跑完毕**，无遗留 stale——Phase 01 14/14（digest ab8770cb）、Phase 02 13/13（digest fe299fa9，17 covered files），两轮均走 #4682 复用产物路径（Nyquist/SECURE/UI 三钩子 State A 复审 → code-review 重审 → regression gate → verifier）。**入 Phase 3 前须处理的上游漂移**：`@deepseek-ai/dsh-skill-filesystem@0.2.2-rc.2` / `dsh-fs@0.2.2-rc.2` 于 2026-11-12T01:54–02:00Z 发布，落入根 peer 开区间 `>=0.2.2-rc.1 <0.3.0-0` 与 rc.1 钉住的 bridge 链冲突，`compat-matrix.yml` L37 的无豁免 install 步会 4 格全 ERESOLVE（已用户裁决归档为已知漂移、移交 Phase 3 修复，`--force` 可用、`--legacy-peer-deps` 不可用）。其余遗留：3 条 known debt（WR-05 零匹配 dispatch 假绿 = 安全侧 T-2-09；WR-06 幽灵轴未回溯 pins.lines；IN-04 门哨兵断言偏弱）、REQUIREMENTS 追溯行缺省、本地 main 领先 origin 未推 —— 由 /gsd-progress 追踪。
 
@@ -59,6 +59,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 
 ## Progress Log
 
+- 2026-11-12 execution 03-02（3091 实例）：元数据与提交材料完成（commits 3f2c909 + 8d0e9c6 + f061bc0 + SUMMARY 0340e46）——package.json 纯新增 8 行（repository/homepage/bugs/keywords/author + publishConfig.registry，`git diff --numstat` = 8 0）；README 徽章/裸名示例/Phase 5 文案（`# dsh-gsd` 仍 2、裸名行 2、pin 示例 4、无 `dsh-gsd@latest`）；CHANGELOG 首条目 `1.20.1-1.dsh022`（Added×2 / Changed×2 / Fixed×1，未进 `files`）；docs/dshmarket 5 字段条目（category=workflow、无 icon）+ 提交说明；docs-consistency 追加 ⑧⑨⑩（10/10），全量串行 32/32 两次同值，BUILD.md:16 写 32/32。PUB-03 / PUB-04 / INST-06 落 Complete。0 auto-fixed、2 条记录性差异记入 SUMMARY；01-VERIFICATION / 02-VALIDATION / STATE 的历史 26/26 未改写
 - 2026-11-12 execution 03-01（3091 实例）：发布管线与 CI 首绿完成（commits 6ce5360 + 19911d1 + c304c76）——peer 收紧 exact `0.2.2-rc.1`（package.json + pins.json 同提交，workflow L37 零改动；副本内 npm 通道 656 包全树 dedupe、install-ok confirmed）、workflow 顶层 `permissions: {contents: read}` + install-ok 格门控正向解析断言（`run:` 行数仍 4，落位由 PLAN 自带命令机器证明并对 6 个退化变体 fail-closed）、`tests/pack-contents.test.mjs` 纯重命名纳管（100% similarity、0 行改动；全量 29/29）、真 tarball 958 文件在 profile `gsd-p3-release` 装成并 boot（引擎 1.20.1 / 72 skills / dump-config 两 id）。PUB-02 落 Complete；PUB-01 与 03-03 共享 ID，按共享门待 03-03 SUMMARY 后落 Complete。2 条记录性差异（workflow diff 10 行 vs 括注 6-8 行；`--force` 回退支路未触发）记入 SUMMARY
 - 2026-11-12 verification 续跑（Phase 02）：review-fix 七提交（55191da/6356ff4/88d213d/b2e351b/4fe265a/df81330/e8e9d73）触碰 02 的 covered files 致 stale；/gsd-execute-phase 02 走 #4682 复用产物路径（0 plan 重跑）——Nyquist validate State A 复审（26/26 + 17/17 现场复跑、计数 25→26 与 16→17 订正、12 项事实修正、上游漂移 ESCALATE `70e54e4`）→ secure-phase 复审（9 found / 8 closed / 1 open-non-blocking，新登记 T-2-09 `b0c11c5` + 步数订正 `84784f1`）→ ui-review 非 UI 判定维持、两门本次重测（`9cf7907`）→ code-review 重审 HEAD（7/7 前次发现全 resolved、0 regressed，突变实验验证；新发现 WR-05/WR-06/IN-04 `4e81517`）→ disposition 三条新发现入账 open（`e309703`）→ regression gate 26/26 exit 0（含 Phase 01 套件）→ verifier 13/13 passed（新 digest fe299fa9，17 covered files `b800db2`）→ phase.complete（next=Phase 3，`roadmap_updated: false` 属预期因 ROADMAP 早已 `[x]`）。**本轮最重要的产物 = 上游 registry 漂移发现**：四格 install 步在当前 HEAD 全 ERESOLVE，已复现、已用户裁决移交 Phase 3
 - 2026-11-12 verification 续跑（Phase 01）：review-fix（384b72a 及 02 修复序列）触碰 01/02 的 covered files 致两阶段 verification stale；/gsd-execute-phase 01 走 #4682 复用产物路径——verify:post 三钩子（Nyquist validate 复审 0 gap `ff645cb`、SECURE 复审 threats_open 0 `48cb443`、UI audit 全 N/A `71759eb`）→ code-review 重审 HEAD clean 0 findings（前 6 findings 保持已修 `51ee48c`）→ verifier 全量 live 复验 14/14 passed（新 digest ab8770cb）→ phase.complete（`4d18d11`，STATE 推进至 Phase 3）。Phase 02 的 stale 待同法续跑（/gsd-execute-phase 02）
@@ -80,6 +81,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 02 P02-02 | 9 min | 2 tasks | 5 files |
 | Phase 02 P02-03 | 86 | 2 tasks | 1 files |
 | Phase 03 P01 | 10 min | 3 tasks | 5 files |
+| Phase 03 P02 | 7min | 3 tasks | 7 files |
 
 ## Decisions
 
@@ -113,9 +115,13 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 03] peer 收紧落地形态（D-05）：package.json peerDependencies['@deepseek-ai/dsh-skill-filesystem'] 与 build/assets/pins.json lines.022.peer 同一次提交改 exact 0.2.2-rc.1；compat-matrix.yml L37 零改动；engines.dsh / dshRange / README 窗口串逐字不动（职责不同，有意为之）。副本内 npm 通道 656 包全树 dedupe 到 0.2.2-rc.1、compat-probe install-ok confirmed exit 0。 — check-pins 步骤 (j) 对 "<name> <range>" 拼串逐字比较，只改一侧即 exit 2 并打红 compat-matrix ⑥；开区间会继续吞下 rc.2（上游漂移根因）。
 - [Phase 03] workflow 加固形态（D-08）：顶层 permissions{contents: read} + install-ok 格内门控正向解析断言，写在既有『宿主求值探针（install-ok/reject）』的 run: | 块内（run: 行数仍 4，不新增步骤），canonical 门 + || true 兜底 + 显式 exit 2；reject 格被门控跳过。 — ⑦ isGate 要求每个 run: 的上一行是 inputs∩matrix 门；reject 格根 peer 被声明为 exact rc.1，根层解析结果极可能 ≠ matrix.dsh，无条件断言会让首次 CI run 即红（违反 SC-5 无红跑历史）。
 - [Phase 03] 发布面收口：tests/pending-phase-3/pack-contents.test.mjs 以 100% 相似度纯重命名进 tests/（0 行改动），待迁目录与自相矛盾 README 一并删除；全量 29/29（BUILD.md:16 按计划不改，终值由 03-02 写入）；真 tarball（958 文件）装进新 profile gsd-p3-release 并 boot（引擎 @opengsd/gsd-core 1.20.1 / 72 skills / dump-config 两 id 各 1 行）。安装日志出现 Agent skills awaiting approval（A2 未验证项，移交 Phase 5 UAT-01）。 — 原址 ROOT 用 import.meta.url 的 '..' 只到 tests/ 导致 ENOENT，移动到 tests/ 即修好且无需改内容；SC-1 的「干净 profile」定义为同一 DSH_HOME 下新 profile 名（新 DSH_HOME 由 Phase 5 UAT-01 覆盖）。
+- [Phase 03]: npm 元数据体例与 publishConfig 分工：repository/bugs 用紧凑单行对象、keywords 用单行数组（与 03-PATTERNS 骨架逐字一致）；publishConfig 作为最后一个顶层键只写 registry=https://registry.npmjs.org/，tag 留到 Phase 5 与发布动作一起裁决（推荐 latest，它决定卡片裸名命令能否解析）。 — 本机 npm 默认 registry 是只读镜像 registry.npmmirror.com，不钉 canonical registry 会在 Phase 5 发不出去；private/version/license/files/engines/peer 一律不动（各有机器门），git diff 必须只含新增行。
+- [Phase 03]: README 徽章走远端 shields.io（license-MIT 与 DSH-0.2.2--rc.1 两枚），放第一个 # dsh-gsd 之前；第二枚只放行标签不放完整窗口串。docs/ 不进 npm 包，本地 SVG 在 npm 页面会 404（D-07 的镜像结论）。 — 窗口串已有 docs-consistency ② 的双语正文强等值兜底，徽章只是可见性；shields.io 不可达只会破图（A5 显式接受），故 ⑨ 只断言结构不断言 HTTP。
+- [Phase 03]: D-06 落地：README zh/en 各补一条裸名示例 dsh plugin --profile web add dsh-gsd（market 卡片形态），pinned 命令 4 处逐字不动；docs/dshmarket 材料逐字引用裸名串，YAML 只留 5 字段、不承载 install 字段、无 icon。 — specCaptures 的 /dsh-gsd@(\S+)/g 对裸名零捕获，⑤ 不动；卡片命令由目标仓 CI 生成且不带版本号，SC-3 的逐字一致只能靠两侧同一行字面串 grep -F 证明；catalog 只收 GitHub 托管位图，本仓只有 icon.svg 会被拒。
+- [Phase 03]: 计数按实测收口：⑧ CHANGELOG 版本等值、⑨ 徽章与双语致谢、⑩ INST-06 元数据三条断言零依赖落盘后，两次独立串行全量均为 ℹ tests 32，BUILD.md:16 写 32/32（git diff 恰 1 增 1 删），算术 29+3 只作交叉核对；01-VERIFICATION/02-VALIDATION/STATE 的历史 26/26 未改写。 — 它们是被签名的审计结论，仓内惯例只追加带日期的前向注记；全仓唯一可改写的活体计数是 BUILD.md:16（⛔-E）。
 
 ## Session
 
-**Last session:** 2026-11-12T10:59:32.580Z
-**Stopped at:** Completed 03-01-PLAN.md
+**Last session:** 2026-11-12T11:13:53.951Z
+**Stopped at:** Completed 03-02-PLAN.md
 **Resume file:** None

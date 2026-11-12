@@ -14,7 +14,7 @@
 - [ ] **INST-03**: `dsh.profile.bundles` 自动 reconcile，安装即注册，无重启前提（重启仅使 hooks 生效）
 - [ ] **INST-04**: 卸载 `dsh plugin --profile <name> remove dsh-gsd` 后，skills/hooks/bundle 行全部消失
 - [ ] **INST-05**: `dsh --profile <name> --dump-config` 可见 `gsd` 与 `gsd-hooks-bridge` 两行，且 `!!js` 自定位展开为包内绝对路径
-- [ ] **INST-06**: 插件管理器展示元数据合规（locale/en.json + zh.json、icon.svg、files 白名单）
+- [x] **INST-06**: 插件管理器展示元数据合规（locale/en.json + zh.json、icon.svg、files 白名单）
 
 ### 技能与引擎 (SKIL)
 
@@ -43,8 +43,8 @@
 
 - [ ] **PUB-01**: GitHub 仓库（`pfmiles/dsh-gsd`）建仓并推送，repo 名 = npm 包名 `dsh-gsd`；npm 首次发布推迟到 Phase 5（UAT 通过后）执行
 - [x] **PUB-02**: `prepack`=build 全量重建，包内 files 白名单精确（含 scripts/ 修复）
-- [ ] **PUB-03**: dshmarket curated registry 提交材料与流程就绪（双语描述、category=workflow、install 命令真实）；PR 本体随 npm 首发于 Phase 5 提交
-- [ ] **PUB-04**: LICENSE（MIT）与上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）
+- [x] **PUB-03**: dshmarket curated registry 提交材料与流程就绪（双语描述、category=workflow、install 命令真实）；PR 本体随 npm 首发于 Phase 5 提交
+- [x] **PUB-04**: LICENSE（MIT）与上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）
 
 ### 迁移与并存 (MIG)
 

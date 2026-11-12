@@ -165,7 +165,7 @@ Each task was committed atomically:
 2. **Task 2: 发布可见面三件套 — README 徽章/裸名示例/Phase 5 文案 + CHANGELOG 首条目 + dshmarket 提交材料** - `8d0e9c6` (docs)
 3. **Task 3: 三条防漂移断言 ⑧⑨⑩ + BUILD.md:16 按实测写终值 32/32** - `f061bc0` (test)
 
-**Plan metadata:** `docs(03-02): complete … plan`（SUMMARY + STATE + ROADMAP + REQUIREMENTS）
+**Plan metadata:** `0340e46` (SUMMARY) → `docs(03-02): complete …`（STATE + ROADMAP + REQUIREMENTS 收口）
 
 ## Files Created/Modified
 
