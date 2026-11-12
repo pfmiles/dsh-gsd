@@ -7,6 +7,8 @@ on:
     inputs:
       dsh: { description: 'DSH runtime version (manual override)', type: string, required: false }
       gsd: { description: 'GSD engine version (manual override)', type: string, required: false }
+permissions:
+  contents: read
 jobs:
   compat-matrix:
     runs-on: ubuntu-latest
@@ -35,6 +37,16 @@ jobs:
         if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
         run: |
           npm install --no-save --ignore-scripts --no-package-lock @deepseek-ai/dsh@${{ matrix.dsh }}
+          # (j) 的字符串预测 == 实际解析树。仅 install-ok 格：reject 格的根 peer 由 exact
+          # 声明占位，根层解析到的是宿主行之外的版本，属预期（详见 03-PATTERNS ⛔-B）。
+          if [ "${{ matrix.expect }}" = "install-ok" ]; then
+            RESOLVED="$(node -p "require(require.resolve('@deepseek-ai/dsh-skill-filesystem/package.json')).version" 2>/dev/null || true)"
+            if [ "$RESOLVED" != "${{ matrix.dsh }}" ]; then
+              echo "compat-matrix: resolved dsh-skill-filesystem '${RESOLVED:-<unresolvable>}' != matrix.dsh '${{ matrix.dsh }}' — install tree does not match the matrix cell" >&2
+              exit 2
+            fi
+            echo "compat-matrix: resolved peer ${RESOLVED} == matrix.dsh ${{ matrix.dsh }}"
+          fi
           node build/lib/compat-probe.mjs --dsh ${{ matrix.dsh }} --expect ${{ matrix.expect }}
       - name: build + gates（GSD 轴，gate A/B/C 内嵌）
         if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
