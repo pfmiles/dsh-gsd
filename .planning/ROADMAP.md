@@ -10,7 +10,7 @@
 
 - [x] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备 (completed 2026-11-11)
 - [x] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化 (completed 2026-11-12)
-- [ ] **Phase 3: 发布（GitHub + npm + dshmarket）** - 发布就绪：建仓并推送、prepack 校验、CHANGELOG、L37 修复后 CI 首绿
+- [x] **Phase 3: 发布（GitHub + npm + dshmarket）** - 发布就绪：建仓并推送、prepack 校验、CHANGELOG、L37 修复后 CI 首绿 (completed 2026-11-12)
 - [ ] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链
 - [ ] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录
 
@@ -74,7 +74,7 @@ Plans:
   5. CI 首次激活 run 全绿（L37 上游漂移修复后 push，无红跑历史）
   6. CHANGELOG.md 首个条目成文（对应 1.20.1-1.dsh022）
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 Plans:
 **Wave 1**
 - [x] 03-01: 发布管线与 CI 首绿（peer 收紧两文件 per D-05、workflow 两项加固 per D-08、pack 清单防线纳管 —— 首跑条件就绪）
