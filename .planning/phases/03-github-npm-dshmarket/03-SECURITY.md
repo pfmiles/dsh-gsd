@@ -49,7 +49,7 @@ created: "2026-11-12"
 | T-03-11 | Elevation of Privilege | push 通道凭据（gh token 无 workflow scope） | high | mitigate | `origin` 逐字未改写（实测仍 `git@github.com:pfmiles/dsh-gsd.git`，fetch/push 同）；未 force-push（`d3c8e89..20e20c0 main -> main` 快进）；「HTTPS + 提权」未作默认路径，由人裁决后执行（执行器未自行 refresh，P-03-j 成立）。**偏离**：SSH key 实测非账号有效 key（`Permission denied (publickey)`），推送实际走 HTTPS + `gh` credential helper，且 token 经**人类显式授权** `gh auth refresh -s workflow -s delete_repo` 后具备 `workflow`+`delete_repo` → 见 A-03-02 | closed |
 | T-03-12 | Repudiation | 首跑红后被重推掩盖（红跑历史 + 假绿叙述） | high | mitigate | 真仓唯一一条 run：**43218878911**（event=push / run_attempt=1 / conclusion=success / headSha=20e20c0），无 rerun；本轮 live 复核 `gh api repos/pfmiles/dsh-gsd/actions/runs --jq .total_count` → **1**（无红跑史）；推送前在临时仓 `pfmiles/dsh-gsd-ci-probe` 同 SHA 干跑后删仓，不污染真仓历史 | closed |
 | T-03-13 | Information Disclosure | 推送内容含未发布/本地资产 | medium | mitigate | push 前 `git status --porcelain`（仅排除本计划自己的 `03-03-SUMMARY.md` 单一路径）为空、`git ls-files '*.tgz'` 为空；`.gitignore` 含 `*.tgz`、`.gsd-build-tmp/`、`.build-cache/` 与五棵产物树（skills/gsd-core/hooks/config/scripts）；`.planning/.gitignore`（c82f55e）忽略运行期 `state.json`、`tmp/`、`milestone.lock`，使「干净树」判据可长期成立；只推 main，无额外 refspec。本轮复核：status 0 行、tracked tgz 0 条 | closed |
-| T-03-14 | Tampering | 推送的树与本地验证过的树不一致 | medium | mitigate | 权威远端 sha = `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha` → **20e20c0**（本轮 live，== push 输出目标 == CI run headSha），远端 tree 含 `.github/workflows/compat-matrix.yml`（contents API 命中）；`20e20c0..HEAD` 差异仅 4 份 `.planning/` 文档（REQUIREMENTS/ROADMAP/STATE/03-03-SUMMARY），**发布面与 workflow 字节级一致**。**caveat**：plan 写的 `git rev-parse origin/main == HEAD` 在本环境不可复现——推送走显式 HTTPS URL，`refs/remotes/origin/main` 不再自动更新（仍 `d3c8e89`），故该口径已换成 `gh api` 权威 sha + 树差异 | closed |
+| T-03-14 | Tampering | 推送的树与本地验证过的树不一致 | medium | mitigate | 权威远端 sha = `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha` → **20e20c0**（本轮 live，== push 输出目标 == CI run headSha），远端 tree 含 `.github/workflows/compat-matrix.yml`（contents API 命中）；`20e20c0..HEAD` 差异仅 4 份 `.planning/` 文档（REQUIREMENTS/ROADMAP/STATE/03-03-SUMMARY），**发布面与 workflow 字节级一致** ⚠️**此句已被 2026-11-12 后置更正推翻，见文末「后置更正」节**。**caveat**：plan 写的 `git rev-parse origin/main == HEAD` 在本环境不可复现——推送走显式 HTTPS URL，`refs/remotes/origin/main` 不再自动更新（仍 `d3c8e89`），故该口径已换成 `gh api` 权威 sha + 树差异 | closed |
 | T-03-SC (01) | Tampering | npm/pip/cargo installs（03-01） | high | mitigate | 零新依赖：`package.json` phase 内 diff 仅元数据字段 + peer 收紧 + `publishConfig`，`dependencies` 两条 `@deepseek-ai/*` exact 未动；四格安装用 Phase 02 已核验官方 exact 版本（Package Legitimacy Audit 全 OK），无 `[ASSUMED]`/`[SUS]` 包触发人工 checkpoint | closed |
 | T-03-SC (02) | Tampering | npm/pip/cargo installs（03-02） | high | mitigate | 零安装（`js-yaml`/`semver` 均未引入；catalog 条目走零依赖行级正则自检）；仓库无 lockfile 变更（三件套均无 package-lock/pnpm-lock/yarn.lock） | closed |
 | T-03-SC (03) | Tampering | npm/pip/cargo installs（03-03） | high | mitigate | 零新依赖；`gh`/`actionlint` 为既有工具；探针仓与真仓安装同用 Phase 02 已核验 exact 版本；`gh repo delete` 仅作用于自建探针仓（已 404 复核） | closed |
@@ -106,3 +106,28 @@ created: "2026-11-12"
 - [x] `status: verified` set in frontmatter
 
 **Approval:** verified 2026-11-12
+
+---
+
+## 后置更正（2026-11-12，HEAD `ab9e2f4`）
+
+**起因：** 本文件撰写于 HEAD `cf13915`。此后 code-review 立案 CR-01（`index.js` 包根 off-by-one，72 个技能永不加载），由 `49c0efe` 修复。该修复改变了「远端树 vs 本地已验证树」的实情，故 T-03-14 的结论句必须更正——security 文档里留着已知为假的陈述，比缺一条更糟。
+
+**实测（HEAD `ab9e2f4`）：** `git diff --name-status 20e20c0..HEAD` 共 **15** 个文件：
+
+| 类别 | 文件 | 是否入包（`package.json.files`） |
+|---|---|---|
+| `.planning/` 文档 | REQUIREMENTS / ROADMAP / STATE / 03-03-SUMMARY（改）+ 03-REVIEW / 03-REVIEW-DISPOSITION / 03-SECURITY / 03-UI-REVIEW / 03-VERIFICATION（新） | 否 |
+| 发布面 | **`index.js`**（CR-01 修复） | **是** |
+| 不入包 | `BUILD.md`、`tests/compat-matrix.test.mjs`、`tests/docs-consistency.test.mjs`、`tests/pack-contents.test.mjs` | 否 |
+
+**更正后的准确表述：** 入包面相对 CI 已验证的 sha `20e20c0` **恰差 `index.js` 一个文件**——即 CR-01 修复本身。原文「发布面与 workflow 字节级一致」不再成立；`.github/workflows/compat-matrix.yml` 与 `package.json` 确实字节未变，但 `index.js` 变了。
+
+**对 T-03-14 判定：** 威胁本体仍 **closed**——差异已知、有意、可解释、可枚举（恰 1 个入包文件），符合本条「推送的树与本地验证过的树不一致」的缓解目标。但须明确记账：
+
+- 该修复已**本地**验证：全量 37/37；真 tarball（958 文件）装进一次性 profile 后，安装版 `skillsDir` 解析到 `.../dsh-gsd/skills`（存在，72 项），`dsh --profile <fresh> --dump-config` exit 0 且 `- id: gsd` / `- id: gsd-hooks-bridge` 两行俱在；探针 profile 已删除。
+- 该修复**尚未经 CI 验证**——`20e20c0` 那次绿灯跑的是**带 CR-01 缺陷**的 `index.js`。
+
+**由此新增的发布前硬要求（Phase 5，阻塞级）：** `npm publish` 前必须让一次 CI run 覆盖修复后的 `index.js`（重新 push 或等价验证）。否则等于把一个从未被 CI 跑过的入口文件发出去。此项与 T-03-11/A-03-02 的 token 权限收敛一并列为 Phase 5 门禁。
+
+**证据完整性声明：** 本更正是**追加**，不删改原文——T-03-14 原句保留并加显式失效标记，使「当时的观测」与「现在的实情」都可追溯。
