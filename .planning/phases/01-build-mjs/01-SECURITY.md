@@ -32,15 +32,15 @@ created: "2026-11-10"
 
 | Threat ID | Category | Component | Severity | Disposition | Mitigation | Status |
 |-----------|----------|-----------|----------|-------------|------------|--------|
-| T-1-01 | Tampering | tarball 获取(npm pack / 离线 .tgz) | high | mitigate | 在线依赖 npm registry integrity;离线 ① 档 SHA-512(对照 NOTICES dist.integrity)+ SHA-1(对照 dist.shasum)双重校验,mismatch → exit 2 fail-closed。代码:build.mjs:162-182 `checkTarballIntegrity`;canonical 行:THIRD-PARTY-NOTICES.md;篡改负向:01-01-SUMMARY D3(exit 2 + checksum mismatch) | closed |
-| T-1-02 | Spoofing | 包名解析(@opengsd/gsd-core) | high | mitigate | 包名为 build.mjs 内常量、不可被环境参数化(build.mjs:215 `npm pack @opengsd/gsd-core@${GSD_VERSION}`;GSD_VERSION 仅参数化版本且格式强校验 build.mjs:236-238);legitimacy seam 判 SUS(too-new,01-RESEARCH §Package Legitimacy Audit)→ 01-01 Task 1 blocking-human checkpoint 人类决策取 1.20.1(canonical↔npmmirror dist.integrity 逐字节一致,01-01-PLAN/SMMARY 留档) | closed |
-| T-1-03 | Tampering | 版本标识(package.json / VERSION / GSD_VERSION) | medium | mitigate | gate A 双锚(1.20.1 staged 树无 gsd-core/package.json 的既成口径):gsd-core/VERSION === GSD_VERSION 且 `runtime-identity --raw` 自报 packageName/version 精确相等,任一不等 exit 2。代码:tests/run-gates.sh:32-40;build.mjs:324-333(staging 清理前强制消费、exit code 原样传播);fixture 负向:01-02-SUMMARY D2 | closed |
-| T-1-04 | Elevation of Privilege | 官方 install.js build 期执行 | high | mitigate | 版本 pin + 完整性(在线 npm / 离线 shasum)+ CLAUDE_CONFIG_DIR=mktemp staging + HOME=.gsd-build-tmp/fakehome 隔离(build.mjs:260-271,官方契约绝不手写 staging)+ 4 树白名单捕获(settings.json / agents / .gsd-* 概不拷贝,build.mjs:276-294)+ 产物 gate 扫描 | closed |
-| T-1-05 | DoS | 断网降级路径绕过 | medium | mitigate | 离线链固定顺序 ① GSD_TARBALL(shasum-gated)→ ② .build-cache → ③ GSD_PACKAGE_DIR(须含 bin/install.js 与 package.json)→ ④ npm pack;全空失败 exit 1 + stderr 列明 ①-④ 档位名 + BUILD.md 指引(build.mjs:184-228);npm cache --offline/--prefer-offline 全文零出现(grep 实证) | closed |
-| T-1-SC | Tampering | npm 包安装 + hooks 桥接(本 phase 唯一引入包) | high | mitigate | package-legitimacy gate 已跑(SUS/too-new)+ 01-01 Task 1 blocking-human checkpoint 任何模式不自动通过;**执行期发现**:hooks 桥接适配器 hooks/dsh-gsd-suite/run.cjs 为 install-gsd-dsh.sh 部署产物、不在 npm tarball 树内 → 首轮快照守卫全链 fail-open → 修复(commit 2d45fac):canonical 入库 build/assets/dsh-gsd-suite-run.cjs + build.mjs:295-302 捕获拷贝;回归防线:build-smoke ⑥⑦⑧(e039939,本次 npm test 7/7 绿);live 证据:verify-evidence.md + 本审计现场复证(已装 wrapper 与 canonical 逐字节一致) | closed |
+| T-1-01 | Tampering | tarball 获取(npm pack / 离线 .tgz) | high | mitigate | 在线依赖 npm registry integrity;离线 ① 档 SHA-512(对照 NOTICES dist.integrity)+ SHA-1(对照 dist.shasum)双重校验,mismatch → exit 2 fail-closed。代码:build.mjs:164-184 `checkTarballIntegrity`;canonical 行:THIRD-PARTY-NOTICES.md(1.20.1 行复审逐字未变);篡改负向:01-01-SUMMARY D3(exit 2 + checksum mismatch)。复审增强(384b72a,WR-01):②档 .build-cache 现与 ①档共用同一完整性入口,负向防线入库 build-smoke「WR-01 负向:②档篡改 → exit 2」 | closed |
+| T-1-02 | Spoofing | 包名解析(@opengsd/gsd-core) | high | mitigate | 包名为 build.mjs 内常量、不可被环境参数化(build.mjs:219-220 `npm pack @opengsd/gsd-core@${GSD_VERSION}`;GSD_VERSION 仅参数化版本且格式强校验 build.mjs:240-243);legitimacy seam 判 SUS(too-new,01-RESEARCH §Package Legitimacy Audit)→ 01-01 Task 1 blocking-human checkpoint 人类决策取 1.20.1(canonical↔npmmirror dist.integrity 逐字节一致,01-01-PLAN/SMMARY 留档) | closed |
+| T-1-03 | Tampering | 版本标识(package.json / VERSION / GSD_VERSION) | medium | mitigate | gate A 双锚(1.20.1 staged 树无 gsd-core/package.json 的既成口径):gsd-core/VERSION === GSD_VERSION 且 `runtime-identity --raw` 自报 packageName/version 精确相等,任一不等 exit 2。代码:tests/run-gates.sh:32-40;build.mjs:324-337(staging 清理前强制消费、exit code 原样传播);fixture 负向:01-02-SUMMARY D2 | closed |
+| T-1-04 | Elevation of Privilege | 官方 install.js build 期执行 | high | mitigate | 版本 pin + 完整性(在线 npm / 离线 shasum)+ CLAUDE_CONFIG_DIR=mktemp staging + HOME=.gsd-build-tmp/fakehome 隔离(build.mjs:263-270,官方契约绝不手写 staging)+ 4 树白名单捕获(settings.json / agents / .gsd-* 概不拷贝,build.mjs:278-298)+ 产物 gate 扫描 | closed |
+| T-1-05 | DoS | 断网降级路径绕过 | medium | mitigate | 离线链固定顺序 ① GSD_TARBALL(shasum-gated)→ ② .build-cache → ③ GSD_PACKAGE_DIR(须含 bin/install.js 与 package.json)→ ④ npm pack;全空失败 exit 1 + stderr 列明 ①-④ 档位名 + BUILD.md 指引(build.mjs:188-226);npm cache --offline/--prefer-offline 全文零出现(grep 实证) | closed |
+| T-1-SC | Tampering | npm 包安装 + hooks 桥接(本 phase 唯一引入包) | high | mitigate | package-legitimacy gate 已跑(SUS/too-new)+ 01-01 Task 1 blocking-human checkpoint 任何模式不自动通过;**执行期发现**:hooks 桥接适配器 hooks/dsh-gsd-suite/run.cjs 为 install-gsd-dsh.sh 部署产物、不在 npm tarball 树内 → 首轮快照守卫全链 fail-open → 修复(commit 2d45fac):canonical 入库 build/assets/dsh-gsd-suite-run.cjs + build.mjs:300-307 捕获拷贝;回归防线:build-smoke ⑥⑦⑧(e039939,本次 npm test 7/7 绿);live 证据:verify-evidence.md + 本审计现场复证(已装 wrapper 与 canonical 逐字节一致) | closed |
 | T-1-06 | Tampering | 产物树内容(改写后) | high | mitigate | gate B 三段式作为内容完整性第二道防线:tests/run-gates.sh:45-78 — B1 staging 根前缀残留(4 树 -F 固定串)/ B2 本机 homedir 前缀残留(4 树)/ B3 字面 /Users\|home/ 正则(仅 skills 树,SKIL-04 字面范围);任一命中 exit 2、阻断 prepack;upstream 叙述例径不误杀(01-01-SUMMARY 偏差 2 逐行审计) | closed |
 | T-1-07 | Spoofing | 实例安装的引擎身份(runtime identity) | high | mitigate | 重装后包内 CLI identity JSON 断言(须为 @opengsd/gsd-core / 1.20.1):verify-evidence.md Task 1 自动化段与 Task 2 交互段留证;**本审计现场独立复证(2026-11-10T14:32Z)**:`node $DSH_PROFILE_DIR/node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs runtime-identity --raw` → `{"packageName":"@opengsd/gsd-core","version":"1.20.1"}`(exit 0),gsd-core/VERSION = 1.20.1 | closed |
-| T-1-08 | DoS | 断网降级/失败模式理解路径 | medium | mitigate | BUILD.md 固化四档离线链、每档失败文案与 exit code 0/1/2 契约、gates 契约、canonical↔mirror 交叉核对命令、验证实例复验序(161 行,11 关键词断言全过);verify-evidence 新快照声明防 stale 假绿(本审计已复核证据链,见下) | closed |
+| T-1-08 | DoS | 断网降级/失败模式理解路径 | medium | mitigate | BUILD.md 固化四档离线链、每档失败文案与 exit code 0/1/2 契约、gates 契约、canonical↔mirror 交叉核对命令、验证实例复验序(现 205 行;四档/exit-code/gates/canonical↔mirror 章节复审 grep 在位;11 关键词断言为 2026-11-10 原审计口径);verify-evidence 新快照声明防 stale 假绿(本审计已复核证据链,见下) | closed |
 
 *Status: open · closed · open — below {block_on} threshold (non-blocking)*
 *Severity: critical > high > medium > low — only open threats at or above workflow.security_block_on count toward threats_open*
@@ -76,6 +76,12 @@ No accepted risks — all register threats carry implemented mitigations verifie
 3. THIRD-PARTY-NOTICES.md canonical 行与 01-01-PLAN Task 1 记录逐字一致(shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd` / integrity `sha512-vG3iTEmeImmFFS8CjX69n7F2bxQ3QdssO++DxhaVDa/S2k098DFoGWXkjHbCCOyfQkIIkFt7kDginryDnoPcZQ==`);build.mjs 全文无 `--offline`/`--prefer-offline`。
 4. git 链确认修复与回归测试在库:2d45fac(fix,wrapper 入库+捕获段)、bca4875(live 补记)、e039939/21a38e6(回归断言与 Nyquist 收口)。
 
+**复审实证(2026-11-12,verify:post stale-verification resume;ASVS L1 grep-depth,未派审计子代理):**
+1. 复审范围 = 自本文件创建(38b179f)后实现侧两波变更:① phase-1 review fix 384b72a(build.mjs / tests/build-smoke.test.mjs / build/lib/rewrite-map.cjs / BUILD.md / THIRD-PARTY-NOTICES.md,findings WR-01/WR-02/IN-01..IN-04);② phase-2 code-review fix 55191da..e8e9d73(build/lib/check-pins.mjs、build/lib/compat-probe.mjs、.github/workflows/compat-matrix.yml、tests/compat-matrix.test.mjs、tests/version.test.mjs、BUILD.md 计数行)。
+2. 九条威胁引用证据逐条 grep 复核全部在位:checkTarballIntegrity(build.mjs:164-184)、npm pack 常量(build.mjs:219-220)、GSD_VERSION 格式白名单 `/^\d+\.\d+\.\d+$/`(build.mjs:240-243)与 pre-gate fetched==requested、CLAUDE_CONFIG_DIR/HOME=fakehome 隔离(build.mjs:263-270)、4 树捕获(build.mjs:278-298)、gates A/B/C 消费(build.mjs:324-337)、wrapper canonical 捕获(build.mjs:300-307 + build/assets/dsh-gsd-suite-run.cjs);tests/run-gates.sh gate A(32-40)/B(45-78)/C 自 38b179f 起零改动;NOTICES 1.20.1 canonical 行逐字未变。
+3. 变更影响判定:T-1-01 缓解较原审计**更强**(②档 .build-cache 纳入同一完整性入口,WR-01 修复 + 负向测试入册);IN-03 仅将 legacy GSD_BUILD_SOURCE 旁路由静默降为显式 console.warn(兼容行为不变,原审计已知口径);`--offline`/`--prefer-offline` 仅存在于 build/lib/check-pins.mjs(phase-2 采样工具,不在 build.mjs 引用图;其 `--offline`=跳过 registry 采样,与 npm cache 模式无关),build.mjs 全文零出现;fix(02) 系列无一触及 build.mjs / run-gates.sh / build/assets/*.cjs / NOTICES canonical 行。
+4. 结论:9/9 closed 维持,无新增 open;register 不受两波变更侵害;threats_open: 0 复核通过。
+
 ---
 
 ## Sign-Off
@@ -86,3 +92,11 @@ No accepted risks — all register threats carry implemented mitigations verifie
 - [x] `status: verified` set in frontmatter
 
 **Approval:** verified 2026-11-10
+
+## Security Audit 2026-11-12
+
+| Metric | Count |
+|---|---|
+| Threats found | 9 |
+| Closed | 9 |
+| Open | 0 |
