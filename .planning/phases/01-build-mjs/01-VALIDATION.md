@@ -41,8 +41,8 @@ validated: "2026-11-10"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 01-01 (plan) | 01 | 1 | SKIL-03 | T-1-02 / T-1-01 | ①/④ 档离线 .tgz 经 shasum-512 对照 SBOM 后解包；独立 CLI 输出身份 JSON | smoke | `npm test`（build-smoke ③ identity 断言 + build 内嵌 gate A 双锚） | ✅ (build-smoke ③) | ✅ green |
-| 01-02 (plan) | 01 | 1 | SKIL-04 | T-1-06 / T-1-03 | 产物树零残留机器绝对路径；72 个 SKILL.md 各恰一个 adapter 块 | gate/unit | `npm test`（rewrite-map 6/6 unit + build 内嵌 run-gates gate B1/B2/B3、gate C 72×1） | ✅ (rewrite-map.test / run-gates.sh) | ✅ green |
+| 01-01 (plan) | 01 | 1 | SKIL-03 | T-1-02 / T-1-01 | ①/② 档离线 .tgz 经 shasum-512/SHA-1 对照 SBOM 后解包（② 档为 WR-01 code-review 同源补强，2026-11-11）；独立 CLI 输出身份 JSON | smoke | `npm test`（build-smoke ③ identity 断言 + WR-01 ② 档篡改 exit 2 负向 + build 内嵌 gate A 双锚） | ✅ (build-smoke ③) | ✅ green |
+| 01-02 (plan) | 01 | 1 | SKIL-04 | T-1-06 / T-1-03 | 产物树零残留机器绝对路径；72 个 SKILL.md 各恰一个 adapter 块 | gate/unit | `npm test`（rewrite-map 7/7 unit（⑦ PLUGIN_ROOT_REF 单源断言为 2026-11-11 code-review 追加）+ build 内嵌 run-gates gate B1/B2/B3、gate C 72×1） | ✅ (rewrite-map.test / run-gates.sh) | ✅ green |
 | 01-02 (plan) | 04 | 1 | INST-02 | T-1-06 | 产物树无 `~/.dsh` 托管字面量，安装不写受管文件 | smoke | `npm test`（build-smoke ④ 四树零 '~/.dsh'）；安装侧 987→987 零新增复核见 verify-evidence.md Task 1 | ✅ (build-smoke ④) | ✅ green |
 | 01-03 (plan) | 01 | 1 | DEV-03 | T-1-07 / T-1-08 | 验证实例（gsdtest/3091）三项复验：`/gsd-health` + 独立 CLI + `.env` 拦截（read/bash 双入口硬拦 exit 2） | manual-only（已执行） | 复验序见 BUILD.md §⑧；证据 = verify-evidence.md（两轮 user_setup 历史 + 含修复快照声明） | ✅ (verify-evidence.md) | ✅ green（manual-only executed） |
 | 01-03 T2（审计追加） | 03 | 3 | SKIL-03（守卫链） | T-1-SC 类 / hooks 桥接 fail-open 回归 | `hooks/dsh-gsd-suite/run.cjs` 随构建逐字节重放 canonical；注册命令行（经 wrapper）对 DSH payload 拦 `.env` exit 2、良性放行 exit 0 | smoke | `npm test`（build-smoke ⑥⑦⑧：删后重建 wrapper 逐字节一致 + registry 经 wrapper 调度 + 组件级拦截/放行契约） | ✅ (build-smoke ⑥⑦⑧) | ✅ green |
@@ -86,4 +86,12 @@ validated: "2026-11-10"
 |---|---|
 | Gaps found | 1 |
 | Resolved | 1 |
+| Escalated | 0 |
+
+## Validation Audit 2026-11-12
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
 | Escalated | 0 |
