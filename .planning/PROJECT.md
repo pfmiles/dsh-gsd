@@ -69,4 +69,4 @@
 - 每次插件源码变更后必须 `--force` 重装 + 重启验证实例（file: 快照机制）
 
 ---
-*Last updated: 2026-11-12 after Phase 2*
+*Last updated: 2026-11-12 after Phase 2 re-verification — Phases 01 and 02 both re-verified at HEAD (14/14 and 13/13) following the code-review fix commits; requirements unchanged, 3 residual quality items (WR-05/WR-06/IN-04) carried as known debt and one upstream registry drift handed to Phase 3.*

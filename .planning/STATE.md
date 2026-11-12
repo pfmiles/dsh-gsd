@@ -4,11 +4,11 @@ current_phase: 3
 current_phase_name: 发布（GitHub + npm + dshmarket）
 current_plan: Not started
 status: planning
-stopped_at: Phase 01 complete, ready to plan Phase 3
-last_updated: "2026-11-12T03:52:56.311Z"
+stopped_at: Phase 02 complete, ready to plan Phase 3
+last_updated: "2026-11-12T04:52:06.776Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 01 complete, transitioned to Phase 3
-state_head: 51ee48c105bae0c68027a85c286291799b4324ad
+last_activity_desc: Phase 02 complete, transitioned to Phase 3
+state_head: b800db20a03bd7e6a25a2dd10076aee4cdfa0ba3
 progress:
   total_phases: 5
   completed_phases: 2
@@ -26,13 +26,13 @@ Plan: 1 of 3
 Current Plan: Not started
 Total Plans in Phase: 3
 Status: Ready to plan
-Last activity: 2026-11-12 — Phase 01 complete, transitioned to Phase 3
+Last activity: 2026-11-12 — Phase 02 complete, transitioned to Phase 3
 
-Progress: [████████████████████] 6/6 plans (100%) — 2/5 phases (40%)
+Progress: [████████████████████] 6/6 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
 
 ## Current Focus
 
-Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 CONTEXT.md）。2026-11-12 复核：Phase 01 verification 已完成 stale→passed 续跑（VERIFICATION 14/14，digest ab8770cb；Nyquist/SECURE/UI 三钩子复审全绿；code-review 重审 clean），phase.complete 再确认。Phase 02 完成态不变（3/3 plans + 13/13 + 全修复），唯其 VERIFICATION 同为 stale（review-fix 触碰 covered files）——建议入 Phase 3 规划前或并行补跑 `/gsd-execute-phase 02`。其余遗留（WR-01..04/IN-01..03 已全 fixed、REQUIREMENTS 追溯行缺省）由 /gsd-progress 追踪。
+Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 CONTEXT.md）。2026-11-12 复核：**Phase 01 与 Phase 02 的 verification 均已 stale→passed 续跑完毕**，无遗留 stale——Phase 01 14/14（digest ab8770cb）、Phase 02 13/13（digest fe299fa9，17 covered files），两轮均走 #4682 复用产物路径（Nyquist/SECURE/UI 三钩子 State A 复审 → code-review 重审 → regression gate → verifier）。**入 Phase 3 前须处理的上游漂移**：`@deepseek-ai/dsh-skill-filesystem@0.2.2-rc.2` / `dsh-fs@0.2.2-rc.2` 于 2026-11-12T01:54–02:00Z 发布，落入根 peer 开区间 `>=0.2.2-rc.1 <0.3.0-0` 与 rc.1 钉住的 bridge 链冲突，`compat-matrix.yml` L37 的无豁免 install 步会 4 格全 ERESOLVE（已用户裁决归档为已知漂移、移交 Phase 3 修复，`--force` 可用、`--legacy-peer-deps` 不可用）。其余遗留：3 条 known debt（WR-05 零匹配 dispatch 假绿 = 安全侧 T-2-09；WR-06 幽灵轴未回溯 pins.lines；IN-04 门哨兵断言偏弱）、REQUIREMENTS 追溯行缺省、本地 main 领先 origin 未推 —— 由 /gsd-progress 追踪。
 
 ## Key Decisions（已锁定）
 
@@ -46,15 +46,18 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Context Snapshot（最近一次同步）
 
-- 分支：main @ origin = git@github.com:pfmiles/dsh-gsd.git（已建仓；当前本地 ahead 31 未推，push 后 CI 激活）
+- 分支：main @ origin = git@github.com:pfmiles/dsh-gsd.git（已建仓；当前本地 ahead 83 未推，push 后 CI 激活）
 - 验证实例：gsdtest profile @ 127.0.0.1:3091，插件 file: 安装（dsh-gsd）
 - 已知修复：scripts/ 兄弟目录缺失 → 引擎 MODULE_NOT_FOUND（已并入 build.mjs）
 - 目标引擎版本：@opengsd/gsd-core 1.20.1（2026-11-10 执行期 checkpoint 人类决策；canonical shasum `d632001e2541e6cccfb740bcad5b2f5c334efabd`，双 registry 一致）；repo 产物树已由 01-01 build 换源重建为 1.20.1（76 棵树）；本机 ~/.dsh 部署快照仍为 1.16.0
 - 构建产物不入 git：skills/ gsd-core/ hooks/ config/ scripts/
-- 测试锚点（02 执行后现状）：npm test = `node --test tests/*.test.mjs`（5 文件 / 25 tests，含真实构建 smoke）；prepack = build && tests（gates 内嵌 build）；tests/run-gates.sh 双 env 契约（GSD_VERSION + GSD_STAGING_ROOT，缺失 exit 1）；build/assets/pins.json = 行↔pin 真源 + build/lib/check-pins.mjs（exit 0/1/2）；DSH 矩阵 [0.2.2-rc.1, 0.2.1-rc.5] × GSD [1.20.1, 1.19.0]（workflow 4 格，CI 首绿归 P3）
+- 测试锚点（02 复核后现状）：npm test = `node --test tests/*.test.mjs`（5 文件 / 26 tests，含真实构建 smoke）；快速回路 3 套 = 17 tests；prepack = build && tests（gates 内嵌 build）；tests/run-gates.sh 双 env 契约（GSD_VERSION + GSD_STAGING_ROOT，缺失 exit 1）；build/assets/pins.json = 行↔pin 真源 + build/lib/check-pins.mjs（exit 0/1/2）；DSH 矩阵 [0.2.2-rc.1, 0.2.1-rc.5] × GSD [1.20.1, 1.19.0]（workflow 4 格，CI 首绿归 P3）
+- 并发纪律：`build-smoke.test.mjs` 会重写构建树，**禁止并发**跑测试或 build（会假红 `gate C: no SKILL.md under skills/gsd-*`）——本轮已实证并全程改为串行
+- Phase 3 待纳管：`tests/pending-phase-3/pack-contents.test.mjs`（发布面 tarball 内容防线，3/3 绿）刻意置于 `tests/*.test.mjs` glob 之外以免污染 Phase 02 计数；纳管时需同步更新 BUILD.md/文档计数
 
 ## Progress Log
 
+- 2026-11-12 verification 续跑（Phase 02）：review-fix 七提交（55191da/6356ff4/88d213d/b2e351b/4fe265a/df81330/e8e9d73）触碰 02 的 covered files 致 stale；/gsd-execute-phase 02 走 #4682 复用产物路径（0 plan 重跑）——Nyquist validate State A 复审（26/26 + 17/17 现场复跑、计数 25→26 与 16→17 订正、12 项事实修正、上游漂移 ESCALATE `70e54e4`）→ secure-phase 复审（9 found / 8 closed / 1 open-non-blocking，新登记 T-2-09 `b0c11c5` + 步数订正 `84784f1`）→ ui-review 非 UI 判定维持、两门本次重测（`9cf7907`）→ code-review 重审 HEAD（7/7 前次发现全 resolved、0 regressed，突变实验验证；新发现 WR-05/WR-06/IN-04 `4e81517`）→ disposition 三条新发现入账 open（`e309703`）→ regression gate 26/26 exit 0（含 Phase 01 套件）→ verifier 13/13 passed（新 digest fe299fa9，17 covered files `b800db2`）→ phase.complete（next=Phase 3，`roadmap_updated: false` 属预期因 ROADMAP 早已 `[x]`）。**本轮最重要的产物 = 上游 registry 漂移发现**：四格 install 步在当前 HEAD 全 ERESOLVE，已复现、已用户裁决移交 Phase 3
 - 2026-11-12 verification 续跑（Phase 01）：review-fix（384b72a 及 02 修复序列）触碰 01/02 的 covered files 致两阶段 verification stale；/gsd-execute-phase 01 走 #4682 复用产物路径——verify:post 三钩子（Nyquist validate 复审 0 gap `ff645cb`、SECURE 复审 threats_open 0 `48cb443`、UI audit 全 N/A `71759eb`）→ code-review 重审 HEAD clean 0 findings（前 6 findings 保持已修 `51ee48c`）→ verifier 全量 live 复验 14/14 passed（新 digest ab8770cb）→ phase.complete（`4d18d11`，STATE 推进至 Phase 3）。Phase 02 的 stale 待同法续跑（/gsd-execute-phase 02）
 - 2026-11-10 bootstrapping：`.planning/` 由主会话按 GSD 模板生成；GSD 流程随后移交 3091 验证实例驱动
 - 2026-11-10 planning（3091 实例）：Phase 1 经 PRD express path 跳过 discuss → 轻量 research + pattern map → 3 plans 产出并通过 plan-checker 两轮验证（1 blocker + 2 warnings 已修，0 剩余）；需求覆盖 4/4（SKIL-03/04、INST-02、DEV-03）；决策覆盖门 skipped（无 D-ID）
@@ -76,6 +79,11 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Decisions
 
+- [Phase 02]: 2026-11-12 续跑口径：stale→execute-phase 路由下三钩子按 State A（audit existing）复审——VALIDATION 计数订正（25→26 / 16→17）并逐条回查 manual-only 证据册；SECURITY 逐威胁在码复核并新增 HEAD 复审段；UI-REVIEW 维持 6-pillar 全 N/A 但两门本次重测（不沿用旧值）
+- [Phase 02]: **上游 registry 漂移归档口径（用户裁决）**：`dsh-skill-filesystem@0.2.2-rc.2`（2026-11-12T02:00:34Z）/ `dsh-fs@0.2.2-rc.2`（01:54:18Z）落入根 peer 开区间 `>=0.2.2-rc.1 <0.3.0-0`，致 `compat-matrix.yml` L37 无豁免 install 步四格全 ERESOLVE（已实测复现）——**不**作为 Phase 02 未决 gap、**不**在本轮改 workflow，移交 Phase 3 修复。约束：`--force` 可用（两向探针绿）；**`--legacy-peer-deps` 不可用**（跳过 host peer → 缺 `dsh-app-boot` → probe exit 1）；上界陷阱 `<0.2.2-rc.2-0` 不能排除 rc.2（rc.2 < rc.2-0），候选 exact peer 或 `<0.2.2-rc.2`
+- [Phase 02]: 三条新发现判为 **known debt 而非 must-have 失败**（verifier 裁定，含独立突变复现）：WR-05 零匹配 dispatch 假绿（同安全侧 T-2-09，medium < block_on(high) 故 threats_open 仍 0）、WR-06 幽灵轴未回溯 pins.lines（打的是未来保证，VER-03 现时判据仍成立）、IN-04 门哨兵只断 token 存在不断布尔语义
+- [Phase 02]: 并发纪律确立：`build-smoke.test.mjs` 重写构建树，与并发测试/build 会假红（gate C `no SKILL.md under skills/gsd-*`）——本轮实测一次假红后全程改串行；后续验证跑须遵守
+- [Phase 02]: 越界产物处置：`tests/pack-contents.test.mjs`（发布面防线，来源不明）移入 `tests/pending-phase-3/` 使 glob 不匹配、Phase 02 计数保持 26/26，文件与 README 说明一并入库（`25ce425`）留待 Phase 3 正式纳管
 - [Phase 01]: 2026-11-12 续跑口径：stale→execute-phase 路由下 verify:post 钩子按各 skill 的 State A（audit existing）执行——既存 VALIDATION/SECURITY 复审并追加审计块而非重建；UI-REVIEW 对零 UI 面给 6-pillar 全 N/A 忠实结论（不虚构分数）；code-review 重审以 phase-01 key_files 为界（02 文件已有自属处置，排除），clean 0 findings；verifier 以旧 14 truths 为基线全量 live 复验（含负向矩阵），原 human_verification 由 01-UAT/verify-evidence 闭合不复发
 - [Phase 01]: 取源目标版本 = @opengsd/gsd-core@1.20.1（执行期 checkpoint 人类决策，2026-11-10；GSD_VERSION 默认值与全链判据落 1.20.1）
 - [Phase 01]: gate A（产物版本交叉校验）在 1.20.1 落为 gsd-core/VERSION + runtime-identity 引擎自报双锚（1.20.1 staged 树无 gsd-core/package.json，1.16.0 有；预 gate ③ 已 pin tarball package.json version）
@@ -101,6 +109,6 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Ready to plan**（尚无 
 
 ## Session
 
-**Last session:** 2026-11-12T11:55:00+08:00
-**Stopped at:** Phase 01 complete, ready to plan Phase 3
+**Last session:** 2026-11-12T12:55:00+08:00
+**Stopped at:** Phase 01 + Phase 02 both re-verified (14/14, 13/13), no stale verification left; ready to plan Phase 3
 **Resume file:** None
