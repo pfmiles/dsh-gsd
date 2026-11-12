@@ -98,10 +98,64 @@ test('⑤ refuse-by-design 哨兵：无 range/tag 安装规格（捕获组一律
 
 test('⑥ Pitfall 7 哨兵：version 已迁新方案且 private 未发布前保持 true', () => {
   assert.equal(pkg.version, '1.20.1-1.dsh022')
-  assert.equal(pkg.private, true, 'npm publish 前置：private: true 移除属 Phase 3 任务')
+  assert.equal(pkg.private, true, 'npm publish 前置：private: true 移除属 Phase 5 任务')
 })
 
 test('⑦ allow-version 风险声明双语存在（P2-01 docs 半）', () => {
   assert.ok(readmeZh.includes('allow-version'), 'README 中文段缺 allow-version 风险声明')
   assert.ok(readmeEn.includes('allow-version'), 'README 英文段缺 allow-version 风险声明')
+})
+
+// Keep a Changelog 1.1.0 的六个固定小节名：出现闭集外的名字即说明有人在自创结构。
+const CHANGELOG_SECTIONS = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security']
+
+test('⑧ CHANGELOG 首条目版本与 package.json.version 等值，小节名在六类闭集内', () => {
+  const changelog = read('CHANGELOG.md')
+  const m = /^## \[([^\]]+)\] - (\d{4}-\d{2}-\d{2})$/m.exec(changelog)
+  assert.ok(m, 'CHANGELOG.md 缺少 "## [<version>] - <YYYY-MM-DD>" 形态的首条目')
+  assert.equal(m[1], pkg.version, 'CHANGELOG 首条目版本与 package.json.version 漂移')
+  assert.equal(m[1], '1.20.1-1.dsh022')
+  const heads = [...changelog.matchAll(/^### (.+)$/gm)].map((x) => x[1].trim())
+  const bad = heads.filter((h) => !CHANGELOG_SECTIONS.includes(h))
+  assert.deepEqual(bad, [], `CHANGELOG 出现非 Keep a Changelog 小节名: ${bad.join(', ')}`)
+  assert.ok(heads.length > 0, 'CHANGELOG 首条目没有任何 ### 小节')
+})
+
+test('⑨ 徽章与上游致谢可见性（防漂移）', () => {
+  assert.match(
+    readme,
+    /!\[[^\]]*\]\(https:\/\/img\.shields\.io\//,
+    'README 缺 shields.io 徽章（PUB-04 的许可与 DSH 行可见性）',
+  )
+  for (const [name, s] of [
+    ['zh', readmeZh],
+    ['en', readmeEn],
+  ]) {
+    assert.ok(s.includes('THIRD-PARTY-NOTICES.md'), `README ${name} 段缺 THIRD-PARTY-NOTICES 链接`)
+    assert.ok(s.includes('MIT'), `README ${name} 段缺 MIT 声明`)
+  }
+})
+
+test('⑩ INST-06 插件管理器元数据合规（locale 双语键 + icon 双通道 + files 收录）', () => {
+  // 宿主 schema（dsh-plugin-manager 0.2.2-rc.1）：string 或 { en: string } 联合形态。
+  const nonEmptyText = (v) => {
+    if (typeof v === 'string') return v.trim().length > 0
+    if (v && typeof v === 'object' && typeof v.en === 'string') return v.en.trim().length > 0
+    return false
+  }
+  const metaOf = (file) => JSON.parse(read(file)).meta ?? {}
+  const en = metaOf('locale/en.json')
+  const zh = metaOf('locale/zh.json')
+  for (const [name, meta] of [
+    ['en', en],
+    ['zh', zh],
+  ]) {
+    assert.ok(nonEmptyText(meta.title), `locale/${name}.json 的 meta.title 缺失或为空`)
+    assert.ok(nonEmptyText(meta.description), `locale/${name}.json 的 meta.description 缺失或为空`)
+  }
+  assert.deepEqual(en.title, zh.title, 'locale 双语 meta.title 漂移（同一产品名应按语言各自呈现）')
+  assert.equal(pkg.icon, 'icon.svg', 'package.json icon 未指向包内 icon.svg（INST-06 展示通道）')
+  assert.equal(pkg.exports['./icon'], './icon.svg', 'exports["./icon"] 缺失或指向漂移（INST-06 第二通道）')
+  assert.ok(pkg.files.includes('locale'), 'files 未收录 locale/ ⇒ 宿主静默降级为技术名与英文兜底')
+  assert.ok(pkg.files.includes('icon.svg'), 'files 未收录 icon.svg ⇒ 宿主静默降级为默认头像')
 })
