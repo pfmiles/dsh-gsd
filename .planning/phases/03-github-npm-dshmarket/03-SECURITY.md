@@ -130,4 +130,6 @@ created: "2026-11-12"
 
 **由此新增的发布前硬要求（Phase 5，阻塞级）：** `npm publish` 前必须让一次 CI run 覆盖修复后的 `index.js`（重新 push 或等价验证）。否则等于把一个从未被 CI 跑过的入口文件发出去。此项与 T-03-11/A-03-02 的 token 权限收敛一并列为 Phase 5 门禁。
 
+**✅ 该硬要求已于 2026-11-12 当场履行（本条更正后追加）：** 经人类授权，修复连同 8 条守卫与全部审查/验证产物一并推送 —— `20e20c0..9e99cd6`，触发 run **`43238375397`**（`event=push`、`run_attempt=1`、`head_sha=9e99cd6`、**`conclusion=success`**，四格全 success）。推送后远端 `refs/heads/main` = `9e99cd6` = 本地 HEAD，远端 `index.js:22` 为修后形态（`dirname(fileURLToPath(import.meta.url))`，无 `..`）。仓库运行史现为 **2 条，两条皆 success ⇒ 仍无红跑历史**，`total_count` 由 1 → 2。故 T-03-14 的入包面差异归零：CI 已验证的 sha 就是当前发布的 sha。
+
 **证据完整性声明：** 本更正是**追加**，不删改原文——T-03-14 原句保留并加显式失效标记，使「当时的观测」与「现在的实情」都可追溯。

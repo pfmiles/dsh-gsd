@@ -128,6 +128,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 03]: `workflow` scope 与 `delete_repo` 由**人类**在 checkpoint 授权后执行 `gh auth refresh -h github.com -s workflow -s delete_repo` 追加（现 scope：`delete_repo, gist, read:org, repo, workflow`）。 — P-03-j 明令执行器不得自行 refresh（改 token = 对外动作）；缺 workflow scope 时 GitHub 拒绝创建/更新 `.github/workflows/*`。`delete_repo` 仅用于删除探针仓。
 - [Phase 03]: refresh 之后仍失败的原因不是 scope 而是 **stale `osxkeychain` 凭据**；成功形态固定为 `git -c credential.helper= -c credential.helper='!gh auth git-credential' push <https-url> main`。 — `credential.helper=osxkeychain` 把旧 token 顶在 gh 的新 token 之前；`gh auth status` 的 `Git operations protocol: ssh` 又让默认路径继续走坏掉的 SSH。清空 helper 链后只接 gh 的 helper 即通。
 - [Phase 03]: 首跑前增加**探针私仓干跑**（用户裁决「先在一个临时仓库干跑一次，绿了再推」）：`pfmiles/dsh-gsd-ci-probe` 推同一 SHA → run `43218482632` success（4 格全绿，1m36s）→ `gh repo delete --yes` → API 404。 — 用一次可删除的 run 换掉「真仓首跑变红」的不可逆风险；探针仓不留在任何公开历史上。真仓随后只推一次（`run_attempt=1`、`total_count=1`）。
+- [Phase 03]: **第二次推送**（`20e20c0..9e99cd6`）把 CR-01 修复 + 8 条守卫 + 全部审查/验证产物推上 GitHub，触发 run `43238375397` success（4 格全绿）⇒ `total_count` 1→2，**两条 run 皆 success，仍无红跑历史**，SC-5 不破。 — 触发原因：GitHub 上的 `20e20c0` 含 CR-01 缺陷（`index.js` 包根 off-by-one，装出来 0 个技能），是「公开可安装但坏的」；推修复既消除该状态，也让修复首次获得 CI 覆盖，从而消掉原本记给 Phase 5 的唯一阻塞项。`03-03-SUMMARY` 的 `total_count==1` 仍是准确的**首跑当时**记录，不改写（它属 covered file，改写会让 verification 变 stale，且会混淆「当时」与「现在」）。
 
 ## Session
 
