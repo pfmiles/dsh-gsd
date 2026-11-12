@@ -130,7 +130,7 @@ test('⑦ workflow_dispatch inputs 消费面哨兵（inputs ∩ matrix 条件门
 //    无条件断言 ⇒ 首跑即红（直违 SC-5 无红跑历史）。本仓史里「证明断言存在」的
 //    检查被 4 个连续变异（|| 形 / != 反写 / && 形 / brace 形 `[ … ] && { …; exit 2; }`）
 //    逐一绕过，直到门行被整行锚定才收敛——故此处：(1) 端到端锚定 canonical 门行
-//    （不接受任何尾随内容）；(2) `matrix.expect` 全文件恰 2 次（门 + 探针调用），
+//    （不接受任何尾随内容）；(2) `matrix.expect` 在**非注释行**里恰 2 次（门 + 探针调用），
 //    杜绝第二处未门控用法；(3) 解析断言与 `exit 2` 各恰 1 条且都落在（门, 收口 fi）
 //    之间；(4) 逐个拒绝已知退化形态（含「门只在注释里」）。
 const GATE_RE = /^\s+if \[ "\$\{\{ matrix\.expect \}\}" = "install-ok" \]; then$/m
@@ -161,11 +161,13 @@ test('⑧ G-1 门控形态守卫（canonical gate 端到端锚定，解析断言
   )
   assert.equal(gateish[0].i, gateIdx, '命中的 canonical 门行不是唯一的 matrix.expect 门行')
 
-  // (2) 全文件 `matrix.expect` 恰 2 次：门行 + 探针调用参数，无第二处未门控用法。
-  const expectUses = [...y.matchAll(/matrix\.expect/g)].length
+  // (2) 全文件 `matrix.expect` 恰 2 次（门 + 探针调用），无第二处未门控用法。
+  //     注释行不计：未来某条 `# … matrix.expect …` 说明不该让本断言误红。
+  const codeText = lines.filter((l) => !/^\s*#/.test(l)).join('\n')
+  const expectUses = [...codeText.matchAll(/matrix\.expect/g)].length
   assert.equal(
     expectUses, 2,
-    `matrix.expect 应恰出现 2 次（门 + 探针调用），实际 ${expectUses} 次`
+    `非注释行里 matrix.expect 应恰出现 2 次（门 + 探针调用），实际 ${expectUses} 次`
       + `${expectUses > 2 ? '——疑似新增未门控用法' : ''}`,
   )
 

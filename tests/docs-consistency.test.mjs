@@ -125,11 +125,41 @@ test('⑧ CHANGELOG 首条目版本与 package.json.version 等值，小节名�
 })
 
 test('⑨ 徽章与上游致谢可见性（防漂移）', () => {
-  assert.match(
-    readme,
-    /!\[[^\]]*\]\(https:\/\/img\.shields\.io\//,
-    'README 缺 shields.io 徽章（PUB-04 的许可与 DSH 行可见性）',
+  // 徽章两条都必须在首个 `# dsh-gsd` 标题之前（README 首行是 HTML 注释
+  // `<!-- generated-by: gsd-doc-writer -->`，故以首个标题为锚）。
+  const lines = readme.split('\n')
+  const headingIdx = lines.findIndex((l) => /^#\s+dsh-gsd\s*$/.test(l))
+  assert.ok(headingIdx >= 0, 'README 缺首个 "# dsh-gsd" 一级标题（徽章位置锚点）')
+
+  const shieldBadges = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => /!\[[^\]]*\]\(https:\/\/img\.shields\.io\//.test(l))
+  assert.equal(
+    shieldBadges.length, 2,
+    `README 应恰有 2 枚 shields.io 徽章（许可 + DSH），实际 ${shieldBadges.length} 枚`
+      + `（L${shieldBadges.map((b) => b.i + 1).join('/L')}）——删一枚或加第三枚都算漂移`,
   )
+
+  const below = shieldBadges.filter(({ i }) => i > headingIdx).map(({ i }) => i + 1)
+  assert.deepEqual(
+    below, [],
+    `徽章被移到首个 "# dsh-gsd"（L${headingIdx + 1}）之后：L${below.join('/L')}——顶部可见性丢失`,
+  )
+
+  const licenseBadges = shieldBadges.filter(({ l }) => /\]\(\.\/LICENSE\)/.test(l))
+  assert.equal(
+    licenseBadges.length, 1,
+    `应恰有 1 枚以 ./LICENSE 为链接目标的许可徽章，实际 ${licenseBadges.length} 枚`,
+  )
+  assert.match(licenseBadges[0].l, /MIT/, `许可徽章应声明 MIT：'${licenseBadges[0].l.trim()}'`)
+
+  const dshBadges = shieldBadges.filter((b) => b.i !== licenseBadges[0].i)
+  assert.equal(dshBadges.length, 1, `除许可徽章外应恰有 1 枚徽章，实际 ${dshBadges.length} 枚`)
+  assert.match(
+    dshBadges[0].l, /DSH/,
+    `第二枚徽章应是 DSH 徽章（alt 或 URL 含 DSH）：'${dshBadges[0].l.trim()}'`,
+  )
+
   for (const [name, s] of [
     ['zh', readmeZh],
     ['en', readmeEn],
@@ -232,7 +262,7 @@ test('⑪ G-2 dshmarket 条目 schema（4 顶层键 / category 闭集 / 双语 d
   assert.ok(zh.trim().endsWith('。'), `description.zh 未以句号结尾：…${zh.slice(-24)}`)
 })
 
-test('⑫ G-2 裸名 install 串逐字一致（README 整行 2 次 / dshmarket ≥1 次 / 与 README byte 相等）', () => {
+test('⑫ G-2 裸名 install 串逐字一致（README 整行 2 次且 zh/en 各 1 次 / dshmarket ≥1 次 / byte 相等）', () => {
   const NAKED_INSTALL = 'dsh plugin --profile web add dsh-gsd'
   // 命中面 = trim 后整行相等（缩进/尾随空格的「近似行」仍会被选中，随后由 byte 断言否决）。
   const hits = (s) => s.split('\n').filter((l) => l.trim() === NAKED_INSTALL)
@@ -243,6 +273,18 @@ test('⑫ G-2 裸名 install 串逐字一致（README 整行 2 次 / dshmarket �
     readmeHits.length, 2,
     `README.md 的裸名 install 整行应恰 2 行（zh + en 两半各一），实际 ${readmeHits.length}`,
   )
+  // 总数会被「删一行 + 复制另一行」保持为 2（实测分布 2/0），故按双语两半分别计数。
+  for (const [name, half] of [
+    ['zh', readmeZh],
+    ['en', readmeEn],
+  ]) {
+    const n = hits(half).length
+    assert.equal(
+      n, 1,
+      `README ${name} 段的裸名 install 整行应恰 1 行，实际 ${n} 行`
+        + '——两半各一才算双语覆盖；总数 2 会被同一半重复两次蒙过',
+    )
+  }
   assert.ok(
     marketHits.length >= 1,
     `docs/dshmarket/README.md 的裸名 install 整行应 ≥1 行，实际 ${marketHits.length}`,

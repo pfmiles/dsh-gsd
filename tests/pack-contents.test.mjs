@@ -20,18 +20,25 @@
 // 需要复验真实 tarball 时手工执行：
 //   npm pack --dry-run --json   （注意：会跑一遍 build + 全量测试）
 //
-// 断言三层：
+// 断言四层：
 //   ① `files` 必须是非空、纯字面量的相对路径列表——无宽泛条目（"." / "*" / "**"）、
-//      无否定条目、无绝对路径、无 ".." 穿越。白名单失效最可能的形态就是这三类。
+//      无否定条目、无绝对路径、无 ".." 穿越；且**收录方向**上必需顶层条目一个不少
+//      （删条目不会让 ② 变红——它只让推导面变小，故必须正向点名）。
 //   ② 推导出的收录面里，.planning/ 与其它开发期路径零出现，顶层条目收敛在白名单内
 //      （新增顶层目录要求同步改本文件，属有意识变更）。
 //   ③ `files` 条目不得指向不存在的路径（拼错即静默漏发）；冷克隆未构建的五棵
 //      gitignored 产物树例外。
+//   ④ 安装形态下 index.js 的包根解析：index.js 与 `skills/` 同级，pluginRoot 必须是
+//      包目录本身（多向上一级 = provider 注册到不存在的目录，技能全不加载）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import {
+  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
@@ -43,6 +50,10 @@ const ALLOWED_TOP_LEVEL = new Set([
   'index.js', 'cordis.patch.yml', 'icon.svg', 'locale',
   'skills', 'gsd-core', 'hooks', 'config', 'scripts',
 ])
+
+// 上面三条由 npm 无条件收录（见 simulatePack 的 always/main 列表），即便不写进
+// `files` 也在包里；其余条目必须逐个显式列举，否则安装包静默缺一块。
+const NPM_ALWAYS_INCLUDED = new Set(['package.json', 'README.md', 'LICENSE'])
 
 // 开发期路径：一个都不许进包。'.planning/' 首当其冲——它是本仓 GSD 工作流
 // 自己的规划目录，泄漏即等于把项目文档、阶段计划、UAT 记录发给每个用户。
@@ -109,7 +120,7 @@ const simulatePack = () => {
   return [...paths].sort()
 }
 
-test('① files 白名单：非空、纯字面量相对路径、无宽泛条目', () => {
+test('① files 白名单：非空、纯字面量相对路径、无宽泛条目、必需顶层条目齐全', () => {
   assert.ok(Array.isArray(pkg.files) && pkg.files.length > 0,
     'package.json 缺少 files 白名单——缺省会把整棵工作树打进安装包')
 
@@ -127,6 +138,20 @@ test('① files 白名单：非空、纯字面量相对路径、无宽泛条目'
     assert.ok(!/[?*[\]{}]/.test(norm),
       `files 条目含 glob（"${entry}"）——收录面将无法静态审计，请改为字面量路径`)
   }
+
+  // 收录方向：② 只做「不得出现」的否定断言，删条目时推导面只会变小、②③⑩ 全绿。
+  // 必需集 = ALLOWED_TOP_LEVEL 减去 npm 无条件收录的三条——不另立第二份清单。
+  // CHANGELOG.md 记录过同一类遗漏：tarball 漏发 gsd-core ⇒ 用户侧 MODULE_NOT_FOUND。
+  const listed = new Set(
+    pkg.files.map((raw) => String(raw).trim().replace(/^\.\//, '').replace(/\/$/, '')),
+  )
+  const missing = [...ALLOWED_TOP_LEVEL].filter((t) => !NPM_ALWAYS_INCLUDED.has(t) && !listed.has(t))
+  assert.deepEqual(
+    missing, [],
+    `files 漏发必需顶层条目: ${missing.join(', ')}——安装包里会静默缺一块`
+      + '（CHANGELOG.md 记录过漏发 gsd-core 导致用户侧 MODULE_NOT_FOUND）；'
+      + '若属有意缩面，请同步修改本测试的 ALLOWED_TOP_LEVEL 与 NPM_ALWAYS_INCLUDED',
+  )
 })
 
 test('② 推导收录面：.planning/ 与开发期路径零出现，顶层条目收敛在白名单内', () => {
@@ -160,4 +185,60 @@ test('③ files 条目都有实际内容（拼错 / 空目录即静默漏发）'
   }).map(norm)
   assert.deepEqual(empty, [],
     `files 条目没有可发布内容: ${empty.join(', ')}——安装包会静默缺一块`)
+})
+
+// ④ 行为守卫（CR-01）：把 index.js 里真实的 `pluginRoot` / `skillsDir` 两行抽出来，
+//    代入**模拟安装形态**的 <tmp>/node_modules/dsh-gsd/index.js 在子进程里真求值。
+//
+//    为什么不直接 import index.js：它 import '@deepseek-ai/dsh-skill-filesystem'
+//    （peerDependency，本仓未安装）——直连必然 ENOENT/ERR_MODULE_NOT_FOUND，测不到路径。
+//    为什么不只对源码做正则：`'..'` 到底指到哪儿取决于文件在包里的位置，只有在
+//    真实安装形状下求值才能证伪。任一「向上一级」的写法（`resolve(dirname(...), '..')`
+//    / `dirname(dirname(...))` / `join(__dirname, '..')`）都会让 skillsDir 落到
+//    node_modules/ 而不是 node_modules/dsh-gsd/，本守卫即红。
+test('④ 安装形态：pluginRoot 必须是包目录本身（skills/ 与 index.js 同级）', () => {
+  // 模拟形状由 package.json 自己给出：包名 + main，避免第二份路径真值。
+  assert.equal(pkg.main, 'index.js', '本守卫按 main 定位 index.js；main 变更须同步此模拟')
+
+  const src = readFileSync(join(ROOT, 'index.js'), 'utf8')
+  const rootLine = /^const pluginRoot = .*$/m.exec(src)?.[0]
+  const skillsLine = /^const skillsDir = .*$/m.exec(src)?.[0]
+  assert.ok(rootLine, 'index.js 找不到 `const pluginRoot = …` 行（守卫抽取点已失效）')
+  assert.ok(skillsLine, 'index.js 找不到 `const skillsDir = …` 行（守卫抽取点已失效）')
+
+  const tmp = mkdtempSync(join(tmpdir(), 'dsh-gsd-install-'))
+  try {
+    const installedRoot = join(tmp, 'node_modules', pkg.name)
+    const installedMain = join(installedRoot, 'index.js')
+    mkdirSync(join(installedRoot, 'skills'), { recursive: true }) // 真实的同级 skills/
+
+    const probe = join(installedRoot, '__plugin-root-probe.mjs')
+    writeFileSync(probe, [
+      "import { dirname, join, resolve } from 'node:path'",
+      "import { fileURLToPath } from 'node:url'",
+      `const simulatedUrl = ${JSON.stringify(pathToFileURL(installedMain).href)}`,
+      // 只替换 import.meta.url 这一处元变量，两行源码其余部分逐字求值。
+      rootLine.replace('import.meta.url', 'simulatedUrl'),
+      skillsLine,
+      'console.log(skillsDir)',
+      '',
+    ].join('\n'))
+
+    const run = spawnSync(process.execPath, [probe], { encoding: 'utf8' })
+    assert.equal(run.status, 0, `包根求值探针执行失败: ${run.stderr || run.stdout}`)
+
+    const printed = run.stdout.trim()
+    const expected = join(installedRoot, 'skills')
+    assert.equal(
+      printed, expected,
+      `skillsDir 未落在包目录内：期望 ${expected}，实际 ${printed}`
+        + '——多向上一级会让 FileSystemSkillProvider 注册到不存在的目录，72 个技能全不加载',
+    )
+    assert.ok(
+      existsSync(printed),
+      `${printed} 不存在——provider 会注册到空目录，技能目录看不到任何 gsd-* 技能`,
+    )
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
 })

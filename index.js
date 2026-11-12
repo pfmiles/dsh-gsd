@@ -10,14 +10,16 @@
 //
 // Everything is resolved relative to this package's own directory, so the
 // installation is fully portable across DSH_HOME locations and profiles.
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { FileSystemSkillProvider } from '@deepseek-ai/dsh-skill-filesystem'
 
 export const inject = ['skills']
 export const name = 'gsd'
 
-const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// index.js 就位于包根，`skills/` 是它的同级目录（两者都列在 package.json.files）。
+// 因此包根 = 本文件的目录本身；不要再向上一级。
+const pluginRoot = dirname(fileURLToPath(import.meta.url))
 const skillsDir = join(pluginRoot, 'skills')
 
 export function apply(ctx, config = {}) {

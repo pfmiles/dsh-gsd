@@ -16,7 +16,7 @@ created: "2026-11-12"
 >
 > **判定（2026-11-12 首次审计）= PARTIAL**（`status: validated` + `nyquist_compliant: false`）：5 条需求里 **3 条全自动覆盖**（PUB-02 / PUB-04 / INST-06，均在 `tests/` 的 per-commit 回路内），**2 条存在静态面缺口**（PUB-01 的 workflow 门控断言、PUB-03 的 `docs/dshmarket/` 材料与 install 串）——两者都**可**用十几行 `test()` 补上，但本次审计的写面被限定在 `.planning/phases/03-github-npm-dshmarket/` 内，故按 §4 的「Skip — mark manual-only」分支处置。见 §Audit Findings。
 >
-> **判定（同日补测后，当前）= COMPLIANT**（`status: validated` + `nyquist_compliant: true`）：G-1 落为 `tests/compat-matrix.test.mjs` **⑧**、G-2 落为 `tests/docs-consistency.test.mjs` **⑪⑫**、残余 R-1 同文件 **⑬**；三处均逐条做过「注入变异 → 新断言单独转红 → 还原」验证（含 `||`/`!=`/`&&`/brace/注释门/`exit 2` 出界 6 类 workflow 退化），全量套件实测 **36/36**，`BUILD.md:16` 同步为 36/36。闭合记录见 §Validation Audit 2026-11-12。
+> **判定（同日补测后，当前）= COMPLIANT**（`status: validated` + `nyquist_compliant: true`）：G-1 落为 `tests/compat-matrix.test.mjs` **⑧**、G-2 落为 `tests/docs-consistency.test.mjs` **⑪⑫**、残余 R-1 同文件 **⑬**；三处均逐条做过「注入变异 → 新断言单独转红 → 还原」验证（含 `||`/`!=`/`&&`/brace/注释门/`exit 2` 出界 6 类 workflow 退化），全量套件实测 **37/37**（2026-11-12 CR-01 修复后：pack-contents 新增 ④、①⑨⑫ 收紧，实测 `ℹ tests 37`；收紧前为 36/36），`BUILD.md:16` 同步为 37/37。闭合记录见 §Validation Audit 2026-11-12。
 
 ---
 
@@ -26,8 +26,8 @@ created: "2026-11-12"
 |----------|-------|
 | **Framework** | Node 内置 test runner（`node --test`），Node `v24.21.0`（`engines.node >=24`） |
 | **Config file** | 无配置文件 —— glob 驱动。gate A/B/C 由 `tests/run-gates.sh` 提供（需 `GSD_VERSION` + `GSD_STAGING_ROOT` 双 env，缺失 exit 1） |
-| **Quick run command** | `node --test tests/rewrite-map.test.mjs tests/version.test.mjs tests/compat-matrix.test.mjs`（18 tests，~0.3 s）＋ `node --test tests/pack-contents.test.mjs`（3 tests，~0.1 s）＝ **21 tests** |
-| **Full suite command** | `node --test tests/*.test.mjs`（**36 tests**：build-smoke 2 + compat-matrix 8 + docs-consistency 13 + pack-contents 3 + rewrite-map 7 + version 3；2026-11-12 补测后实测 `ℹ tests 36` / `ℹ fail 0`，含真实构建 smoke） |
+| **Quick run command** | `node --test tests/rewrite-map.test.mjs tests/version.test.mjs tests/compat-matrix.test.mjs`（18 tests，~0.3 s）＋ `node --test tests/pack-contents.test.mjs`（4 tests，~0.1 s）＝ **22 tests** |
+| **Full suite command** | `node --test tests/*.test.mjs`（**37 tests**：build-smoke 2 + compat-matrix 8 + docs-consistency 13 + pack-contents 4 + rewrite-map 7 + version 3；2026-11-12 CR-01 修复后实测 `ℹ tests 37` / `ℹ fail 0`，含真实构建 smoke） |
 | **Estimated runtime** | ~19 秒（全量，2026-11-12 实测）；~0.4 秒（快速回路） |
 
 **⚠ 串行强制：** `tests/build-smoke.test.mjs` 会重写构建树（`skills/` `gsd-core/` `hooks/` `config/` `scripts/`）。任一时刻只允许一个 `node build.mjs` / `node --test tests/*.test.mjs` / `npm pack` 在跑——并发会产出假红 `gate C: no SKILL.md under skills/gsd-*`（PUB-02 的并发面即由此观测：`ℹ fail 0` / `ℹ cancelled 0`）。
@@ -36,9 +36,9 @@ created: "2026-11-12"
 
 ## Sampling Rate
 
-- **After every task commit:** 快速回路 21 tests；改动 `.github/workflows/**` 时**必须**加跑 `actionlint`（本机 1.7.12，实测 exit 0、零输出）。
-- **After every plan wave:** `node --test tests/*.test.mjs` → **36/36**（`ℹ fail 0` / `ℹ cancelled 0`，串行单进程）。
-- **Before `/gsd-verify-work`:** 36/36 + `node build.mjs` → `gates: all passed (A/B/C)`、76 trees / 286 files / 72 skills + `node build/lib/check-pins.mjs --offline` exit 0（末行 `pins: all consistent (line dsh022)`）+ 四格 install/probe 两向全绿 + 真 `npm pack`（958 文件 / 12 顶层 / 4.58 MB / 零泄漏）+ 干净 profile 装成判据 + `actionlint` exit 0；**push 之后再加** CI 判据 `gh run list --workflow=compat-matrix.yml --limit 1 --json conclusion` → `success` 且 `total_count == 1`。
+- **After every task commit:** 快速回路 22 tests；改动 `.github/workflows/**` 时**必须**加跑 `actionlint`（本机 1.7.12，实测 exit 0、零输出）。
+- **After every plan wave:** `node --test tests/*.test.mjs` → **37/37**（`ℹ fail 0` / `ℹ cancelled 0`，串行单进程）。
+- **Before `/gsd-verify-work`:** 37/37 + `node build.mjs` → `gates: all passed (A/B/C)`、76 trees / 286 files / 72 skills + `node build/lib/check-pins.mjs --offline` exit 0（末行 `pins: all consistent (line dsh022)`）+ 四格 install/probe 两向全绿 + 真 `npm pack`（958 文件 / 12 顶层 / 4.58 MB / 零泄漏）+ 干净 profile 装成判据 + `actionlint` exit 0；**push 之后再加** CI 判据 `gh run list --workflow=compat-matrix.yml --limit 1 --json conclusion` → `success` 且 `total_count == 1`。
 - **Phase gate 实测（2026-11-12，HEAD `cf13915`）:** 以上全部达成；CI 首跑 `43218878911` → `conclusion: success`（4/4 格 × 6 步），`total_count` 0 → 1。
 - **Max feedback latency:** 1 秒（快速回路）／19 秒（全量）
 
@@ -53,12 +53,12 @@ created: "2026-11-12"
 | 03-01-01 | 01 | 1 | PUB-01, PUB-02 | T-03-02 | peer 收紧为 exact `0.2.2-rc.1` 必须 manifest + pins 同改；只改一侧即 exit 2（fail-closed 有牙） | unit（真值强等值，per-commit） | `node build/lib/check-pins.mjs --offline` → exit 0 ＋ 末行 `pins: all consistent (line dsh022)`（同一脚本由 compat-matrix ⑥ 在套件内 spawn，故它是两文件同改的机器证人） | ✅ `build/lib/check-pins.mjs` | ✅ green |
 | 03-01-01 | 01 | 1 | PUB-01, PUB-02 | T-03-02 | 收紧 peer 不得连带漂移 `engines.dsh` / `dshRange` / README 窗口串 | unit（结构哨兵，per-commit） | `node --test tests/compat-matrix.test.mjs` → 7/7（②③④⑤⑥⑦） | ✅ `tests/compat-matrix.test.mjs` | ✅ green |
 | 03-01-02 | 01 | 1 | PUB-01（CI 面，D-08） | T-03-03, T-03-04 | 「解析树 == `matrix.dsh`」断言必须被 `expect == install-ok` 门控（无条件断言会让 reject 格 `exit 2` → 首跑即红）；GITHUB_TOKEN 最小权限 | structural（套件内 ⑦ ＋ 一次性落位/静态校验） | `node --test tests/compat-matrix.test.mjs` ⑦ isGate（每个 `^\s+run:` 上一行是 inputs∩matrix 门、`run:` 仍 4）＋ ⑧ 门控形态（per-commit）＋ `actionlint`（一次性）＋ PLAN 落位校验命令（一次性，实测 `gated-assertion ok: probe run block L38-L50, gate L42 (indent 10), gated statements L43/L45/L46, closing fi L49`） | ✅ `tests/compat-matrix.test.mjs`（⑧，2026-11-12 补测：canonical 门行整行锚定 + `matrix.expect` 全文恰 2 次 + 解析断言与 `exit 2` 均落在（门, 收口 fi）内 + 6 类退化逐条拒绝） | ✅ green |
-| 03-01-03 | 01 | 1 | PUB-02 | T-03-01 | `files` 白名单精确：`.planning/`·`tests/`·`build/`·`.github/`·`node_modules/` 零泄漏；顶层收敛于 12 项；条目有内容 | unit（静态推导，per-commit） | `node --test tests/pack-contents.test.mjs` → 3/3 | ✅ `tests/pack-contents.test.mjs` | ✅ green |
+| 03-01-03 | 01 | 1 | PUB-02 | T-03-01 | `files` 白名单精确：`.planning/`·`tests/`·`build/`·`.github/`·`node_modules/` 零泄漏；顶层收敛于 12 项；条目有内容 | unit（静态推导，per-commit） | `node --test tests/pack-contents.test.mjs` → 4/4（④ = 安装形态下 `index.js` 的 pluginRoot/skillsDir 求值） | ✅ `tests/pack-contents.test.mjs` | ✅ green |
 | 03-01-03 | 01 | 1 | PUB-01, PUB-02 | T-03-01 | 真实收面 == 静态推导；tarball 在干净 profile 装成并 boot（引擎 1.20.1 / 72 skills / 两条 bundle patch 行） | integration + e2e（分钟级，需 registry 与 `dsh` profile 生命周期） | `npm pack --dry-run --json --ignore-scripts`（958 / 12 / leaks 0）→ `npm pack` → `dsh plugin --profile gsd-p3-release add "$PWD/<tgz>"` → `runtime-identity --raw` = `@opengsd/gsd-core` + `1.20.1` / `skills` 72 / `dump-config` 两 id | ⚠️ 一次性执行（2026-11-12 全绿），**有意**不入套件（真 pack 会触发 prepack 递归回本套件，并发时清单会在 21/494/957/958 间跳变） | ⚠️ manual |
 | 03-02-01 | 02 | 2 | PUB-03 | T-03-09 | manifest 只增不改：`repository`/`homepage`/`bugs`/`keywords`/`author`/`publishConfig.registry` 新增；`files` 仍 9 项、`private`/`version`/`peer` 零漂移 | unit（per-commit 全等断言） | `node --test tests/docs-consistency.test.mjs` ⑬：`repository`·`homepage`·`bugs`·`keywords`(7 项)·`author`·`publishConfig.registry` 六键全等（原一次性 `node -e` 12 键 `deepEqual` 中，本行这六个新键已由 ⑬ 长驻；`private`/`version` 由 ⑥ 兜住、`peer` 由 `check-pins --offline` 兜住、`files` 收面由 pack-contents 的顶层集合等值兜住——条数本身仍未单锁，见 §残余观察 R-1 闭合注） | ✅ `tests/docs-consistency.test.mjs`（⑬，2026-11-12 补测） | ✅ green |
-| 03-02-02 | 02 | 2 | PUB-03, PUB-04 | T-03-06, T-03-10 | 徽章在最顶部且双语各有 MIT 与上游致谢；catalog 文案只用可证事实 | unit（套件内 ⑨ ＋ 一次性结构门/文案门） | `node --test tests/docs-consistency.test.mjs` ⑨（徽章 + zh/en 各含 `THIRD-PARTY-NOTICES.md` 与 `MIT`）；一次性：徽章位置、`# dsh-gsd` 恰 2、pinned ≥ 4、Phase 5 文案正 2 / 反 2`）；⑪⑫（per-commit：dshmarket 条目 schema、裸名 install 串逐字一致与零 `dsh-gsd@latest`） | ✅ `tests/docs-consistency.test.mjs`（⑪⑫，2026-11-12 补测） | ✅ green |
+| 03-02-02 | 02 | 2 | PUB-03, PUB-04 | T-03-06, T-03-10 | 徽章在最顶部且双语各有 MIT 与上游致谢；catalog 文案只用可证事实 | unit（套件内 ⑨ ＋ 一次性结构门/文案门） | `node --test tests/docs-consistency.test.mjs` ⑨（shields.io 徽章恰 2 枚且都在首个 `# dsh-gsd` 之前：其一以 `./LICENSE` 为链接且含 `MIT`、另一为 DSH 徽章；zh/en 各含 `THIRD-PARTY-NOTICES.md` 与 `MIT`）；一次性：`# dsh-gsd` 恰 2、pinned ≥ 4、Phase 5 文案正 2 / 反 2`）；⑪⑫（per-commit：dshmarket 条目 schema、裸名 install 串逐字一致与零 `dsh-gsd@latest`） | ✅ `tests/docs-consistency.test.mjs`（⑪⑫，2026-11-12 补测） | ✅ green |
 | 03-02-03 | 02 | 2 | PUB-03, PUB-04, INST-06 | T-03-07, T-03-08 | CHANGELOG 首条目版本 == `package.json.version` 且小节名在六类闭集；locale 双语 `meta.title/description` 非空且 title 双边相等；`icon`/`exports['./icon']` 双通道 + `files` 收录 | unit（per-commit） | `node --test tests/docs-consistency.test.mjs` → 13/13（⑧ ⑨ ⑩ ⑪ ⑫ ⑬） | ✅ `tests/docs-consistency.test.mjs` | ✅ green |
-| 03-03-01 | 03 | 3 | PUB-01 | T-03-12, T-03-13 | push 前四格两向绿 / 三档构建 / 套件 36/36 == `BUILD.md:16` / 工作树与远端 zero-state（除本计划 SUMMARY 外零未提交） | integration（一次性合练：外网 + registry） | 四格 `npm install --no-save --ignore-scripts --no-package-lock @deepseek-ai/dsh@<v>` + `node build/lib/compat-probe.mjs --dsh <v> --expect <e>`；`GSD_VERSION=… node build.mjs` ×3；`git status --porcelain -- . ':(exclude)…03-03-SUMMARY.md'` 为空；`gh api …/actions/runs --jq '.total_count'` == 0 | ⚠️ 需外网/registry，按设计一次性；**不接受**「本地等价冒充 CI 结论」（P-03-m） | ⚠️ manual |
+| 03-03-01 | 03 | 3 | PUB-01 | T-03-12, T-03-13 | push 前四格两向绿 / 三档构建 / 套件 37/37 == `BUILD.md:16` / 工作树与远端 zero-state（除本计划 SUMMARY 外零未提交） | integration（一次性合练：外网 + registry） | 四格 `npm install --no-save --ignore-scripts --no-package-lock @deepseek-ai/dsh@<v>` + `node build/lib/compat-probe.mjs --dsh <v> --expect <e>`；`GSD_VERSION=… node build.mjs` ×3；`git status --porcelain -- . ':(exclude)…03-03-SUMMARY.md'` 为空；`gh api …/actions/runs --jq '.total_count'` == 0 | ⚠️ 需外网/registry，按设计一次性；**不接受**「本地等价冒充 CI 结论」（P-03-m） | ⚠️ manual |
 | 03-03-03 | 03 | 3 | PUB-01 | T-03-12, T-03-14 | 一次推送只产生一次 run ⇒ 无红跑历史；远端树 == 本地 HEAD | e2e（外部，`gh`） | `gh run list --workflow=compat-matrix.yml --limit 1 --json conclusion --jq '.[0].conclusion'` == `success` ＋ `gh api repos/pfmiles/dsh-gsd/actions/runs --jq '.total_count'` == 1 | ⚠️ 外部判据；实测 run `43218878911` success / 4-4 格 / `run_attempt 1` / `total_count` 0→1（2026-11-12T12:33:53Z） | ⚠️ manual |
 
 *Status: ⬜ pending · ✅ green（per-commit 自动化）· ⚠️ manual（一次性命令或外部判据，证据见 Manual-Only 表）· ❌ red*
@@ -68,7 +68,7 @@ created: "2026-11-12"
 ## Audit Findings
 
 审计结论：首次审计 **无 red**；**2 个可自动化但未进套件的缺口**（均属 Wave 0 未落地的「测试侧」一半），首次 0 个已修、2 个转 Manual-Only。
-**2026-11-12 补测后（同一原子提交）：2/2 已修**（⑧ / ⑪⑫），**残余 R-1 由 ⑬ 一并关闭**，**Manual-Only 中不再留任何本可自动化的项**；全量套件实测 **36/36**。
+**2026-11-12 补测后（同一原子提交）：2/2 已修**（⑧ / ⑪⑫），**残余 R-1 由 ⑬ 一并关闭**，**Manual-Only 中不再留任何本可自动化的项**；全量套件实测 **37/37**（CR-01 修复与 ①⑨⑫ 收紧后重测）。
 
 ### G-1 — PUB-01：workflow 门控正向断言没有 per-commit 守卫
 
@@ -100,7 +100,7 @@ created: "2026-11-12"
 ## Wave 0 Requirements
 
 - [x] `tests/pack-contents.test.mjs` — **从 `tests/pending-phase-3/` 移回**（`git mv`，100% 相似度、0 行改动；ROOT 的 `..` 由位置本身修好 `ENOENT tests/package.json`）— 覆盖 PUB-02；实测 3/3
-- [x] `BUILD.md:16` 计数 — 26/26 → 29/29 →（03-02 按实测一次写成）**32/32** →（2026-11-12 补测后按 `node --test tests/*.test.mjs` 的 `ℹ tests 36` 实测改写）**36/36**；`git diff --numstat` 恰 `1 1`、全文无 `26/26` 残留、无 `32/32` 残留
+- [x] `BUILD.md:16` 计数 — 26/26 → 29/29 →（03-02 按实测一次写成）**32/32** →（2026-11-12 补测后按 `node --test tests/*.test.mjs` 的 `ℹ tests 36` 实测改写）**36/36** →（同日 CR-01 修复：pack-contents 新增 ④ 安装形态守卫、①⑨⑫ 收紧后按 `ℹ tests 37` 实测改写）**37/37**；`git diff --numstat` 恰 `1 1`、全文无 `26/26` 残留、无 `32/32` 残留
 - [x] `CHANGELOG.md` 新建 + 首条目 `1.20.1-1.dsh022` — 版本等值断言已落为 docs-consistency **⑧**（进 per-commit 回路），覆盖 SC-6 / PUB-03
 - [x] dshmarket 条目材料 — `docs/dshmarket/pfmiles__dsh-gsd.yml`（4 顶层键 / `category: workflow` / 无 `icon`）+ `docs/dshmarket/README.md`（目标仓/路径/时点、逐字 install 串、可证事实、非聚合包论证）
 - [x] **dshmarket 离线自检「入套件」— 已完成（2026-11-12）**：一次性命令的口径落为 docs-consistency **⑪**（条目 schema，零 YAML 依赖的行级正则）与 **⑫**（裸名 install 串整行计数 + byte 相等 + 零 `dsh-gsd@latest`）；`docs/dshmarket/**` 在套件内的命中数 0 → 2。
@@ -136,7 +136,7 @@ created: "2026-11-12"
 - [x] Feedback latency < 30s（快速回路 0.4 s / 全量 19 s）
 - [x] `nyquist_compliant: true` set in frontmatter —— 2026-11-12 补测后置 true（G-1/G-2/R-1 全部落为 per-commit 断言，且逐条通过变异验证）
 
-**Approval:** compliant 2026-11-12（首次审计为 partial 同日闭合：三个缺口 G-1 → ⑧、G-2 → ⑪⑫、R-1 → ⑬，全量套件实测 **36/36**、`BUILD.md:16` 同步 36/36。首次审计于 HEAD `cf13915` 的 State A 结论保留其上：Per-Task Map 9 个真实任务、Wave 0 逐项结账、Manual-Only 证据册；`check-pins --offline` 与 dshmarket 离线自检当时只读复跑通过）
+**Approval:** compliant 2026-11-12（首次审计为 partial 同日闭合：三个缺口 G-1 → ⑧、G-2 → ⑪⑫、R-1 → ⑬，全量套件实测 **37/37**、`BUILD.md:16` 同步 37/37。首次审计于 HEAD `cf13915` 的 State A 结论保留其上：Per-Task Map 9 个真实任务、Wave 0 逐项结账、Manual-Only 证据册；`check-pins --offline` 与 dshmarket 离线自检当时只读复跑通过）
 
 ## Validation Audit 2026-11-12
 
