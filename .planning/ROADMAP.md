@@ -74,10 +74,10 @@ Plans:
   5. CI 首次激活 run 全绿（L37 上游漂移修复后 push，无红跑历史）
   6. CHANGELOG.md 首个条目成文（对应 1.20.1-1.dsh022）
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 Plans:
 **Wave 1**
-- [ ] 03-01: 发布管线与 CI 首绿（peer 收紧两文件 per D-05、workflow 两项加固 per D-08、pack 清单防线纳管 —— 首跑条件就绪）
+- [x] 03-01: 发布管线与 CI 首绿（peer 收紧两文件 per D-05、workflow 两项加固 per D-08、pack 清单防线纳管 —— 首跑条件就绪）
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 03-02: 元数据与提交材料（manifest 元数据、README 徽章/裸名示例、CHANGELOG、dshmarket 材料；全 phase 终值计数）

@@ -42,7 +42,7 @@
 ### 发布与交付 (PUB)
 
 - [ ] **PUB-01**: GitHub 仓库（`pfmiles/dsh-gsd`）建仓并推送，repo 名 = npm 包名 `dsh-gsd`；npm 首次发布推迟到 Phase 5（UAT 通过后）执行
-- [ ] **PUB-02**: `prepack`=build 全量重建，包内 files 白名单精确（含 scripts/ 修复）
+- [x] **PUB-02**: `prepack`=build 全量重建，包内 files 白名单精确（含 scripts/ 修复）
 - [ ] **PUB-03**: dshmarket curated registry 提交材料与流程就绪（双语描述、category=workflow、install 命令真实）；PR 本体随 npm 首发于 Phase 5 提交
 - [ ] **PUB-04**: LICENSE（MIT）与上游致谢（GSD MIT、DSH MIT、第三方组件各自许可）
 
