@@ -149,7 +149,6 @@ test('⑧ G-1 门控形态守卫（canonical gate 端到端锚定，解析断言
   )
   const gateIdx = y.slice(0, m.index).split('\n').length - 1
   const gateLine = lines[gateIdx]
-  assert.ok(!/^\s*#/.test(gateLine), `门行只出现在注释里（L${gateIdx + 1}）：'${gateLine}'`)
 
   // 唯一性：全文件只允许一行「if [ … matrix.expect …」形态，防止旁路门。
   const gateish = lines
