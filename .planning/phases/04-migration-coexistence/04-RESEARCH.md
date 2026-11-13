@@ -2,7 +2,7 @@
 
 **Researched**: 2026-11-13
 **Domain**: 部署方式迁移（legacy shell installer → DSH bundle plugin）+ 同 profile 多插件并存
-**Confidence**: HIGH（DSH CLI / 并存合成 / 版本错配三层门 / 隔离面 全部读源码 + 在一次性 `DSH_HOME` 里实测；旧脚本残留面逐行读源码并在真机做只读探测）+ MEDIUM（旧脚本 end-to-end 演练本轮**未执行**——需联网且真实全局 npm prefix 有被覆写风险，见 `## Open Questions`）
+**Confidence**: HIGH（DSH CLI / 并存合成 / 版本错配三层门 / 隔离面 全部读源码 + 在一次性 `DSH_HOME` 里实测；旧脚本残留面逐行读源码并在真机做只读探测）+ MEDIUM（旧脚本 end-to-end 演练本轮**未执行**——需联网且真实全局 npm prefix 有被覆写风险，见 `## Open Questions (RESOLVED)`）
 
 **Provenance 约定（本文件统一遵守）：** 仓内/机内离散值一律 `path:行区间` + **逐字引文**并列（引文本身即 tag 的实体）；凡实测结论另附 `[VERIFIED: 命令 + 观测值]`；DSH 源码与旧脚本源码标 `[VERIFIED: 绝对路径:行区间]`；文档型来源标 `[CITED: url]`；本会话未验证的推断标 `[ASSUMED]` 并汇入 `## Assumptions Log`。
 
@@ -610,6 +610,8 @@ done
 `[VERIFIED: 本会话 wc -c + shasum -a 256 + ls]`；包内 `skills/gsd-*` 也是 **72** 个（`[VERIFIED: ls | wc -l]`）。
 ⇒ 迁移后的合格形态是：**旧路径的 3084 B 文件不存在**，且**包内 3587 B 文件存在**，且 `index.js` 打印的 provider 路径落在 `<profile>/node_modules/dsh-gsd/skills`（`index.js:43` 打印 `[dsh-gsd] skills provider: <包内绝对路径>`，CONTEXT 已记）。三者同时成立才算 D-05 的双条判据都满足。
 
+**⚠ 路径长度依赖（plan-checker 复查发现，必须与上表同读）：** 旧部署侧的字节数**不是常量**。`install-gsd-dsh.sh:463` 把 staging 路径重写为 `$DSH_HOME`，`:520` 再注入 `GSD_DSH_CORE_DIR="$DSH_HOME/gsd-core"`，所以文件里嵌着 `$DSH_HOME` 的字面路径。上表 3084 / 3195 是在**真实 home `/Users/yue.weny/.dsh`（20 字符）**下测得的，其中该路径分别出现 **3 次**（`gsd-health`）/ **7 次**（`gsd-new-project`）[VERIFIED: `grep -o` 计数]。换成长度 L 的 home，期望值即 `3084 - 3×(20-L)` / `3195 - 7×(20-L)`。演练用的 `mktemp -d /tmp/dsh-mig-XXXXXX` 是 **19 字符**，会得到 **3081 / 3188**。**包内一侧（3587 / 3856）与路径无关，可作字面常量。** 因此 drill 的基线断言必须二选一：把临时 home 钉成 20 字符并显式断言长度，或在运行中按上式推导 —— **不得直接抄 3084 / 3195 当字面期望**。
+
 ## Common Pitfalls
 
 ### Pitfall 1: `--uninstall` 永远 exit 0，且「没剥块」也算成功
@@ -626,7 +628,9 @@ done
 ### Pitfall 3: `--dump-config` 在 bundle 被跳过时仍然 exit 0
 **What goes wrong:** 版本错配的 bundle 会被静默跳过，dump 依旧成功；以 exit code 作判据的验收会把它判绿。
 **Why it happens:** `reportSkippedBundles` 只 `process.stderr.write`（`[VERIFIED: app-boot:1355-1357]`），不改变退出码；`loadProfileDirectory` 用 `try/catch` 把坏 bundle 收进 `skippedBundles`（`[VERIFIED: app-boot:1800-1821]`）。
-**How to avoid:** 判据 = **stderr 必须为空** + **`grep '^# == <bundle>'` 的层数等于 `dsh.profile.bundles` 长度** + 关键 row id 各出现 1 次。本会话实测的对照值：正常 369 行 / 坏掉 366 行 / stderr 1 行。
+**How to avoid:** 判据 = **stderr 必须为空** + **`^# == ` 总数或 stdout 总行数与同一 home 自己的健康基线相等（坏掉时恰少 3 行）** + 每个期望 bundle 的标签**出现**（`grep -q '^# == <pkg>'`，只判出现、不判计数）+ 关键 row id 各出现 1 次。
+
+**⚠ 订正（plan-checker 复查发现，2026-11-14）：** 本条早前写的是「`grep '^# == <bundle>'` 的层数等于 `dsh.profile.bundles` 长度」——**该等式不成立**，下面那组 369/366 对照值也不能当 `web` 的基线。`renderConfigDump`/`groupedDump` 是按**连续来源段**打一个 header（`[VERIFIED: dsh-app-boot/lib/index.js:4836-4858]`），标签形如 `# == @deepseek-ai/dsh-base` 或 `# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app`；`dsh-web-app` 就地 patch base 的行，于是标签交替出现。本会话在一个全新临时 `DSH_HOME` 上实测：`dsh --profile web --dump-config` 建出的 2-bundle 模板（`["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"]`）输出 **1243 行 / 24 个 `^# == ` header / stderr 0 B / exit 0**。所以 header 数既不是 2，也不等于 bundle 数。**可用判据只有两条**：(a) 总行数（或 `^# == ` 总数）与**同一 home 自己**的健康基线比较，少 3 行即有 bundle 被跳过；(b) 针对某个具体 bundle 只断言**出现**。另：369/366 那组对照值来自一个 **probe profile**（`@deepseek-ai/dsh-base` + `probe-bundle`），不可移植到 `web`。
 **Warning signs:** stdout 行数比上次少了几行而没有报错。
 
 ### Pitfall 4: `--dump-config` 不是只读
@@ -736,10 +740,13 @@ cat /tmp/dump.err                          # 期望 1 行：dsh: skipping profil
 P=web
 dsh --profile "$P" --dump-config > /tmp/d.out 2> /tmp/d.err || echo "dump failed"
 
-# 1) bundle 层数 == 清单长度（Pitfall 3 的集合版）
+# 1) 标头数只能与「同一 home 自己的健康基线」比，不能与 bundles 长度比（Pitfall 3 订正）
+#    健康态先记基线 H0（如全新 2-bundle 模板 profile：24 个标头 / 1243 行），
+#    之后要求同轮关系（H1 = H0 ± 1）；某个 bundle 的标签只断言「出现」，不断言计数。
 node -e 'const m=require(process.argv[1]);console.log(m.dsh.profile.bundles.length)' \
-  "$DSH_HOME/profiles/$P/package.json"
-grep -c '^# == ' /tmp/d.out
+  "$DSH_HOME/profiles/$P/package.json"    # 只用来知道该 profile 几个 bundle，不拿来比标头数
+grep -c '^# == ' /tmp/d.out               # 与 H0 比；不与上一行打印的 bundle 数比
+grep -q '^# == .*dsh-gsd' /tmp/d.out      # 具体 bundle 只判「出现」
 
 # 2) stderr 必须为空（否则有 bundle 被跳过）
 test -s /tmp/d.err && { echo "SKIPPED BUNDLE:"; cat /tmp/d.err; }
@@ -813,27 +820,33 @@ grep -l 'GSD-DSH-bridge BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml
 | A5 | `[ASSUMED]` 真实 `web` profile 的 `patchReload: "live"` 只影响 user 层热重载，不影响 bundle 层 | Pattern 5 / Runtime State | 若 bundle 层也能热重载，runbook 的「必须重启」会过严（过严无害，过松有害） |
 | A6 | `[ASSUMED]` 旧仓 `install-gsd-dsh.sh` 在本 phase 期间不变（基准 `41fcc7a`） | 全文 | 若旧仓更新，`--uninstall` 的行为与行号引用会漂移；备料（D-09）用章节锚点而非行号正是为此 |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> 四条均已在 plan-phase 中由具体 plan 任务承接；下方每条的 **Resolved by** 指向落实它的计划。
 
 1. **旧脚本 end-to-end 演练本轮未执行（最重要的执行期任务）**
    - What we know: 每一步的**单元行为**都已读源码确认；旧脚本的取源、部署、bridge 块规范化、`--uninstall` 四段逻辑均已逐行读过；`--no-npm-bin` 与 `npm_config_prefix` 两条防全局污染路径已实测可用。
    - What's unclear: 在**真实网络 + 真实 pnpm store** 下，`GSD_VERSION=1.20.1 bash install-gsd-dsh.sh --no-npm-bin` 在一个 `/tmp` home 上的完整输出、耗时、以及它调用的 `dsh plugin add`（对每个 profile）在本机 pnpm 12.11.2 下是否出现 Phase 2 记录过的那类 ERESOLVE。
    - Recommendation: 作为 04-01 的第一个执行任务，**在临时 home 里跑一遍并留完整日志**；这也是 SC-1「runbook 全流程在验证机走通」的唯一真证据。
+   - **Resolved by:** **04-01 Task 1** —— tracer 本身就是这次演练，完整日志落 `04-DRILL-EVIDENCE.md`。
 
 2. **boot 路径（row 级禁用）与「重启后 hooks 是否真的生效」**
    - What we know: 源码文案与判定逻辑已读；`--dump-config` 不执行 row 级 preflight，所以 dump 无法观察 ③′。
    - What's unclear: 在临时 home 里启动一个 profile（需要选一个能跑完就退的 app，如 `dsh headless "<task>"`）是否会真的打印禁用行、以及是否会因为有 row 被禁用而改变退出码。
    - Recommendation: 若时间允许，用 `dsh --profile <temp> headless "echo hi"` 之类的最小 app 观测一次；否则在 MIGRATION §3 里明确「③′ 症状来自源码，未在本机复现」，不要让读者以为是实测。
+   - **Resolved by:** **04-03 Task 2** —— 有界 boot 观测一次，未复现则写 `NOT REPRODUCED:` 并保留源码推导标注；两条路径必居其一，不允许沉默。
 
 3. **MIG-04 的覆盖面（Discretion 第 2 条）需要 planner 裁定**
    - What we know: 三个插件在本机 `web` 都已装；id 集合互斥；真正的冲突面是 pnpm 解析；三者都被合法性门标 `SUS`（too-new）。
    - What's unclear: 是否值得为「凑齐 codegraph」付一次联网安装 + 一个 `checkpoint:human-verify`；还是用「静态集合比对（读真实 web 的文件）+ 临时 home 里只装 dsh-gsd 与 deja/dshmarket」两段式。
    - Recommendation: 两段式。静态一段证明行级无冲突（零安装、零网络、零风险），临时 home 一段证明「dsh-gsd 与至少一个第三方 bundle 能同层合成」。
+   - **Resolved by:** **04-04** —— 两段式已落成：Stage-1 静态集合断言（对真实 `web` 的三个插件零安装比对），Stage-2 临时 home 同层合成演练，后者前置 `checkpoint:human-verify`（两个 `SUS` 三方包）。
 
 4. **`docs/MIGRATION.md` 是否要仓内守卫（Discretion 第 5 条）**
    - What we know: 现有 13 条断言里，任何涉及 README 的改动都要过 ①②⑤⑦⑫ 五条；`docs/` 不在 `package.json` `files`（`[VERIFIED: package.json files 九项]`），`pack-contents` 的 `ALLOWED_TOP_LEVEL` 也没有 `docs`（`[VERIFIED: tests/pack-contents.test.mjs:48-52]`）。
    - What's unclear: 加一条「README 顶部含 MIGRATION 链接」的断言是否值得（会让今后重命名文档变红，但能防入口被误删）。
    - Recommendation: 若加，**追加到现有 `tests/docs-consistency.test.mjs`（⑭）而不是新建文件**——这样计数从 37 变 38，只需同步 `BUILD.md:16` 那一处活体计数（`[VERIFIED: BUILD.md:16]` `预期 37/37`）。
+   - **Resolved by:** **04-03 Task 3** —— ⑭ 采纳为**必需项**（不再是可选），同提交把 `BUILD.md:16` 的活体计数改为 38，并保留「单行 diff」约束。
 
 ## Environment Availability
 
@@ -875,7 +888,7 @@ grep -l 'GSD-DSH-bridge BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml
 | MIG-02 | 差异表三轴的每一格都有可复核的证据 | docs（**automated**：与实测值比对） | 三轴各自的事实源：`readlink -f "$(command -v gsd_run)"`、`npm ls -g --depth=0 \| grep gsd-core`、`jq -r '.[].matcher' config/gsd-hooks.json \| sort \| uniq -c` 与 `~/.dsh/gsd-hooks.dsh.json` 同命令对比 | ⚠ 部分：hooks 事件集合已在 Phase 2 固化；本 phase 仅需文档叙述 ⇒ 见 Wave 0 |
 | MIG-02′ | 差异表不得与真源漂移（若加守卫） | unit（**automated**） | 追加到 `tests/docs-consistency.test.mjs` 的断言（如「MIGRATION.md 同时含 `dsh plugin` 与 `install-gsd-dsh.sh`」） | ❌ Wave 0（Discretion，planner 定） |
 | MIG-03 | 旧脚本的定位（保底/离线）可被验证而非宣称 | docs（**manual-only**：需读旧仓 README 与真跑离线模式） | 备份料片段 + PR body 落盘（D-09）；离线模式可用性由 Pitfall 13 的结论约束 | ❌ Wave 0（备料文件） |
-| MIG-04 | 同 profile 多 bundle 并存无冲突 | integration（**manual-only**：需临时 home + 安装） | Code Examples「复验 B」四段（层数 / stderr 空 / id 无重复 / 期望 5 行） | ❌ Wave 0（命令块进文档） |
+| MIG-04 | 同 profile 多 bundle 并存无冲突 | integration（**manual-only**：需临时 home + 安装） | Code Examples「复验 B」四段（标头数同轮基线关系 `H1 > H0` / stderr 空 / id 无重复 / 期望 5 行；**不**与 bundles 长度比） | ❌ Wave 0（命令块进文档） |
 | MIG-04′ | 「无冲突」的行级判据可离线复核 | smoke（**shell**，零安装） | 对真实 `web` 的三个插件 `cordis.patch.yml` 做 id 集合比对（`grep -h '^- id:' …`） | ❌ Wave 0 |
 | HOOK-05 | 三类错配各有一条实测症状 → 原因 → 修复 | integration（**manual-only**：注入 + 观测） | Code Examples「复验 A」：改 `engines.dsh` → `--dump-config`（③，exit 0 + stderr 1 行）；改 bridge 包版本 → boot 观测（③′）；改 `pins.json` → `node build/lib/check-pins.mjs`（静态，exit 2） | ❌ Wave 0 |
 | HOOK-05′ | 静态门仍绿（未被文档改动波及） | unit（**automated**） | `node build/lib/check-pins.mjs --offline`（或 `npm test` 里的 `docs-consistency` ②） | ✅ 已存在（`check-pins` + ②） |

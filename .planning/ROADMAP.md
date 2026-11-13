@@ -97,7 +97,10 @@ Plans:
 
 **Plans**: TBD
 Plans:
+**Wave 1**
 - [ ] 04-01: 迁移 runbook 与实测
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 04-02: 并存验证与文档
 
 ### Phase 5: 端到端 UAT 与 1.0 收官
