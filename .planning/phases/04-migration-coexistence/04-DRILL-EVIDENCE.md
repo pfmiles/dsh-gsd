@@ -63,3 +63,21 @@
 - `DRILL-2`（HOOK-05 版本错配的运行时症状）→ `04-03`。
 - `DRILL-3`（同 profile 与 `dsh-deja` / `dshmarket` / `codegraph` 并存的四判据）→ `04-04`，前置 `blocking-human` 包合法性门。
 - 真实 `~/.dsh` 的整体迁移 → Phase 5（D-02）。
+
+## DRILL-2 — 版本错配
+
+> 本节闭合上文「本轮未覆盖」的第 1 项（`DRILL-2` → `04-03`）。两段用途不同、不可互相替代：
+> **下面这张表证明的是静态门** —— `build/lib/check-pins.mjs` 的步骤 (j) 能把 pin 漂移挡在 CI 里；
+> **它产不出运行时症状**：`build/assets/pins.json` 的 `lines.022.peer` 的唯一消费方就是步骤 (j)，
+> 而 DSH 的兼容判定在 `engines.dsh` 在场时立即 `return`、完全不读 `peerDependencies`。
+> 运行时症状只能从「已装包自己的 `engines.dsh`」注入（见本节的运行时段）。
+>
+> 注入点：`build/assets/pins.json` 的 `lines.022.peer`（L12），以**整值**锚定
+> `"peer": "@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.1"`（该串全文恰 1 次）；`lines.021.peer`
+> 是 `>=0.2.1-rc.5 <0.2.2-0`，注入前后均未被误伤。操作在仓根 `dsh-gsd` 执行，时间一律 UTC。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| 基线：`node build/lib/check-pins.mjs --offline`（未注入） | 2026-11-13T17:58:48Z | **EXIT=0**；末行 `pins: all consistent (line dsh022)`；stderr 0 B；`build/assets/pins.json` sha256 = `45c643ea3711e998445369c61cf2958c1ea63bc6062a9e143f28e1d5c494a2bb`；`lines.021.peer` = `@deepseek-ai/dsh-skill-filesystem >=0.2.1-rc.5 <0.2.2-0` |
+| 静态注入后跑门：`node -e` 把 `lines.022.peer` 改成 `@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.2`（整值锚定，非行号），再跑 `node build/lib/check-pins.mjs --offline` | 2026-11-13T17:58:49Z | 注入后 `lines.022.peer` = `@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.2`，`lines.021.peer` 仍 = `@deepseek-ai/dsh-skill-filesystem >=0.2.1-rc.5 <0.2.2-0`。**EXIT=2**；stdout 0 B；stderr **167 B**，逐字原文（整段，未转述）：`check-pins: peerDependencies @deepseek-ai/dsh-skill-filesystem mismatch — package.json '0.2.2-rc.1' vs pins.json peer '@deepseek-ai/dsh-skill-filesystem 0.2.2-rc.2'` |
+| 复原后复跑同一门：`cp /tmp/t1-pins.bak build/assets/pins.json` → `node build/lib/check-pins.mjs --offline` | 2026-11-13T17:58:49Z | **EXIT=0**；末行 `pins: all consistent (line dsh022)`；stderr 0 B；sha256 回到 `45c643ea…a2bb`（与注入前**逐字节相同**）；`git status --porcelain build/assets/pins.json` 为空、`git diff HEAD --stat -- build/assets/pins.json` 为空 ⇒ 注入没有留在工作树里 |
