@@ -8,6 +8,7 @@
 **给 DeepSeek Harness 一条命令装上 GSD。**
 
 dsh-gsd 把 GSD——规格驱动的 AI 编码工作流（72 个 skills + 引擎 + 守卫 hooks）——打包成 DeepSeek Harness（DSH）的原生插件。装好之后，你的会话直接拥有完整的 GSD 工作流能力。
+> 已经用脚本装过？迁移到插件见 [docs/MIGRATION.md](./docs/MIGRATION.md)（含回退路径与排障）。
 
 ## 为什么用 dsh-gsd
 
@@ -81,6 +82,7 @@ MIT，见 [LICENSE](./LICENSE)。含上游内容：GSD Core (MIT, © 2026 Open G
 **GSD for DeepSeek Harness, one command away.**
 
 dsh-gsd packages GSD — a spec-driven AI coding workflow (72 skills + engine + guard hooks) — as a native DeepSeek Harness (DSH) plugin. Once installed, full GSD workflow capabilities are available in your sessions.
+> Installed with the shell script before? See [docs/MIGRATION.md](./docs/MIGRATION.md) to migrate (rollback and troubleshooting included).
 
 ## Why dsh-gsd
 
