@@ -45,17 +45,17 @@ findings:
     title: "绿色 CI 只覆盖到 `20e20c0`；HEAD 的 5 条提交（含全部新守卫）从未在 CI 执行；本地 `origin/main` 是陈旧引用"
 open: 0
 total: 10
-recorded: 2026-11-12T17:50:11.757Z
+recorded: 2026-11-13T02:49:11.885Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-03 | info | fixed | 03-REVIEW-FIX.md |
-| IN-04 | info | fixed | 03-REVIEW-FIX.md |
-| IN-05 | info | fixed | 03-REVIEW-FIX.md |
-| IN-06 | info | fixed | 03-REVIEW-FIX.md |
+| IN-03 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-04 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-05 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-06 | info | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | CR-01 | critical | fixed | fixed in 49c0efe — pluginRoot 改为 dirname(fileURLToPath(import.meta.url))，同时删掉未用的 resolve 导入；守卫 = tests/pack-contents.test.mjs ④，重新引入 '..' 恰 ④ 红（tests 4 / pass 3 / fail 1），复原 4/4 (not in the current review) |
 | WR-01 | warning | fixed | fixed in 49c0efe — ① 补上包含方向：必需集 = ALLOWED_TOP_LEVEL 减去 NPM_ALWAYS_INCLUDED（package.json / README.md / LICENSE）；删掉 skills+gsd-core+scripts 时仅 ① 红 (not in the current review) |
 | WR-02 | warning | fixed | fixed in 49c0efe — ⑨ 断言恰 2 枚徽章、都在首个 # dsh-gsd 之前，且一枚 ./LICENSE+MIT、一枚 DSH；删 DSH 徽章或把两枚整体下移都会红 (not in the current review) |
