@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: 迁移与并存
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-11-13T17:44:18.561Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-11-13T17:55:12.554Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 04 execution started
-state_head: a210d657dd5fc854bd0125f971e32e351a728cf9
+state_head: d455b9a4cd006637ba29ae4c4e6bf13b7ea15a66
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
-  percent: 60
+  completed_plans: 11
+  percent: 85
 ---
 
 # STATE: dsh-gsd
@@ -22,13 +22,13 @@ progress:
 ## Current Position
 
 Phase: 04 (迁移与并存) — EXECUTING
-Plan: 2 of 4
-Current Plan: 2
+Plan: 3 of 4
+Current Plan: 3
 Total Plans in Phase: 4
-Status: Executing Phase 04 — 04-01 complete, 04-02 next
-Last activity: 2026-11-14 — 04-01 完成（迁移 runbook + DRILL-1 实测 + README 双语入口）
+Status: Ready to execute
+Last activity: 2026-11-14 — 04-02 完成（§② 三轴差异表 + 旧仓备料四件；旧仓一字未变）
 
-Progress: [██████████░░] 10/13 plans ([██████░░░░] 60%) — 3/5 phases (60%)
+Progress: [███████████░] 11/13 plans ([█████████░] 85%) — 3/5 phases (60%)
 
 ## Current Focus
 
@@ -88,6 +88,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 03 P02 | 7min | 3 tasks | 7 files |
 | Phase 03 P03 | 9 min（Task 1）/~67 min（Task 2/3 线下） | 3 tasks | 4 files（SUMMARY + STATE + ROADMAP + REQUIREMENTS；产品面 0） |
 | Phase 04 P01 | 8 min | 2 tasks | 3 files |
+| Phase 04 P02 | 5 min | 2 tasks | 5 files |
 
 ## Decisions
 
@@ -135,9 +136,12 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 04]: 迁移命令块后续步骤用 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}" 而非重新 mktemp：既守住「每块首行 export DSH_HOME=」的反误伤纪律（T-4-01），又不替换已选定的演练场，未设 home 时 fail-closed。
 - [Phase 04]: README 的迁移入口紧贴 intro 段下一行、不额外插空行（Markdown blockquote 可中断段落）：这样 git diff BASE -- README.md 恰为 +2 −0，与计划硬判据一致，而渲染与语义不变。
 - [Phase 04]: docs/MIGRATION.md 的文件头警告写成有条件的（「未经逐 profile 裁决，不要在真实 ~/.dsh 上跑 --uninstall」+ 指向 0-B 与步骤 1），不写无条件禁令：否则文档禁掉了自己的步骤 2，脚本用户只能去迁一个 /tmp 演练场。D-02 约束的是本仓执行，不是文档可为读者写什么（D-11）。
+- [Phase 04]: §② 落位：zh 插在 §①「本机实测值」表之后、独占 --- 之前，en 追加在文件末尾；两半保持「§① → §②」同构，04-03 的 §③ 接在其后即把两半 ## 从各 2 推到各 3 — D-11 要求两半各自完整且章节同构；三节顺序由 D-10 锁定（① runbook ② 差异表 ③ 症状表），§② 必须是第 2 节
+- [Phase 04]: 旧仓备料按 docs/dshmarket 先例落四文件（说明 / snippet.en 正式件 / snippet.zh 备而不用 / pr.md），中文片段首行 HTML 注释声明无落点（D-09 读法 A） — 旧仓 README 实测 CJK 0 / 315 行 / 23653 B，没有中文落点；把中英一起粘进去等于未经对方同意把它的门面改成双语。说明与资产分离是先例已立的形态
+- [Phase 04]: docs/MIGRATION.md 原本无文件末尾换行：追加 §② 后 git 记 1 行删除（末行原样重发射），零内容删除由 361/361 按序保留 + 该行逐字相同证明；§② 末尾也保持无 EOF 换行以免扩大位移面 — 计划判据写「纯追加（无 - 行）」，物理上无法在无 EOF 换行的末行之后追加而不动该行标记；选择如实记录并取证，而不是把判据改写成绿
 
 ## Session
 
-**Last session:** 2026-11-13T17:44:18.493Z
-**Stopped at:** Completed 04-01-PLAN.md
+**Last session:** 2026-11-13T17:55:12.489Z
+**Stopped at:** Completed 04-02-PLAN.md
 **Resume file:** None
