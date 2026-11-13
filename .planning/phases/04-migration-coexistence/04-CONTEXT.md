@@ -153,7 +153,7 @@ planner 定夺、须在 plan 中显式落成（不得静默假设）：
 ## Existing Code Insights
 
 ### Reusable Assets
-- **`/gsd-health` skill**：装后自检入口，runbook 的「复验」一步应当复用它，而不是另发明一套检查。
+- **`/gsd-health` skill**：装后自检入口。**（plan-phase 期订正：其 objective 是 `Diagnose planning directory health`，校验的是 `.planning/` 目录完整性，与「旧源是否已死」无关 —— 复验**不得**用它，也不得用 exit code。复验只能用 D-05/D-07 的 shell 判据块：阴性对照（`$DSH_HOME` 下无 `gsd-*`、无 bridge 块、无第二条 `gsd-hooks-bridge` row）+ 内容比对（技能正文与随包文件一致）。依据见 `04-PATTERNS.md`。）**
 - **`tests/docs-consistency.test.mjs` 的断言风格**：已有「文档里的字符串必须与 manifest 逐字一致」的守卫形态，可作为「README 顶部入口存在」这条守卫的模板（是否加由 planner 定，见 Discretion）。
 - **`check-pins` 步骤 (j)**：已把 `package.json` peer 与 `pins.json` 的 `lines.022.peer` 强等值，是 HOOK-05「pin 对齐」的现成执行件。
 - **`.stripped-bak` 机制**：旧脚本剥 bridge 块时会对每个 `cordis.patch.yml` 备份为 `.stripped-bak`，这是 D-01 回滚路径的实物依托（runbook 应指出它的存在与位置）。
