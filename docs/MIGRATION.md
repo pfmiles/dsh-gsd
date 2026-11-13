@@ -178,6 +178,32 @@ grep -cE '^\s*- id: gsd-hooks-bridge$' /tmp/mig-dump.out # 期望 1
 | 包内技能数 | 72 | `ls -d "$PKG"/skills/gsd-*` |
 | dump 标头数 | 24 → 25 | 加包前 → 加包后，同一 home |
 
+## ② 两种方式的三轴差异
+
+两种方式都能把 GSD 装进 DSH，但它们的**归属**不同：旧脚本是机器级的（写 `$DSH_HOME` 与全局 npm prefix），插件是 profile 级的（只写 `profiles/<name>/`）。下面三轴是唯一的实质差异面；三轴之外的差别，基本都是同一件事落在两个不同位置上。
+
+### 什么情况选哪个
+
+- **留在旧脚本**：仍要**批量铺多台机器**（一条 `curl | bash` 就够，不必先把 DSH profile 建好）、需要**完全离线安装**（`GSD_PACKAGE_DIR` 指向一个完整 npm 布局的包目录）、或者需要脚本自己那份**逐 profile 的诊断输出**（它逐条播报 bridge 块与 marker 状态）。
+- **换成插件**：单机日常使用；要能 `dsh plugin` 一条命令 **enable / disable / 卸载**；要**一条命令升级或回滚**（换一个精确版本号即可）；希望安装只动 profile，不碰 `$DSH_HOME` 的其它位置。
+- **已经装过脚本**：先按 §① 的**步骤 1** 逐个 profile 裁决去向，再走**步骤 2** 卸载 —— 两种方式同时在场会让同名技能**双源**，谁生效取决于 provider 优先级。
+
+### 对照表
+
+| 轴 | 旧脚本 | 插件 | 迁移影响 |
+| ---- | ---- | ---- | ---- |
+| 全局 CLI | `npm i -g @opengsd/gsd-core` 把 `gsd_run` 放到 PATH 上（本机实测解析到 1.16.0） | 包内引擎 `gsd-core/bin/gsd-tools.cjs`（1.20.1）；skills adapter 写 `node <GSDROOT>/…` 绝对路径，**不依赖 PATH** | 卸掉全局 CLI **不损伤**插件态；留着它 = 留一个落后 5 个小版本（1.16.0 对 1.20.1）的坑 |
+| `GSD_PROFILE` 档位 | `core` / `standard` / `full` 三档透传给上游安装器（`INSTALLER_ARGS+=(--profile=…)`） | **无对应物**：恒定携带全部 72 个 skills；精简档是 Backlog 里未排期的 `dsh-gsd-core` 子包 | 从 `core` / `standard` 迁来会**多得**技能，不是缩水 |
+| hooks 归属 | 机器级绝对 `configPath`（`~/.dsh/gsd-hooks.dsh.json`）加 `pluginRoot=~/.dsh` | 包内自定位（`!!js createRequire(baseUrl)` → `<包>/config/gsd-hooks.json`） | **不是事件差异**（两侧同为 5 事件 / 14 matcher，双向差集为空），差异只在 `configPath` / `pluginRoot` 归谁 |
+
+每一格都能被一条只读命令复核：全局 CLI 那一行看 `npm ls -g --depth=0` 的版本与 `readlink -f "$(command -v gsd_run)"` 的落点；hooks 那一行用 `node -e` 数 `config/gsd-hooks.json` 的键集（5 个）与 matcher 数（14 个）；`GSD_PROFILE` 那一行看旧脚本的 `--profile=` 透传与包内 `skills/` 的目录数（72）。
+
+### 共同限制：两种方式都受此限
+
+DSH 只支持五类 hook 事件：`SessionStart`、`PreToolUse`、`PostToolUse`、`SubagentStop`、`Stop`（合计 14 个 matcher，分布 1 / 7 / 4 / 1 / 1）。没有 `PreCompact`、没有 `FileChanged`、也没有 statusline 事件。
+
+**两种方式都受此限 —— 旧脚本与插件一样。** 换成插件**不会**获得更多事件：插件只是把同一份配置从机器级绝对路径搬进包内（`configPath` 自定位），事件集合一字未变。旧脚本那几个 hooks 开关（`GSD_FORCE_HOOKS_PATCH` / `GSD_NO_BRIDGE_SYNC` / `GSD_HOOKS_SANDBOX_PATCH`）在插件侧同样**无对应物**。
+
 ---
 
 # dsh-gsd Migration Guide — from shell script to plugin
@@ -359,3 +385,29 @@ The table below is what the drill box (20-character home + `@opengsd/gsd-core@1.
 | Bundled `gsd-new-project/SKILL.md` | 3856 B | same |
 | Bundled skill count | 72 | `ls -d "$PKG"/skills/gsd-*` |
 | dump header count | 24 → 25 | before install → after install, same home |
+
+## ② Three axes of difference
+
+Both modes put GSD inside DSH, but they **own** different things: the shell script is machine-wide (it writes `$DSH_HOME` and the global npm prefix), the plugin is profile-level (it writes `profiles/<name>/` only). The three axes below are the only substantive differences; anything outside them is the same job landing in two different places.
+
+### Which one should you use
+
+- **Stay on the shell script** if you still need to **provision many machines in bulk** (one `curl | bash` is enough, no DSH profile has to exist first), need a **fully offline install** (`GSD_PACKAGE_DIR` pointing at a complete npm-layout package directory), or need the script's own **per-profile diagnostic output** (it reports bridge blocks and marker state, one line at a time).
+- **Use the plugin** for day-to-day work on one machine: to **enable / disable / remove** with a single `dsh plugin` command, to **upgrade or roll back with one command** (swap one exact version number), or to keep the install confined to the profile instead of the rest of `$DSH_HOME`.
+- **Already installed with the script?** Decide, per profile, where each profile should go using **step 1** of §①, and only then uninstall via **step 2** - running both modes at once gives the same skill name two sources, and which one wins depends on provider precedence.
+
+### Comparison
+
+| Axis | Shell script | Plugin | Migration impact |
+| ---- | ---- | ---- | ---- |
+| Global CLI | `npm i -g @opengsd/gsd-core` puts `gsd_run` on PATH (on this machine it resolves to 1.16.0) | The bundled engine `gsd-core/bin/gsd-tools.cjs` (1.20.1); the skills adapters call `node <GSDROOT>/...` by absolute path, so the plugin does not go through PATH | Removing the global CLI **does not damage** the plugin state; keeping it leaves an engine 5 minor versions behind (1.16.0 vs 1.20.1) |
+| `GSD_PROFILE` tiers | `core` / `standard` / `full`, forwarded to the upstream installer (`INSTALLER_ARGS+=(--profile=...)`) | **no equivalent**: the plugin always ships all 72 skills; the slim tier is the unscheduled `dsh-gsd-core` subpackage on the backlog | Migrating from `core` / `standard` gives you **more** skills, not fewer |
+| hooks ownership | Machine-level absolute `configPath` (`~/.dsh/gsd-hooks.dsh.json`) plus `pluginRoot=~/.dsh` | In-package self-location (`!!js createRequire(baseUrl)` -> `<package>/config/gsd-hooks.json`) | **not an event-set difference** (both sides carry the same 5 events / 14 matchers, empty two-way set difference); the difference is only who owns `configPath` / `pluginRoot` |
+
+Every cell can be re-checked with one read-only command: for the global-CLI row, `npm ls -g --depth=0` and `readlink -f "$(command -v gsd_run)"`; for the hooks row, a `node -e` count of the key set (5) and matcher count (14) inside `config/gsd-hooks.json`; for the `GSD_PROFILE` row, the script's `--profile=` pass-through and the directory count under the package's `skills/` (72).
+
+### Shared limit: both modes are bound by it
+
+DSH supports only five hook events: `SessionStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop` (14 matchers in total, distributed 1 / 7 / 4 / 1 / 1). There is no `PreCompact`, no `FileChanged`, and no statusline event.
+
+**Both modes are bound by it - the shell script and the plugin alike.** Switching to the plugin does **not** buy more events: the plugin only moves the same configuration from a machine-level absolute path into the package (`configPath` self-located), and the event set is unchanged word for word. The script's hooks switches (`GSD_FORCE_HOOKS_PATCH` / `GSD_NO_BRIDGE_SYNC` / `GSD_HOOKS_SANDBOX_PATCH`) likewise have **no equivalent** on the plugin side.
