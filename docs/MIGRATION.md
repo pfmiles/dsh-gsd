@@ -206,7 +206,7 @@ DSH 只支持五类 hook 事件：`SessionStart`、`PreToolUse`、`PostToolUse`�
 
 ## ③ DSH 升级 / 版本错配：症状 → 原因 → 修复
 
-DSH 的版本兼容判定在**四个不同时机**触发，四层的可观察后果完全不同——最危险的是第 ③ 层：**命令照常成功退出，坏掉的是那一层本身**。下表每一格都来自本仓 2026-11-13 的实测（逐字原文见 `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md` 的 DRILL-2 段），不是"已知会怎样"的复述。
+DSH 的版本兼容判定在**四个不同时机**触发，四层的可观察后果完全不同——最危险的是第 ③ 层：**命令照常成功退出，坏掉的是那一层本身**。下表每一格都来自本仓 2026-11-13 的实测（逐字原文见 `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md` 的 DRILL-2 段），不是对旧记录的转述。
 
 ### 四层门与逐字症状（来自实测）
 
