@@ -95,13 +95,19 @@ Plans:
   2. install-gsd-dsh.sh README 顶部互链，定位重述为保底/离线
   3. 同 profile 与 codegraph/deja/dshmarket 并存无冲突实测
 
-**Plans**: TBD
-Plans:
+**Plans**: 4 plans（原列 2 项，plan-phase 按需求簇拆为 4：MIG-01 / MIG-02+MIG-03 / HOOK-05 / MIG-04）
+
 **Wave 1**
-- [ ] 04-01: 迁移 runbook 与实测
+- [ ] 04-01: 迁移 runbook 与实测 —— tracer 端到端演练（临时 home）+ §① + README 双语入口
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 04-02: 并存验证与文档
+- [ ] 04-02: 三轴差异表与旧仓备料 —— §② + `docs/oldrepo-link/`
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-03: 版本错配症状表 —— §③ + ⑭ 守卫 + `BUILD.md` 38/38
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 04-04: 并存验证与边界声明 —— 静态 id 集合 + 临时 home 同层合成（前置 `blocking-human` 门）
 
 ### Phase 5: 端到端 UAT 与 1.0 收官
 
