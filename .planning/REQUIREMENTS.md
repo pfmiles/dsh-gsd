@@ -30,7 +30,7 @@
 - [ ] **HOOK-02**: 阳性拦截：read 文件名恰为 `.env`/`.env.<suffix>` 被 guard 硬拦（exit 2 + 文案）
 - [ ] **HOOK-03**: 会话落盘存在 hook 记录（区别于"挂载但静默"）
 - [ ] **HOOK-04**: guard 行为与上游 GSD 一致（basename 规则，不含内容判定）—— 不以内容拦截替代
-- [ ] **HOOK-05**: 桥接依赖 pin 与 DSH 版本对齐策略文档化，DSH 升级后的症状与修复写入 runbook
+- [x] **HOOK-05**: 桥接依赖 pin 与 DSH 版本对齐策略文档化，DSH 升级后的症状与修复写入 runbook
 
 ### 版本与兼容 (VER)
 
