@@ -103,8 +103,8 @@
 
 planner 定夺、须在 plan 中显式落成（不得静默假设）：
 
-- **错配演练的具体注入点**：改 `build/assets/pins.json` 的 `lines.022.peer`（会先红在 `check-pins` 步骤 (j)）vs 改临时 home 里 `node_modules/@deepseek-ai/dsh-hooks-claude-code/package.json` 的版本（更接近真实漂移）。二者症状不同，建议至少覆盖「运行时症状」那一类。
-- **MIG-04 并存验证的覆盖面**：本机唯一真实并存样本是 `web` profile（`dsh-deja` + `dshmarket` + 旧 bridge 块）；`codegraph` 在本机**未安装**。在临时 `DSH_HOME` 里复现并存需联网装这几个插件。planner 需裁定：只验 `dsh-deja`/`dshmarket` 即可，还是必须凑齐 codegraph；以及「无冲突」的判定是什么（两行都在 `--dump-config` / 都能 enable / 同名 id 不撞）。
+- **错配演练的具体注入点**：改 `build/assets/pins.json` 的 `lines.022.peer`（会先红在 `check-pins` 步骤 (j)）vs 改临时 home 里 `node_modules/@deepseek-ai/dsh-hooks-claude-code/package.json` 的版本（更接近真实漂移）。二者症状不同，建议至少覆盖「运行时症状」那一类。**（plan-phase 期订正：`pins.json` 的 peer 值只被 `check-pins` 步骤 (j) 消费；且 DSH 在包自带 `engines.dsh` 时根本不读 `peerDependencies`（`unmetRequirements` 在 engines 分支直接 return），故该注入点**产不出运行时症状**。运行时症状须从「已装包自己的 `engines.dsh`」或「bridge 包版本 / 其 exact peer」注入。依据见 `04-RESEARCH.md`。）**
+- **MIG-04 并存验证的覆盖面**：真实并存样本是 `web` profile（`dsh-deja` + `dshmarket` + 旧 bridge 块）。**（plan-phase 期订正：`codegraph` 在本机**已安装** —— `~/.dsh/profiles/web/package.json` 的 `dependencies` 含 `"@jiangzhenguo/dsh-codegraph": "github:jiangzhenguo/dsh-codegraph#main"`，`dsh.profile.bundles` 同含该项，实装 1.2.2。故三个插件都在本机，均可零安装静态验证；但要在临时 `DSH_HOME` 里证明「同层合成」仍需联网安装（三者合法性门均为 `SUS/too-new`）。另：「无冲突」的判定**不能**是「能装能跑」—— 同名 row id 实测是静默双行（`add` exit 0、零 warning、dump 出现两行同 id），必须是集合断言：`uniq -d` 为空且期望 id 各出现 1 次。四插件实测 id 集合两两不相交：`{gsd, gsd-hooks-bridge}` / `{deja}` / `{dsh-market}` / `{dsh-codegraph}`。依据见 `04-RESEARCH.md`。）** planner 需裁定：并存验证的覆盖面（静态三插件 vs 临时 home 联网合成）与「无冲突」的具体断言形式。
 - **临时 `DSH_HOME` 的命名与清理策略**：路径形态、演练后是否保留、失败时的留痕方式。
 - **runbook 命令块的组织方式**：单块可整段粘贴 vs 分步逐条（后者更适合「硬门中止」的交互节奏）。
 - **`docs/MIGRATION.md` 是否需要在 `tests/docs-consistency.test.mjs` 里加一条守卫**（如「README 顶部含 MIGRATION 链接」）。注意现有 13 条断言钉住了 `private === true`、版本窗口、徽章唯一性等，新增文档不得使其失真。
