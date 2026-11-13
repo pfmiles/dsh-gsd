@@ -28,7 +28,7 @@ Total Plans in Phase: 3
 Status: Ready to plan
 Last activity: 2026-11-13 — Phase 03 complete, transitioned to Phase 4
 
-Progress: [████████████████████] 9/9 plans ([████░░░░░░] 40%) — 2/5 phases (40%)
+Progress: [████████████████████] 9/9 plans ([██████░░░░] 60%) — 3/5 phases (60%)
 
 ## Current Focus
 
@@ -61,6 +61,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 
 ## Progress Log
 
+- 2026-11-13 verification 续跑（Phase 03）：review-fix（`54edd58`/`9fed9cd`/`4fae49d`/`aacdbfa`，删 3 条恒真断言 + 改写 BUILD.md:110）触碰 03 的 4 个 covered files 致 stale；`/gsd-execute-phase 03` 走 #4682 复用产物路径（0 plan 重跑）——verify:post 三钩子均以证据免重派（nyquist 引用的「门只在注释里」突变现场复验仍使 ⑧ 红、security `threats_open` 0、ui 无前端文件改动）→ code-review 第三轮复审修复面 **clean 0 findings**（`e37b949`；前 10 findings 全 fixed/skipped，`open: 0`，`57ed89d`）→ regression gate 5 套件全绿（`npm test` 37/37 exit 0）→ verifier 13/13 passed（新 digest `v3:c61afb20`，18 covered files）→ phase.complete（`eed6bdd`）。**两处编排层纠错（均为 verifier/CLI 自述与实测不符）**：① verifier 声称「指纹原样复制 CLI 输出」，实际写入 `v4:sha256:e5dfaa…` —— 该前缀在**任何 CLI 代码中都不存在**（只出现在 `gsd-core/` 的 `agents/gsd-verifier.md` 与 `templates/verification-report.md` 两份文档里），权威查询因此判 `stale`；改用 CLI 实值 `v3:c61afb20` 后 `passed`，`covered_files` 18 条经核对逐字正确 ② STATE 的 `completed_phases: 2` / `percent: 40` 与 ROADMAP 实况（3/5 个 `[x]`）矛盾，CLI 自报 `preserved-over-disagreeing-derived` 选择保留陈值；已按可证事实订正为 3/60 并同步正文进度行。**IN-02 处置收窄**：HEAD 领先 CI 验证 sha `9e99cd6` 共 10 提交，但 `git diff 9e99cd6..HEAD` 对 `package.json files` 白名单（index.js/cordis.patch.yml/locale/icon.svg/skills/gsd-core/hooks/config/scripts + 恒含的 package.json/README/LICENSE）**为空** ⇒ npm 发布面与 CI 验证字节相同，未过 CI 的只是 `.planning/`、BUILD.md 与 3 个测试文件
 - 2026-11-12 execution 03-03（3091 实例）：**首次 push 与 CI 首绿完成**（推送 `d3c8e89..20e20c0`，run `43218878911` conclusion=success，`total_count` 0→1，无红跑历史）——Task 1 六项证据当场串行复跑（四格 4/4：install-ok 656 包 / reject 601 包；三档构建 1.20.1→1.19.0→默认 1.20.1，均 gates 全过 + `copied 76 trees`；actionlint 0 findings；全量 32/32 与 `BUILD.md:16` 等值；status 0 行 / 无 tgz / origin=SSH / `total_count`=0；待推 106）。Task 2 blocking-human 由人类裁决为 **「先在一个临时仓库干跑一次，绿了再推」**；执行期发现三层阻塞：① **SSH 不可用**（`~/.ssh/id_rsa` 非 `pfmiles` 有效 key；`PubkeyAcceptedAlgorithms` 三档算法均无效）② HTTPS 缺 `workflow` scope（人类执行 `gh auth refresh -s workflow -s delete_repo`）③ `osxkeychain` 提供旧 token（须 `git -c credential.helper= -c credential.helper='!gh auth git-credential'`）。探针私仓 `pfmiles/dsh-gsd-ci-probe` 同 SHA 跑绿（run 43218482632，1m36s）后删除（API 404）；真仓只推一次、只有一条 run（`run_attempt=1`）。`origin` 保持 SSH **未改写**（仍不可用；`origin/main` 跟踪 ref 停在 `d3c8e89`，权威远端 sha 用 `gh api`）。PUB-01 闭合；本 phase 3/3 计划完成，待 `/gsd-verify-work 03`。4 条 first-class 偏离 + 4 条记录性差异记入 03-03-SUMMARY
 - 2026-11-12 execution 03-02（3091 实例）：元数据与提交材料完成（commits 3f2c909 + 8d0e9c6 + f061bc0 + SUMMARY 0340e46）——package.json 纯新增 8 行（repository/homepage/bugs/keywords/author + publishConfig.registry，`git diff --numstat` = 8 0）；README 徽章/裸名示例/Phase 5 文案（`# dsh-gsd` 仍 2、裸名行 2、pin 示例 4、无 `dsh-gsd@latest`）；CHANGELOG 首条目 `1.20.1-1.dsh022`（Added×2 / Changed×2 / Fixed×1，未进 `files`）；docs/dshmarket 5 字段条目（category=workflow、无 icon）+ 提交说明；docs-consistency 追加 ⑧⑨⑩（10/10），全量串行 32/32 两次同值，BUILD.md:16 写 32/32。PUB-03 / PUB-04 / INST-06 落 Complete。0 auto-fixed、2 条记录性差异记入 SUMMARY；01-VERIFICATION / 02-VALIDATION / STATE 的历史 26/26 未改写
 - 2026-11-12 execution 03-01（3091 实例）：发布管线与 CI 首绿完成（commits 6ce5360 + 19911d1 + c304c76）——peer 收紧 exact `0.2.2-rc.1`（package.json + pins.json 同提交，workflow L37 零改动；副本内 npm 通道 656 包全树 dedupe、install-ok confirmed）、workflow 顶层 `permissions: {contents: read}` + install-ok 格门控正向解析断言（`run:` 行数仍 4，落位由 PLAN 自带命令机器证明并对 6 个退化变体 fail-closed）、`tests/pack-contents.test.mjs` 纯重命名纳管（100% similarity、0 行改动；全量 29/29）、真 tarball 958 文件在 profile `gsd-p3-release` 装成并 boot（引擎 1.20.1 / 72 skills / dump-config 两 id）。PUB-02 落 Complete；PUB-01 与 03-03 共享 ID，按共享门待 03-03 SUMMARY 后落 Complete。2 条记录性差异（workflow diff 10 行 vs 括注 6-8 行；`--force` 回退支路未触发）记入 SUMMARY
@@ -132,6 +133,6 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 
 ## Session
 
-**Last session:** 2026-11-12T12:40:00.000Z
+**Last session:** 2026-11-13T03:05:00.000Z
 **Stopped at:** Phase 03 complete, ready to plan Phase 4
 **Resume file:** None
