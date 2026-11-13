@@ -1,162 +1,187 @@
 ---
 phase: 03-github-npm-dshmarket
-reviewed: 2026-11-12T17:09:01Z
+reviewed: 2026-11-13T02:48:14Z
 depth: standard
-files_reviewed: 5
+files_reviewed: 4
 files_reviewed_list:
   - BUILD.md
-  - index.js
   - tests/compat-matrix.test.mjs
   - tests/docs-consistency.test.mjs
   - tests/pack-contents.test.mjs
 findings:
   critical: 0
   warning: 0
-  info: 4
-  total: 4
-status: issues_found
+  info: 0
+  total: 0
+status: clean
 ---
 
-# Phase 03: Code Review Report
+# Phase 3: Code Review Report
 
-**Reviewed:** 2026-11-12T17:09:01Z
+**Reviewed:** 2026-11-13T02:48:14Z
 **Depth:** standard
-**Files Reviewed:** 5
-**Scope:** DELTA re-review of `386e80387dd517bee81ed5d621dcee6111313882..HEAD` (commit `49c0efe`)
-**Status:** issues_found
+**Files Reviewed:** 4
+**Status:** clean
 
 ## Summary
 
-**Scope provenance: `degraded`.** The evaluation-scope resolver returned `status: degraded`,
-`reason: no-task-commits-since` (no plan SUMMARY changed since the previous review), so it widened to
-the phase-directory range. The resulting file set was confirmed present on disk and all 5 files were
-read in full. Treat the scope as "this is what changed", not "this is everything the phase touched".
+**Scope is degraded, by construction.** The evaluation-scope resolver returned
+`status: degraded / reason: no-task-commits-since` (no plan `SUMMARY.md` moved since the previous
+review), so the review was widened to the phase-directory range and all four files were confirmed
+present. This is a **DELTA re-review of a FIX round**, not a review of new feature work: the four
+files were last touched by exactly four commits, each claiming to retire one previously-filed Info
+finding.
 
-**CR-01 is genuinely fixed — verified, not accepted from the commit message.** Two independent checks:
+The central question was not "did the deletions apply cleanly" but **"did each deletion lose
+coverage"**. Each commit message was treated as an unverified assertion and independently falsified
+against the artifacts. Result: **all four fixes are correct, complete, and lossless.** Every deleted
+assertion is genuinely unreachable-false — it is entailed either by an assertion one or two lines
+above it or (IN-06) by the doc's own historical context — and every mutation the deleted assertion
+named in its failure message is still caught by a named `file:line` that remains in the suite.
+Nothing was orphaned: no unused `const`, no import without a remaining consumer, no variable whose
+only reader was the deleted line. The two near-miss traps called out in the task brief are in the
+**correct** final state, and I proved by mutation that the broken alternative would have failed.
 
-1. *Real installed layout* — the layout on this machine is `<profile>/node_modules/dsh-gsd/index.js`
-   with a 72-entry `skills/` sibling (`~/.dsh/profiles/gsd-p3-release/node_modules/dsh-gsd/`), i.e.
-   exactly the two-level depth `pack-contents.test.mjs:211` simulates. `index.js:22`
-   (`dirname(fileURLToPath(import.meta.url))`) resolves to the package directory itself.
-2. *Evaluation of the two real lines in the simulated layout* (outside the test runner, in a throwaway
-   `/tmp` tree — `node build.mjs` / `npm test` were not invoked): extraction of `index.js:22-23` plus a
-   probe of `<tmp>/node_modules/dsh-gsd/index.js` prints `<tmp>/node_modules/dsh-gsd/skills`. The
-   pre-fix form (`resolve(dirname(…), '..')`) prints `<tmp>/node_modules/skills` — i.e. it fails
-   `pack-contents.test.mjs:232` by a directory, which is the CR-01 defect (0/72 skills).
+**No findings. Zero Critical, zero Warning, zero Info.** The suite is green at **37/37** (canonical
+command, `--test-concurrency=1`, exit 0) on the restored tree, and `BUILD.md`'s cross-referenced
+suite size (37) is the measured truth.
 
-The path contract now also *agrees across both consumers*: `cordis.patch.yml:23-24` computes the same
-root via `dirname(require.resolve('dsh-gsd/package.json'))`, which was package root all along. The
-`resolve` import was correctly dropped from `index.js:13`.
+## Narrative Findings (AI reviewer)
 
-**`index.js` was reviewed for the first time in full (not only the changed line) — no findings.**
-The parts that were previously unreviewed were checked against the installed dependency versions, not
-assumed: `new FileSystemSkillProvider(ctx, control, {providerName, includeDefaultRoots,
-customSkillDirs, watch})` matches the `0.2.2-rc.1` constructor and config keys; `ctx.skills.registerProvider(create)`
-is called synchronously during `apply` as that API requires, and its internal
-`layers.effect(this.ctx, …)` is fiber-bound through cordis's context tracker, so the ignored return
-value does not leak a registration on unload; a generator is a valid `ctx.effect` body
-(`Iterable<Disposable>`), and `ctx.effect` is registered after `registerProvider`, so teardown runs
-"stop watching, then unregister" — the safe order. The static peer import
-(`@deepseek-ai/dsh-skill-filesystem`, `peerDependencies` only, absent from the profile's
-`node_modules`) is *not* a load failure: `dsh-app-boot` wraps Node's ESM and CJS resolvers to supply
-installation-carried packages to bundle imports (`lib/index.js:2567-2719` of the host), and the
-profile's `.modules.yaml` confirms only `dependencies` are hoisted.
+No findings. The rest of this section records the adversarial verification that produced that
+verdict, because "clean" here is a claim that must be reproducible rather than a shrug.
 
-**The four tightened guards: each one will redden on the defect it names.** Verified by tracing every
-assertion against the artifact it asserts over (the suite itself was not executed — prohibited here):
+### Verification of each deletion (claim → independent re-derivation → mutation)
 
-| Guard | Mutation that must redden | Reddens? |
-|-------|---------------------------|----------|
-| ① `pack-contents:145-154` | drop `index.js` / `cordis.patch.yml` / `locale` / `skills` / `gsd-core` / `hooks` / `config` / `scripts` / `icon.svg` from `files` | yes — `missing` is non-empty (`package.json`/`README.md`/`LICENSE` are excluded as npm-unconditional) |
-| ⑨ `docs-consistency:130-161` | delete the DSH badge; add a 3rd shields badge; move both badges below the first `# dsh-gsd` | yes — count 2, position, and per-badge link/alt assertions are all live at `README.md:3-4` vs heading `:6` |
-| ⑫ `docs-consistency:276-287` | delete the en line; duplicate zh and delete en (keeps total at 2) | yes — per-half 1/1 replaces the 2/0-blind total check (`README.md:27` zh, `:100` en) |
-| ⑧ `compat-matrix:136-222` | revert to `\|\|` / `!=` / `&&` / brace form; comment-only gate; drop the closing `fi`; move `exit 2` or the resolve assert out of the gate | yes — the whole-line anchor `GATE_RE` (`:136`) rejects every variant; artifact is `compat-matrix.yml:42-49` |
+**IN-03 — `tests/compat-matrix.test.mjs` (commit `54edd58`, deleted the `!/^\s*#/` guard).**
 
-**No Critical and no Warning findings.** The four Info items below are *sub-assertions that cannot
-fail* and one stale count — the guards themselves still work, so none of them blocks release and no
-re-fix round is required. Finding IDs continue from the prior review (`IN-02`) rather than restarting
-at `IN-01`: `03-REVIEW-DISPOSITION.md` records that reusing an id silently drops that id's existing
-disposition row.
+- *Claim:* unreachable, because `GATE_RE` (`:136`) can only match a line whose first non-space
+  character is `i` of `if`, so `gateLine` can never start with `#`.
+- *Re-derived:* `gateIdx = y.slice(0, m.index).split('\n').length - 1` and `gateLine = lines[gateIdx]`
+  (`:150-151`) make `gateLine` the line on which the anchored match begins. `GATE_RE` is
+  `/^\s+if \[ … \]; then$/m`, i.e. the matched span begins at a line start with a whitespace run and
+  then literally `if [`. Enumerated 13 adversarial inputs (gate commented with `# `, `#` without
+  space, at column 0, comment-only file, trailing comment on the gate, duplicate gate, commented dup
+  + real gate, CRLF, tabs, blank line before the gate, whitespace-only line before the gate): in
+  **every input where `GATE_RE` matched**, `gateLine` began with whitespace+`if` or was an empty /
+  whitespace-only string. `!/^\s*#/.test(gateLine)` was true in **13/13** matched cases — the
+  assertion was unreachable-false, not merely unlikely.
+- *Mutation:* commented out the real gate line (`:42`) → test ⑧ reddens at
+  `tests/compat-matrix.test.mjs:145-149` (`canonical 门行缺失或非整行锚定 …`), i.e. the named
+  mutation is still caught, one assertion *before* the deleted line. Restored via
+  `git checkout -- .github/workflows/compat-matrix.yml`.
+- *Orphans:* none. `gateIdx` is read at `:150`, `:175-176`, `:181`, `:192-203`; `gateLine` at `:174`
+  (indent computation) and `:207-212` (degraded-form rejections). Both are load-bearing and were
+  correctly retained.
 
-**Environment observation (not a finding, outside `files_reviewed_list`):** both installed snapshots
-on this machine still contain the *pre-fix* `index.js:22`
-(`~/.dsh/profiles/{gsd-p3-release,gsdtest}/node_modules/dsh-gsd/index.js`). That is expected —
-`file:` installs are frozen packed snapshots — and `BUILD.md:154-162` §⑧ step 2 already requires
-re-adding before re-verifying. It does mean any "72 skills load" claim made against these two profiles
-predates the fix and cannot serve as evidence for it.
+**IN-04 — `tests/docs-consistency.test.mjs` (commit `9fed9cd`, deleted `dshBadges.length === 1`).**
 
-## Info
+- *Claim:* entailed by `:137` (`shieldBadges.length === 2`) + `:150` (`licenseBadges.length === 1`).
+- *Re-derived:* `dshBadges` is a filter of `shieldBadges` that removes exactly one element (the
+  licence badge). A 2-element array minus exactly one of its elements has 1 element. There is no
+  reachable state in which both prior assertions pass and `dshBadges.length !== 1`. The assertion was
+  third in a chain that could only ever be evaluated after its own precondition was proven.
+- *Mutation, three shapes:* (a) delete the DSH badge line from `README.md:4` → red at
+  `:137` (`README 应恰有 2 枚 shields.io 徽章 … 实际 1 枚`); (b) replace the DSH badge with an
+  unrelated shields.io badge → red at `:157-160` (`第二枚徽章应是 DSH 徽章 …`); (c) replace the DSH
+  badge with a second copy of the licence badge (so "badges besides the licence badge" would be 0) →
+  red at `:150` (`应恰有 1 枚以 ./LICENSE 为链接目标的许可徽章，实际 2 枚`). All three mutations
+  named by the deleted message remain detected; none of them reached the deleted line first.
+  Restored via `git checkout -- README.md`.
+- *Orphans:* none. `const dshBadges` (`:156`) survives and is still read at `:158-159`. **The trap
+  was real and was avoided:** I ran the reverse mutation and also deleted `:156` — the literal
+  `:156-157` reading of the previous review's fix block — and test ⑨ died with
+  `ReferenceError: dshBadges is not defined`. The committed state (variable kept, only the assert
+  removed) is the correct one; the "delete the variable too" variant would have broken the suite.
 
-### IN-03: ⑧ 的「门行只在注释里」断言不可能失败（GATE_RE 已蕴含该性质）
+**IN-05 — `tests/pack-contents.test.mjs` (commit `4fae49d`, deleted `existsSync(printed)`).**
 
-**File:** `tests/compat-matrix.test.mjs:152`
-**Issue:** `assert.ok(!/^\s*#/.test(gateLine), '门行只出现在注释里…')` cannot fail. `GATE_RE`
-(`:136`) is `/^\s+if \[ … \]; then$/m`, so a match can only begin at a line start whose characters up
-to `if` are *all* whitespace — `gateLine` therefore always starts with whitespace followed by `if`.
-The one other shape is a match that begins on a blank line because `\s+` spans the newline, which
-yields `gateLine === ''`. `/^\s*#/` matches neither. The mutation it names is already caught one
-assert earlier, by `GATE_RE.exec` returning `null` at `:144-149`; this line is dead code with a
-diagnostic no reader can ever trigger.
-**Fix:** delete line 152. If the comment-case deserves its own message, anchor it on the whole file
-instead of the already-anchored gate line:
-```js
-assert.ok(
-  !/^\s*#\s*if\s+\[.*matrix\.expect/m.test(y),
-  'matrix.expect 门行只出现在注释里——门被整行注释掉等于没有门',
-)
-```
+- *Claim:* unreachable, because `:232` asserts `printed === expected` and `expected` is the directory
+  `:213` created with `mkdirSync`, removed only in the `finally` at `:238`.
+- *Re-derived:* confirmed. Whenever the line was reached, `printed` equalled a path the test itself
+  had just created; `assert.equal` throws on mismatch, so in every *product*-defect scenario the
+  deleted line was never executed.
+- *Mutation (product side, both CR-01 shapes):* (a) `pluginRoot = resolve(dirname(…), '..')` and
+  (b) `pluginRoot = dirname(dirname(…))` → both redden at `tests/pack-contents.test.mjs:232-236`
+  (`skillsDir 未落在包目录内：期望 …/node_modules/dsh-gsd/skills，实际 …/node_modules/skills`), one
+  assertion **above** the deletion site. Restored via `git checkout -- index.js`.
+- *Fixture-side probe (to bound the claim exactly):* with the `skills/` fixture mutated so `:213`
+  creates only `installedRoot`, test ④ **passes** with the assertion deleted, and **fails** only when
+  the deleted `assert.ok(existsSync(printed))` is re-added (`… 不存在（RE-ADDED PROBE）`). That is the
+  precise statement of what was removed: its sole trigger was damage to the test's own fixture
+  setup, not any mutation of a shippable artifact. No product-defect coverage was lost.
+  Restored via `git checkout -- tests/pack-contents.test.mjs`.
+- *Orphans:* none. `existsSync` (`:37`) is still consumed at `:106` and `:184`; `printed` is still
+  read by the equality assertion.
 
-### IN-04: ⑨ 的「除许可徽章外应恰 1 枚」断言是恒真的
+**IN-06 — `BUILD.md:110` (commit `aacdbfa`, reworded the stale `7/7`).**
 
-**File:** `tests/docs-consistency.test.mjs:156-157`
-**Issue:** `assert.equal(dshBadges.length, 1, …)` cannot fail. `licenseBadges` is filtered *from*
-`shieldBadges` (`:149`), and by the time `:157` runs, `:137` has already asserted
-`shieldBadges.length === 2` and `:150` has asserted `licenseBadges.length === 1`. A 2-element array
-minus exactly one of its elements is 1 element — no mutation of `README.md` can make this red. The
-intent the message states is already enforced by `:137` + `:150`; the assertion that actually carries
-the DSH-badge requirement is `:158-161`.
-**Fix:** delete `:156-157` and keep `:158-161`. If the intent was positional (the DSH badge is the
-badge directly below the licence badge, as in `README.md:3-4`), assert that instead:
-```js
-assert.equal(shieldBadges[1].i, licenseBadges[0].i + 1, 'DSH 徽章应紧邻许可徽章')
-```
+- *Claim:* the sentence now qualifies `7/7` as historical and points at §TL;DR for the current size.
+- *Re-derived, all three legs:* (1) `7` is the *historical* truth — at `14ee71c`, the commit that
+  introduced the sentence, `tests/` contained only `build-smoke.test.mjs` (1 case) +
+  `rewrite-map.test.mjs` (6 cases) = **7**; (2) the pointer resolves — `BUILD.md:16` says
+  *"预期 37/37"*, and the measured suite is **37** top-level `test()` cases (2+8+13+4+7+3), confirmed
+  by the canonical run (`ℹ tests 37 / pass 37 / fail 0`); (3) the documented `prepack` contract still
+  matches `package.json` verbatim (`node build.mjs && node --test tests/*.test.mjs`). The two numbers
+  no longer contradict each other: one is explicitly time-boxed, the other is the live count and is
+  accurate.
+- *Adjacent claim re-verified:* `:110`'s "glob 形态在 Node 24.21.0 上实测全绿" holds today —
+  37/37 on Node 24.21.0.
 
-### IN-05: ④ 的 `existsSync(printed)` 在等值断言通过后恒真
+### Residual-coverage matrix (mutation → what still reddens)
 
-**File:** `tests/pack-contents.test.mjs:237-240`
-**Issue:** `assert.ok(existsSync(printed), '…provider 会注册到空目录…')` cannot fail. `:232` has
-already asserted `printed === expected`, and `expected` is `join(installedRoot, 'skills')` — a
-directory that `:213` created with `mkdirSync` (removed only in the `finally` at `:242`). So whenever
-this line is reached, the path provably exists. The failure it describes ("provider 注册到不存在的
-目录") is caught by the equality assert one line above, which is the assertion that actually reddens
-when CR-01 is reintroduced.
-**Fix:** delete `:237-240`. No replacement is warranted: an "is not empty" variant would be wrong here
-because the simulated `skills/` is intentionally empty, and a real-count variant belongs to a
-different guard (and would false-red on a cold clone).
+| Mutation that used to be named by the deleted assertion | Still caught at |
+| --- | --- |
+| Gate line exists only as a YAML comment (IN-03) | `tests/compat-matrix.test.mjs:145-149` (`GATE_RE` returns null) |
+| README loses the DSH badge (IN-04) | `tests/docs-consistency.test.mjs:137` |
+| README grows a third shields.io badge (IN-04) | `tests/docs-consistency.test.mjs:137` |
+| "badge besides the licence badge" is not the DSH one (IN-04) | `tests/docs-consistency.test.mjs:157-160` |
+| Licence badge missing / duplicated (IN-04) | `tests/docs-consistency.test.mjs:150` |
+| `pluginRoot` one level up — `resolve(…, '..')` (IN-05) | `tests/pack-contents.test.mjs:232-236` |
+| `pluginRoot` one level up — `dirname(dirname(…))` (IN-05) | `tests/pack-contents.test.mjs:232-236` |
 
-### IN-06: BUILD.md 的套件规模在两处自相矛盾（37/37 vs 实测 7/7）
+**No mutation goes undetected after this fix round.** Each row above was executed, observed red on the
+cited line, and the artifact restored with `git checkout --`.
 
-**File:** `BUILD.md:110`
-**Issue:** `:16` was updated by this delta to *"预期 37/37"* (verified: `tests/*.test.mjs` holds exactly
-37 top-level `test()` cases — 2+8+13+4+7+3 — so `:16` is correct; the draft's `1+8+13+4+6+3` summed
-to 35 because it reused `14ee71c`-era counts for `build-smoke` (now 2) and `rewrite-map` (now 7) —
-i.e. this finding's own evidence line briefly reproduced the staleness it reports; corrected above,
-conclusion unchanged), but `:110` still says
-*"适配为 glob 形态，实测 7/7"* with no time qualifier. That 7/7 is a real measurement of a *different
-suite size*: at `14ee71c` (the commit that introduced the sentence) `tests/` held only
-`build-smoke.test.mjs` (1 case) and `rewrite-map.test.mjs` (6 cases). A reader of the doc that declares
-itself the build contract sees two different suite sizes in the same file and cannot tell which is
-current.
-**Fix:** either qualify it as historical, or drop the number:
-```markdown
-# 选项 1（保留出处）
-…适配为 glob 形态；glob 形态在 Node 24.21.0 上实测全绿（当时共 7 个用例，当前规模见 §TL;DR）
-# 选项 2（删数字）
-…适配为 glob 形态，实测全绿。
-```
+### Deletion-hygiene sweep
+
+`git diff HEAD` on all four files is empty (the committed state is the state reviewed). `node --check`
+passes on all three test files. A declared-but-never-read scan over every top-level and test-scope
+`const` in the three test files reports **zero** unused declarations
+(`compat-matrix` 27 declared / 0 unused; `docs-consistency` 47 / 0; `pack-contents` 26 / 0). No
+import lost its last consumer: `existsSync` survives at `:106`/`:184`, `spawnSync`/`readFileSync`
+untouched, `parseVersion` untouched.
+
+### Observations considered and **not** scored
+
+1. `tests/compat-matrix.test.mjs:135` still reads *"(4) 逐个拒绝已知退化形态（含「门只在注释里」）"*.
+   After IN-03 the commented-out-gate shape is rejected by sub-item (1), not (4). The **property is
+   still enforced** (proven by the mutation above) — only the attribution in the prose comment is now
+   slightly loose. Cosmetic, no coverage gap, no fix required; recorded so the next reader is not
+   surprised that the comment outlives its assertion.
+2. The `gateIdx` computation yields an empty `gateLine` if a blank line is ever inserted directly
+   above the canonical gate (`\s+` spans the newline). That is pre-existing, unrelated to this fix
+   round, and cannot manifest in the current artifact; it is not a coverage gap. Noted only because I
+   exercised that shape while proving IN-03 unreachable.
+
+### Working-tree note (not a finding)
+
+`git status --porcelain` was **already** ` M .planning/STATE.md` before this review began (GSD state
+bookkeeping, untouched by me) — the brief's premise that the tree starts clean did not hold on
+arrival. All four reviewed files are byte-identical to `HEAD`; every mutation I injected was restored
+with `git checkout --` and the final `git status --porcelain` shows only that pre-existing
+`.planning/STATE.md` entry. No source file was modified by this review; the only file written is this
+report.
+
+### Test-suite evidence
+
+Canonical command only: `node --test --test-concurrency=1 tests/*.test.mjs` → `tests 37 / pass 37 /
+fail 0`, exit 0, run twice (before and after the mutation battery) with identical results. `npm test`,
+directory-argument invocations, standalone `node build.mjs`, and concurrent suites were avoided as
+required.
 
 ---
 
-_Reviewed: 2026-11-12T17:09:01Z_
+_Reviewed: 2026-11-13T02:48:14Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
