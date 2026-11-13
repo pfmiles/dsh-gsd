@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: 迁移与并存
-current_plan: Not started
+current_plan: 2
 status: executing
-stopped_at: Phase 4 planned — 4 plans ready to execute
-last_updated: "2026-11-13T17:25:19.796Z"
-last_activity: 2026-11-13
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: 70a211960ca1127d4fe4e6cd432df3d16fa4a7aa
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-11-13T17:44:18.561Z"
+last_activity: 2026-11-14
+last_activity_desc: Phase 04 execution started
+state_head: a210d657dd5fc854bd0125f971e32e351a728cf9
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 60
 ---
 
@@ -21,14 +21,14 @@ progress:
 
 ## Current Position
 
-Phase: 04 (迁移与并存) — READY TO EXECUTE
-Plan: 1 of 3
-Current Plan: Not started
+Phase: 04 (迁移与并存) — EXECUTING
+Plan: 2 of 4
+Current Plan: 2
 Total Plans in Phase: 4
-Status: Ready to execute
-Last activity: 2026-11-13 — Phase 03 complete, transitioned to Phase 4
+Status: Executing Phase 04 — 04-01 complete, 04-02 next
+Last activity: 2026-11-14 — 04-01 完成（迁移 runbook + DRILL-1 实测 + README 双语入口）
 
-Progress: [████████████████████] 9/9 plans ([██████░░░░] 60%) — 3/5 phases (60%)
+Progress: [██████████░░] 10/13 plans ([██████░░░░] 60%) — 3/5 phases (60%)
 
 ## Current Focus
 
@@ -87,6 +87,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 03 P01 | 10 min | 3 tasks | 5 files |
 | Phase 03 P02 | 7min | 3 tasks | 7 files |
 | Phase 03 P03 | 9 min（Task 1）/~67 min（Task 2/3 线下） | 3 tasks | 4 files（SUMMARY + STATE + ROADMAP + REQUIREMENTS；产品面 0） |
+| Phase 04 P01 | 8 min | 2 tasks | 3 files |
 
 ## Decisions
 
@@ -130,9 +131,13 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 03]: refresh 之后仍失败的原因不是 scope 而是 **stale `osxkeychain` 凭据**；成功形态固定为 `git -c credential.helper= -c credential.helper='!gh auth git-credential' push <https-url> main`。 — `credential.helper=osxkeychain` 把旧 token 顶在 gh 的新 token 之前；`gh auth status` 的 `Git operations protocol: ssh` 又让默认路径继续走坏掉的 SSH。清空 helper 链后只接 gh 的 helper 即通。
 - [Phase 03]: 首跑前增加**探针私仓干跑**（用户裁决「先在一个临时仓库干跑一次，绿了再推」）：`pfmiles/dsh-gsd-ci-probe` 推同一 SHA → run `43218482632` success（4 格全绿，1m36s）→ `gh repo delete --yes` → API 404。 — 用一次可删除的 run 换掉「真仓首跑变红」的不可逆风险；探针仓不留在任何公开历史上。真仓随后只推一次（`run_attempt=1`、`total_count=1`）。
 - [Phase 03]: **第二次推送**（`20e20c0..9e99cd6`）把 CR-01 修复 + 8 条守卫 + 全部审查/验证产物推上 GitHub，触发 run `43238375397` success（4 格全绿）⇒ `total_count` 1→2，**两条 run 皆 success，仍无红跑历史**，SC-5 不破。 — 触发原因：GitHub 上的 `20e20c0` 含 CR-01 缺陷（`index.js` 包根 off-by-one，装出来 0 个技能），是「公开可安装但坏的」；推修复既消除该状态，也让修复首次获得 CI 覆盖，从而消掉原本记给 Phase 5 的唯一阻塞项。`03-03-SUMMARY` 的 `total_count==1` 仍是准确的**首跑当时**记录，不改写（它属 covered file，改写会让 verification 变 stale，且会混淆「当时」与「现在」）。
+- [Phase 04]: 演练场钉死恰 20 字符并在 --uninstall 之前同轮断言 GSD 1.16.0（路由 A，不做运行中公式推导）：3084/3195 是「20 字符 home × 1.16.0」这一对前提的产物，不是常量；换长度按 3084-3×(20-L) / 3195-7×(20-L) 递减的关系只写进文档给读者。
+- [Phase 04]: 迁移命令块后续步骤用 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}" 而非重新 mktemp：既守住「每块首行 export DSH_HOME=」的反误伤纪律（T-4-01），又不替换已选定的演练场，未设 home 时 fail-closed。
+- [Phase 04]: README 的迁移入口紧贴 intro 段下一行、不额外插空行（Markdown blockquote 可中断段落）：这样 git diff BASE -- README.md 恰为 +2 −0，与计划硬判据一致，而渲染与语义不变。
+- [Phase 04]: docs/MIGRATION.md 的文件头警告写成有条件的（「未经逐 profile 裁决，不要在真实 ~/.dsh 上跑 --uninstall」+ 指向 0-B 与步骤 1），不写无条件禁令：否则文档禁掉了自己的步骤 2，脚本用户只能去迁一个 /tmp 演练场。D-02 约束的是本仓执行，不是文档可为读者写什么（D-11）。
 
 ## Session
 
-**Last session:** 2026-11-13T17:25:19.717Z
-**Stopped at:** Phase 4 planned — 4 plans ready to execute
-**Resume file:** .planning/phases/04-migration-coexistence/04-01-PLAN.md
+**Last session:** 2026-11-13T17:44:18.493Z
+**Stopped at:** Completed 04-01-PLAN.md
+**Resume file:** None
