@@ -204,6 +204,33 @@ DSH 只支持五类 hook 事件：`SessionStart`、`PreToolUse`、`PostToolUse`�
 
 **两种方式都受此限 —— 旧脚本与插件一样。** 换成插件**不会**获得更多事件：插件只是把同一份配置从机器级绝对路径搬进包内（`configPath` 自定位），事件集合一字未变。旧脚本那几个 hooks 开关（`GSD_FORCE_HOOKS_PATCH` / `GSD_NO_BRIDGE_SYNC` / `GSD_HOOKS_SANDBOX_PATCH`）在插件侧同样**无对应物**。
 
+## ③ DSH 升级 / 版本错配：症状 → 原因 → 修复
+
+DSH 的版本兼容判定在**四个不同时机**触发，四层的可观察后果完全不同——最危险的是第 ③ 层：**命令照常成功退出，坏掉的是那一层本身**。下表每一格都来自本仓 2026-11-13 的实测（逐字原文见 `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md` 的 DRILL-2 段），不是"已知会怎样"的复述。
+
+### 四层门与逐字症状（来自实测）
+
+| 层 | 症状（逐字） | 原因 | 修复 |
+| ---- | ---- | ---- | ---- |
+| ① preflight | `dsh: installation rejected:` … 紧跟 `dsh: nothing was installed.` | 目标是 registry / 目录形态的 spec，其 manifest 的 `engines.dsh` 不满足当前 DSH 版本，**装之前**就拒绝 | 见下面「修复路径」第 1 条 |
+| ② post-install | `dsh: installation rejected:`（warning 出现两次）紧跟 `dsh: restored package.json, pnpm-lock.yaml, and node_modules.` | 目标是本地 `.tgz`：pnpm 先真装、随后回滚；`node_modules` **会留在盘上** | 同上；别把回滚读成"装上了" |
+| ③ load | `dsh: skipping profile bundle "<name>": …`（**stderr**，整段只有一行） | 已装的 bundle 在加载 / `--dump-config` 时判定不满足，整个 bundle 被跳过；stdout 少若干行，`dsh.profile.bundles` 原样不动 | 同上；**退出码仍是 0**——判据只能是 stderr + 层数 + row 集合 |
+| ③′ load | MEASURED: dsh: disabling profile plugin row "gsd-hooks-bridge": Plugin @deepseek-ai/dsh-hooks-claude-code@0.2.2-rc.1 is incompatible with dsh 0.2.2-rc.1: requirements {"engines.dsh":">=9.0.0"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @deepseek-ai/dsh-hooks-claude-code@0.2.2-rc.1 on dsh 0.2.2-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.（本机 boot 实测到的逐字原文） | 行被合成了，但它指向的包（这里是 bridge 包 `@deepseek-ai/dsh-hooks-claude-code`）manifest 不满足；该行被标 `disabled`，**不写回任何文件** | 同上；症状是"静默无守卫"，不是报错 |
+
+**为什么第 ③ 行要单独标"退出码仍是 0"**：`--dump-config` 与 boot 在 bundle 被跳过时依旧成功退出，`dsh --profile … --dump-config && echo ok` 这类判据会把坏状态判绿。本机实测这一形态是：`EXIT=0`、标头 25 → 24、stdout 1255 → 1243 行、`# == dsh-gsd` 标签消失、`- id: gsd` 行数为 0、stderr 恰一行。判据只能是这四个量（stderr 非空 / 标头 `H1 = H0 − 1` / 每个期望 bundle 的标签**出现** / row id 集合），且标头数只能与**同一个 home 自己的**基线比，不能与 `dsh.profile.bundles` 的长度比。
+
+### pin 对齐策略与静态门的边界
+
+`build/assets/pins.json` 是**行 ↔ pin 的唯一真源**（`lines.<line>.bridge` / `lines.<line>.peer` / `lines.<line>.dshRange`），`package.json` 是执行真值，`node build/lib/check-pins.mjs --offline` 是两者之间的静态门。步骤 (j) 把 `package.json` 的 peer 拼成 `"<name> <range>"`，与 `lines.022.peer` **逐字**比较，不相等即 exit 2 并打印失配串；本机实测把该值注入成 `0.2.2-rc.2` 后得到 exit 2 与一行 `check-pins: peerDependencies @deepseek-ai/dsh-skill-filesystem mismatch — …`。
+
+**这条门有明确的边界**：该 peer 只被 `check-pins` 步骤 (j) 消费。DSH 的兼容判定在包自带 `engines.dsh` 时**直接返回、完全不读 `peerDependencies`**，所以改 `pins.json` / 改 peer **只会让 CI 变红，产不出任何运行时症状**。运行时症状只能从「已装包自己的 `engines.dsh`」或「bridge 包的 manifest」注入——上面四层门里的 ③ / ③′ 两行就是这么测出来的。把静态门当成运行时门，会得到一个"CI 全绿、装上却少一层"的发布。
+
+### 修复路径（按推荐顺序）
+
+1. **装与 DSH 运行时匹配的版本**（首选）。匹配窗口由 `build/assets/pins.json` 的 `dshRange` 定义，运行时版本用 `dsh --version` 取；升级与回滚都只是换一个精确版本号。
+2. **`allow-version`：显式承担风险的精确二元组豁免**（次选）。`dsh plugin --profile <p> allow-version <name>@<ver> --dsh-version <exact> --accept-risk` 会写进 `<profile>/compatibility.json`；它只对**这一个包版本 × 这一个 DSH 版本**生效，**升级任一版本即失效**，且宿主会明确警告可能崩溃或损坏数据。它不是让兼容门变绿的手段，是一次被记录下来的风险接受。
+3. **绝不 `--force`**。`--force` 是 pnpm 的解析开关，不改变 DSH 的判定；它只会让不兼容的包被装上，然后在 load 层被静默跳过——得到"装上了但没生效"的假象，比装不上更难排查。
+
 ---
 
 # dsh-gsd Migration Guide — from shell script to plugin
@@ -411,3 +438,30 @@ Every cell can be re-checked with one read-only command: for the global-CLI row,
 DSH supports only five hook events: `SessionStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop` (14 matchers in total, distributed 1 / 7 / 4 / 1 / 1). There is no `PreCompact`, no `FileChanged`, and no statusline event.
 
 **Both modes are bound by it - the shell script and the plugin alike.** Switching to the plugin does **not** buy more events: the plugin only moves the same configuration from a machine-level absolute path into the package (`configPath` self-located), and the event set is unchanged word for word. The script's hooks switches (`GSD_FORCE_HOOKS_PATCH` / `GSD_NO_BRIDGE_SYNC` / `GSD_HOOKS_SANDBOX_PATCH`) likewise have **no equivalent** on the plugin side.
+
+## ③ DSH upgrade / version mismatch: symptom to cause to fix
+
+DSH evaluates version compatibility at **four different moments**, and their observable consequences differ completely. The dangerous one is gate ③: **the command still succeeds and exits 0; what broke is the layer itself.** Every cell below comes from a drill run on this repository on 2026-11-13 (verbatim log in the DRILL-2 section of `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md`), not from a "this is known to happen" retelling.
+
+### The four gates and their verbatim symptoms
+
+| Gate | Symptom (verbatim) | Cause | Fix |
+| ---- | ---- | ---- | ---- |
+| ① preflight | `dsh: installation rejected:` ... followed by `dsh: nothing was installed.` | The target is a registry / directory spec whose manifest `engines.dsh` does not satisfy the running DSH version, so it is rejected **before** anything is installed | Fix path, item 1 below |
+| ② post-install | `dsh: installation rejected:` (the warning appears twice) followed by `dsh: restored package.json, pnpm-lock.yaml, and node_modules.` | The target is a local `.tgz`: pnpm really installs it and then rolls back; `node_modules` **stays on disk** | Same; do not read the rollback as "installed" |
+| ③ load | `dsh: skipping profile bundle "<name>": ...` (on **stderr**, exactly one line) | An already-installed bundle fails the check at load / `--dump-config` time, so the whole bundle is skipped; stdout loses rows while `dsh.profile.bundles` stays unchanged | Same; **the exit code stays 0** — the criteria are stderr, layer count and row set |
+| ③′ load | MEASURED: dsh: disabling profile plugin row "gsd-hooks-bridge": Plugin @deepseek-ai/dsh-hooks-claude-code@0.2.2-rc.1 is incompatible with dsh 0.2.2-rc.1: requirements {"engines.dsh":">=9.0.0"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @deepseek-ai/dsh-hooks-claude-code@0.2.2-rc.1 on dsh 0.2.2-rc.1 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active. (the verbatim line a real boot emitted on this machine) | The row was composed, but the package it points at (here the bridge package `@deepseek-ai/dsh-hooks-claude-code`) does not satisfy the manifest; the row is marked `disabled` and **nothing is written back to any file** | Same; the symptom is "silently no guards", not an error |
+
+**Why gate ③ needs its own "the exit code stays 0" warning**: `--dump-config` and boot both still exit successfully when a bundle is skipped, so a criterion shaped like `dsh --profile ... --dump-config && echo ok` turns a broken state green. Measured on this machine: `EXIT=0`, headers 25 -> 24, stdout 1255 -> 1243 lines, the `# == dsh-gsd` label gone, zero `- id: gsd` rows, and exactly one stderr line. The criteria can only be those four quantities (non-empty stderr / `H1 = H0 - 1` / **presence** of each expected bundle label / the row-id set), and a header count may only be compared with the **same home's own** baseline, never with the length of `dsh.profile.bundles`.
+
+### Pin alignment and what the static gate cannot see
+
+`build/assets/pins.json` is the **single source of truth** for line-by-line pins (`lines.<line>.bridge` / `lines.<line>.peer` / `lines.<line>.dshRange`); `package.json` is the execution truth, and `node build/lib/check-pins.mjs --offline` is the static gate between them. Step (j) composes the package's peer into the string `"<name> <range>"` and compares it **verbatim** with `lines.022.peer`; any difference is exit 2 plus the mismatch line. On this machine, injecting `0.2.2-rc.2` produced exit 2 and exactly one line: `check-pins: peerDependencies @deepseek-ai/dsh-skill-filesystem mismatch — ...`.
+
+**That gate has a hard boundary**: this peer is consumed only by step (j) of `check-pins`. When the package carries its own `engines.dsh`, DSH's compatibility check **returns immediately and never reads `peerDependencies`**, so editing `pins.json` (or the peer) **only reddens CI and can never produce a runtime symptom**. Runtime symptoms can only be injected through the installed package's own `engines.dsh` or the bridge package's manifest — that is exactly how gates ③ / ③′ above were measured. Mistaking the static gate for the runtime gate ships a release that is "green in CI but one layer short when installed".
+
+### Fix path (in recommended order)
+
+1. **Install a version that matches the DSH runtime** (first choice). The matching window is defined by `dshRange` in `build/assets/pins.json`; read the runtime with `dsh --version`. Upgrades and rollbacks are both just a swap of one exact version number.
+2. **`allow-version`: an exact-pair risk exemption you take explicitly** (second choice). `dsh plugin --profile <p> allow-version <name>@<ver> --dsh-version <exact> --accept-risk` writes into `<profile>/compatibility.json`; it applies to **one package version × one DSH version** only and **expires as soon as either version changes**, and the host warns explicitly that it may crash or corrupt data. It is not a way to make the compatibility gate green; it is a recorded risk acceptance.
+3. **Never `--force`.** `--force` is a pnpm resolution switch and does not change DSH's judgement; it only gets the incompatible package installed so that the load layer silently skips it — an illusion of "installed but not in effect", which is harder to diagnose than a failed install.

@@ -333,3 +333,63 @@ test('⑬ R-1 manifest 元数据守卫（repository/homepage/bugs/keywords/autho
     'package.json publishConfig 丢失或漂移 ⇒ 发布会落到本机默认只读镜像（registry.npmmirror.com）而非 npmjs',
   )
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑭（Phase 4）：MIGRATION 双语入口 + 迁移文档双语同构守卫（D-08 / D-10 / D-11）。
+// 为什么必须围栏感知：`docs/MIGRATION.md` 的 bash 块里有 26 行 column-0 的
+// `# 步骤 N` 注释，直接 `/^# .+$/gm` 会把它们数成一级标题（naive `grep -c '^# '`
+// 得到 28，真实 H1 是 2），这条守卫就会恒红——04-02 的一版临时统计脚本当场把
+// zh/en 两半切反。判据是行首三个反引号（代码里写 \x60{3} 以免与本文件的
+// Markdown 冲突）：围栏内的一切都不算标题。切片复用 :29-33 的 readmeZh /
+// readmeEn，不另算一遍（否则切点会悄悄位移）。
+// ─────────────────────────────────────────────────────────────────────────────
+const MIGRATION_DOC = 'docs/MIGRATION.md'
+
+test('⑭ MIGRATION 入口双语存在 + 文档两半各恰 3 个二级标题（D-08/D-10/D-11）', () => {
+  // 1) README 入口：两半各一（复用 :29-33 的 readmeZh / readmeEn）
+  for (const [name, half] of [['zh', readmeZh], ['en', readmeEn]]) {
+    assert.ok(half.includes(MIGRATION_DOC), `README ${name} 段缺 ${MIGRATION_DOC} 入口`)
+  }
+
+  // 2) 文档本体：先给每行打「是否位于代码围栏内」的标记，再只在围栏外判标题。
+  const doc = read(MIGRATION_DOC)
+  const raw = doc.split('\n')
+  const fenced = []
+  let inFence = false
+  for (const line of raw) {
+    if (/^\s*\x60{3}/.test(line)) { fenced.push(true); inFence = !inFence; continue }
+    fenced.push(inFence)
+  }
+  const outside = (re) => raw.map((l, i) => ({ l, i })).filter((x) => !fenced[x.i] && re.test(x.l))
+
+  // 3) 恰 2 个一级标题 → 以第二个 H1 的行号切两半；视觉分隔行仍须独占一行在场
+  //    （不按 `---` 切：代码块里的 YAML 文档分隔符也是独占一行的 `---`）。
+  const h1s = outside(/^# /)
+  assert.equal(
+    h1s.length, 2,
+    `docs/MIGRATION.md 应恰有 2 个一级标题（zh/en 各一），实际 ${h1s.length}`
+      + '（围栏感知计数：runbook 里行首的 "# 步骤 N" 是 bash 注释，不是标题）',
+  )
+  assert.ok(raw.includes('---'), 'docs/MIGRATION.md 缺独占一行的 --- 双语分隔')
+  const cut = h1s[1].i
+  const halves = { zh: raw.slice(0, cut).join('\n'), en: raw.slice(cut).join('\n') }
+
+  // 4) 两半各恰 3 个 `## `（`^## ` 不会匹配 `### `），对应 D-10 的三节
+  const h2s = outside(/^## /)
+  const zhH2 = h2s.filter((x) => x.i < cut).length
+  const enH2 = h2s.length - zhH2
+  assert.equal(
+    zhH2, 3,
+    `zh 段应有 3 个二级标题（runbook / 差异表 / 症状与修复），实际 ${zhH2}`
+      + '——01/03 两轮都栽在「只写一半」',
+  )
+  assert.equal(
+    enH2, 3,
+    `en 段应有 3 个二级标题（runbook / 差异表 / 症状与修复），实际 ${enH2}`
+      + '——01/03 两轮都栽在「只写一半」',
+  )
+
+  // 5) 语言判别：防「把 zh 半复制到 en 半」式假双语
+  assert.match(halves.zh, /[\u4e00-\u9fff]/, 'zh 段没有任何中文字符')
+  assert.ok(!/[\u4e00-\u9fff]/.test(halves.en), 'en 段含中文字符——双语未真正分半')
+})
