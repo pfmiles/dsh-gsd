@@ -115,3 +115,59 @@
 **版本漂移（如实记录，不许当作 RESEARCH 快照仍然有效）**：`04-RESEARCH.md` 的 Package Legitimacy Audit 是 **2026-11-13 的快照**。本机在 2026-11-14T06:18Z 复核 `registry.npmmirror.com`，`dist-tags.latest` 已前进为 **`dsh-deja@0.24.2`** 与 **`dshmarket@1.73.19`**（两者各自的 `0.24.0` / `1.73.15` 仍在 `versions` 列表内且可解析）。本演练**刻意钉住人审批准的两个确切版本**，所以「too-new」这条 `SUS` 依据相对 latest 已**部分过时**——此行的存在正是为了不让读者把 RESEARCH 的判定读成当前值。
 
 APPROVAL: approved 2026-11-14T06:17:59Z
+
+## DRILL-3 — 并存判据（两段式）
+
+> 本节闭合 DRILL-1「本轮未覆盖」的第 2 项（`DRILL-3` → `04-04`）。前置 = 上一节的包合法性门：两个 `[SUS]` 包的安装经人裁决为 `approved`，裁决行与版本漂移都在上一节。
+> **两段不能互相替代**：静态段只证**行级** row id 不相交（零安装、零网络、零写入，真实 `~/.dsh` 全程只读）；动态段才证 DSH 能把 `dsh-gsd` 与两个第三方 bundle **同层合成**。单看任何一段都不足以支撑「无冲突」。
+> **判据口径**：一切「通过」只认**集合 / 字节数 / 存在性**；`--dump-config` 的 exit code 一律不作判据（本轮实测恒为 0）。
+
+### 静态段 — 四来源五 id（零安装 · 零网络 · 零写入）
+
+**本段只证行级**：它证明四个 bundle 各自贡献的 row id 两两不相交；它**不能证明**同层合成（见本节末「这证不了什么」）。判据由 `04-04-PLAN.md` Task 2 的 `automated` `node -e` 块现场执行，只做 `fs.readFileSync`，**不对真实 profile 跑 `--dump-config`**（那会重写 `<profile>/cordis.yml`）。
+
+| 来源 | 文件 | 贡献的 row id |
+| --- | --- | --- |
+| `dsh-gsd`（本仓） | `cordis.patch.yml`（L18 / L20） | `gsd`、`gsd-hooks-bridge` |
+| `@jiangzhenguo/dsh-codegraph` | `~/.dsh/profiles/web/node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml`（L13） | `dsh-codegraph` |
+| `dsh-deja` | 同目录 `dsh-deja/cordis.patch.yml`（L2） | `deja` |
+| `dshmarket` | 同目录 `dshmarket/cordis.patch.yml`（L3） | `dsh-market` |
+
+块的实际输出（逐字）：`coexist-static ok: gsd gsd-hooks-bridge dsh-codegraph deja dsh-market`
+⇒ 并集恰 **5** 个 id、四路两两不相交、无重复；`dsh-gsd` 的两个 id 恰为 `gsd` 与 `gsd-hooks-bridge`，其余三者各恰 1 个。
+
+### 动态段 — 一次性 home 里的同层合成（真的装）
+
+演练块（`04-04-PLAN.md` Task 2 的 `automated` `bash -c`）自行完成：读本文件**最后一条** `APPROVAL:` 并要求是 `approved` → 隔离头 `export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"` + 回显 → 建模板 profile 并立刻取 `H0` → `npm pack`（`prepack` = build + 全量测试，串行）→ 三次 `dsh plugin --profile web add` → 四条集合判据 → 与本文件的 `COEXIST-DRILL` 行对表。
+
+| 项 | 实测（2026-11-14T06:19Z 起，同一临时 home） | 判据 |
+| --- | --- | --- |
+| 隔离头 | `DSH_HOME=/tmp/dsh-coex-cj6ISM`；真实 `~/.dsh` 只读 | 一切写入只在临时 home 内 |
+| 准入门 | `approval (latest decision): APPROVAL: approved 2026-11-14T06:17:59Z`；`approval gate: latest decision is approved` | 最后一条裁决为 approved（后追加的 `hold` 会推翻先前的 `approved`，T-4-19） |
+| `H0`（装包前，模板 profile） | `headers=24 lines=1243 stderr_bytes=0` | `H0` 非空（否则 `H1 > H0` 是空洞比较） |
+| `npm pack` | `dsh-gsd-1.20.1-1.dsh022.tgz` 4580718 B / 958 files / shasum `d759d487a55e…`；`gates: all passed (A/B/C)`、`copied 76 trees`、`ℹ tests 38` / `pass 38` / `fail 0` | tarball 由本仓现场构建 |
+| `add dsh-deja@0.24.0` | `+ dsh-deja 0.24.0`；`Done in 4.1s using pnpm v12.11.2` | 装到的是人审批准的确切版本 |
+| `add dshmarket@1.73.15` | `+ dshmarket 1.73.15`；`Done in 279ms` | 同上 |
+| `add "$PWD/<tgz>"` | `+ dsh-gsd 1.20.1-1.dsh022`；`Done in 315ms` | 本仓 tarball 装进同一 profile |
+| `dsh.profile.bundles` | `["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","dsh-deja","dshmarket","dsh-gsd"]`，**5** 项 | 三者都在（缺项 = 演练没装成，不是可跳过的情况） |
+| 实装版本核对 | `dsh-deja=0.24.0`、`dshmarket=1.73.15`、`dsh-gsd=1.20.1-1.dsh022` | 与人审批准的两个确切版本逐字相符 |
+| ① stderr | `stderr_bytes=0` | 0 字节（非空 = 有 bundle 被静默跳过或拒绝） |
+| ② 同一 home 的标头前后关系 | `headers=24->27`（`H1 > H0`），且 `^# == .*dsh-gsd` / `…dsh-deja` / `…dshmarket` 三个标签各出现 **1** 次 | 增长 + 逐 bundle 标签**存在**；标签分布 = 12 × `dsh-base` / 11 × `dsh-base, patched by dsh-web-app` / 1 × `dsh-web-app` / 1 × `dsh-deja` / 1 × `dshmarket` / 1 × `dsh-gsd` |
+| ③ 逐 id 计数 | `row gsd x1`、`row gsd-hooks-bridge x1`、`row deja x1`、`row dsh-market x1`（`dsh-codegraph x0` —— 本段没装它） | 四个期望 id 各恰 **1** 行 |
+| ④ `uniq -d` | 四个 id 上 `uniq -d` 输出 **0** 行 | 为空（非空 = 同名 row id 被静默渲染成两行，这就是 MIG-04 的缺陷本体） |
+| dump exit code | `dump exit=0`（即 **EXIT=0**） | **只作记录，永不作通过信号**——有 bundle 被跳过时它同样是 0 |
+| 逐字汇总行 | `COEXIST-DRILL bundles=5 headers=24->27 rows=gsd,gsd-hooks-bridge,deja,dsh-market env=temp-home` | 该行由演练块打印，块会拿它与现场重跑逐字对表 |
+| 收尾 + 真实 `~/.dsh` 零写入 | 三次运行的临时 home（`/tmp/dsh-coex-cj6ISM` / `/tmp/dsh-coex-lUOWCh` / `/tmp/dsh-coex-LzH9RA`）与仓根 `dsh-gsd-1.20.1-1.dsh022.tgz` 全部删除；真实 `~/.dsh` 的 `profiles` 清单 `diff -q` **无差异**、各 `profiles/*/package.json` 的 mtime+size `diff -q` **无差异**、`find ~/.dsh -newermt 2026-11-14T06:17:00Z` 命中 **0** 项 | 真实 home 零写入（静态段只读、动态段只在临时 home） |
+
+⚠ **标头数 27 ≠ bundles 数 5，且这不是缺陷**：标头按**连续来源段**打，`dsh-web-app` 还会就地 patch `dsh-base` 的行（12 + 11 交替），所以「标头数 == `dsh.profile.bundles` 长度」是伪不变量（T-4-17），健康态下就会红。正确形态是三条同时成立：「同一 home 内 `H1 > H0`」+「每个期望 bundle 的标签**出现**」+「row id 集合各 1 且无重复」。本轮 `27 = 24 + 3`，恰对应新装的三个 bundle 各自打开一个来源段。
+
+**两次运行的关系（记录 → 确认，不是为凑绿）**：`automated` 块第一次跑（`RUN1_EXIT=1`）已把整条演练做完并通过 ①②③④，唯一的红是「本文件还没记录这次运行」——原话 `FAIL: 04-DRILL-EVIDENCE.md does not record this run (COEXIST-DRILL bundles=5 headers=24->27) -- paste the summary line printed above verbatim, then re-run`。因此上表那行是**从现场打印里逐字粘来的**；粘进本文件后复跑得到 `COEXIST-DRILL PASS`（`RUN2_EXIT=0`），文档与证据册定稿后再跑一次仍是 `COEXIST-DRILL PASS`（`RUN3_EXIT=0`，临时 home `/tmp/dsh-coex-LzH9RA`）。数字只能来自现场，块会逐字对表，改写、四舍五入或省略都会红。
+
+**豁免扫描（T-4-04）**：三次 `add` 日志的 `allow-version` / `--force` / `Exact-version exemption` 计数均为 **0**；`npm pack` 日志里唯一的 `allow-version` 命中是**测试用例名**（`⑦ allow-version 风险声明双语存在`），不是一次豁免使用。演练全程没有 `--force`、没有 `--legacy-peer-deps`、没有 `allow-version`。
+
+### 这证不了什么（本段的边界）
+
+- **`@jiangzhenguo/dsh-codegraph` 没有被动态安装**：它的 spec 是 `github:jiangzhenguo/dsh-codegraph#main`（不是 registry 的 exact 版本，冻结不了），本计划不装它。所以它的并存**只在行级被静态证明**（`- id: dsh-codegraph` 与另外四者不相交），这**证不了**它与另外三个 bundle 能同层合成。**这是交给 Phase 5 的第一个复验对象**：真实迁移 `web` profile 时它已经在里面，届时必须重跑本节的四条判据。
+- **解析级（pnpm ERESOLVE）在本演练的包组合上未触发**，这**证不了**换一组包不会触发：本节四条判据判的是「行级 + 合成」，判不了 peer 解析冲突。
+- **临时 home 的 profile 是模板派生的**（`@deepseek-ai/dsh-base` + `@deepseek-ai/dsh-web-app` 两个模板 bundle + 本次三个），这**证不了**用户真实 `web` profile 的依赖图会得出同样结论——真实 profile 里还有旧 bridge 块、`@jiangzhenguo/dsh-codegraph` 与其他 ATC 管理的条目。
+- **「装上了没报错」不是判据**：三次 `add` 的 exit code 都是 0，`--dump-config` 的 exit code 也是 0，它们一个都不区分「合成成功」与「静默双行 / 被跳过」。判据只有 ①②③④ 四条集合断言。

@@ -159,6 +159,65 @@ grep -cE '^\s*- id: gsd-hooks-bridge$' /tmp/mig-dump.out # 期望 1
 
 **关于豁免**：版本不匹配时宿主给出的 `allow-version` 是**显式风险豁免**（精确 name@version × 精确 DSH 版本 + 接受风险），它会写进 `<profile>/compatibility.json` 并掩盖真实的版本不匹配。演练里它的出现次数必须是 **0**；它也**不是**让兼容门变绿的手段。`--force` 属 pnpm 的解析开关，同理——装着不兼容的包只会在 load 层被跳过，得到"装上了但没生效"的假象。
 
+### 步骤 6 — 并存自检
+
+同一个 profile 里装 `dsh-gsd` 之后，还能不能和别的插件共存？判据**不是**「装上了、没报错、能跑」：DSH 对同名 row id **没有任何冲突仲裁**，两个 bundle 贡献同一个 id 时会静默产生两行（`add` exit 0、零 warning、`--dump-config` 也 exit 0）。所以「无冲突」是一条**集合断言**——下面两段各证一半，两段都要跑。
+
+**第一段：零安装的静态比对。** 只读四个 `cordis.patch.yml`，断言它们贡献的 row id 两两不相交（本仓两个 + `codegraph` / `deja` / `dsh-market`）。这一段只证明**行级**不撞：
+
+```bash
+node -e '
+const fs=require("fs"), p=require("path");
+const web=p.join(process.env.HOME,".dsh","profiles","web");
+const src={"dsh-gsd":"cordis.patch.yml",
+  "codegraph":p.join(web,"node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml"),
+  "deja":p.join(web,"node_modules/dsh-deja/cordis.patch.yml"),
+  "dshmarket":p.join(web,"node_modules/dshmarket/cordis.patch.yml")};
+const ids={};
+for (const [k,f] of Object.entries(src)) {
+  const s=[];
+  for (const l of fs.readFileSync(f,"utf8").split("\n")) {
+    const m=/^\s*-\s+id:\s*(\S+)\s*$/.exec(l); if (m) s.push(m[1]);
+  }
+  ids[k]=s;
+}
+const all=Object.values(ids).flat();
+const dup=all.filter((x,i)=>all.indexOf(x)!==i);
+if (dup.length) throw new Error("duplicate row ids: "+dup.join(","));
+console.log("coexist-static ok:", all.join(" "));
+'
+```
+
+**第二段：真装一遍再断言。** 在一次性 home 里把插件装进同一个 profile，再对 `--dump-config` 的输出做集合断言。四条**必须同时成立**：
+
+```bash
+# 演练形态（一次性 home）。真实迁移时把第一行换成：export DSH_HOME="$HOME/.dsh"
+export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
+echo "DSH_HOME=$DSH_HOME"
+export P=web
+dsh --profile "$P" --dump-config > /tmp/c-l0.out 2> /tmp/c-l0.err  # 装包前先取 H0
+H0=$(grep -c '^# == ' /tmp/c-l0.out)
+dsh plugin --profile "$P" add dsh-gsd@<version>
+dsh plugin --profile "$P" add dsh-deja@<version>
+dsh plugin --profile "$P" add dshmarket@<version>
+dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
+wc -c < /tmp/c-dump.err            # ① stderr 期望 0 字节：非空 = 有 bundle 被静默跳过
+H1=$(grep -c '^# == ' /tmp/c-dump.out)
+echo "headers $H0 -> $H1"           # ② 期望 H1 > H0（H0 必须非空）
+for p in dsh-gsd dsh-deja dshmarket; do
+  grep -qE "^# == .*$p" /tmp/c-dump.out || echo "MISSING layer: $p"   # ②每个期望 bundle 的标头标签必须出现
+done
+for id in gsd gsd-hooks-bridge deja dsh-market; do
+  printf '%s x%s\n' "$id" "$(grep -cE "^[[:space:]]*- id: $id$" /tmp/c-dump.out)"   # ③ 期望各恰 1
+done
+grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-dump.out \
+  | sed -E 's/.*id: //' | sort | uniq -d   # ④ 期望空 = 没有同名 row 被渲染成两行
+```
+
+**不要**用 exit code 或「装上了没报错」判「无冲突」：`--dump-config` 在有 bundle 被静默跳过时照样 `exit 0`，同名 row id 也不会产生任何非零退出。**不要**把标头数当作 `dsh.profile.bundles` 的计数——DSH 按连续来源段打标头（`dsh-web-app` 还会就地 patch `dsh-base` 的行），一个 2-bundle 的模板 profile 就会打出 24 个标头；标头只能与**同一个 home 自己**的加包前基线比。
+
+**这两段都还不能证明什么**：静态比对只证行级 id 不相交，**不能证明**同层合成；动态演练刻意没装 `@jiangzhenguo/dsh-codegraph`（它的 spec 是 `github:` 形态、冻结不了确切版本），所以它的并存只有行级证据；解析级冲突（pnpm ERESOLVE）在本组合上未触发，也不代表换一组包不会触发。真实 `~/.dsh` 的并存复验要在迁移时（步骤 4 之后）用同一组命令重跑一次。
+
 ### 回退
 
 - **插件 → 旧部署**：`dsh plugin --profile web remove <name>`，清单（`dependencies` 与 `dsh.profile.bundles`）会自动收敛。旧部署则要**重跑旧脚本**重建 `$DSH_HOME/{skills/gsd-*,gsd-core,hooks,scripts,gsd-hooks.dsh.json}`，并把 `.stripped-bak` 里的内容**手工回填**到对应的 `profiles/*/cordis.patch.yml`——bridge 块没有别处可恢复。**迁移后不要删 `.stripped-bak`。**
@@ -393,6 +452,65 @@ The criteria are **content, byte counts and sets**; none of them relies on an ex
 - **Never use `--dump-config` as a "read-only" probe on a real home**: it at least rewrites `<profile>/cordis.yml`, and it creates the profile when it does not exist. Read-only probes on a real home are limited to `ls` / `grep` / `node -e`.
 
 **About exemptions**: when versions mismatch, the host-offered `allow-version` is an **explicit risk exemption** (exact name@version × exact DSH version + accept risk); it writes into `<profile>/compatibility.json` and masks the real mismatch. Its occurrence count in the drill must be **0**, and it is **not** a way to make the compatibility gate go green. `--force` is a pnpm resolution switch and behaves the same way — an incompatible package simply gets skipped at the load layer, giving the illusion of "installed but not effective".
+
+### Step 6 — coexistence self-check
+
+After installing `dsh-gsd` into a profile, can other plugins still share that profile? The criterion is **not** "it installed, nothing errored, it runs": DSH has **no conflict arbitration** for duplicate row ids — when two bundles contribute the same id you silently get two rows (`add` exits 0, zero warnings, and `--dump-config` exits 0 too). So "no conflict" is a **set assertion**, and the two parts below each prove one half; run both.
+
+**Part 1: the zero-install static comparison.** Read four `cordis.patch.yml` files only, and assert that the row ids they contribute are pairwise disjoint (the two from this repository plus `codegraph` / `deja` / `dsh-market`). This part proves **row-level** non-collision only:
+
+```bash
+node -e '
+const fs=require("fs"), p=require("path");
+const web=p.join(process.env.HOME,".dsh","profiles","web");
+const src={"dsh-gsd":"cordis.patch.yml",
+  "codegraph":p.join(web,"node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml"),
+  "deja":p.join(web,"node_modules/dsh-deja/cordis.patch.yml"),
+  "dshmarket":p.join(web,"node_modules/dshmarket/cordis.patch.yml")};
+const ids={};
+for (const [k,f] of Object.entries(src)) {
+  const s=[];
+  for (const l of fs.readFileSync(f,"utf8").split("\n")) {
+    const m=/^\s*-\s+id:\s*(\S+)\s*$/.exec(l); if (m) s.push(m[1]);
+  }
+  ids[k]=s;
+}
+const all=Object.values(ids).flat();
+const dup=all.filter((x,i)=>all.indexOf(x)!==i);
+if (dup.length) throw new Error("duplicate row ids: "+dup.join(","));
+console.log("coexist-static ok:", all.join(" "));
+'
+```
+
+**Part 2: really install, then assert.** Inside a one-shot home, install the plugins into the same profile, then assert on the `--dump-config` output. All four conditions **must hold together**:
+
+```bash
+# drill form (one-shot home). For a real migration replace the first line with: export DSH_HOME="$HOME/.dsh"
+export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
+echo "DSH_HOME=$DSH_HOME"
+export P=web
+dsh --profile "$P" --dump-config > /tmp/c-l0.out 2> /tmp/c-l0.err  # take H0 before installing anything
+H0=$(grep -c '^# == ' /tmp/c-l0.out)
+dsh plugin --profile "$P" add dsh-gsd@<version>
+dsh plugin --profile "$P" add dsh-deja@<version>
+dsh plugin --profile "$P" add dshmarket@<version>
+dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
+wc -c < /tmp/c-dump.err            # 1) stderr must be 0 bytes: anything here means a bundle was silently skipped
+H1=$(grep -c '^# == ' /tmp/c-dump.out)
+echo "headers $H0 -> $H1"           # 2) expect H1 > H0 (H0 must be non-empty)
+for p in dsh-gsd dsh-deja dshmarket; do
+  grep -qE "^# == .*$p" /tmp/c-dump.out || echo "MISSING layer: $p"   # 2) each expected bundle's header label must be present
+done
+for id in gsd gsd-hooks-bridge deja dsh-market; do
+  printf '%s x%s\n' "$id" "$(grep -cE "^[[:space:]]*- id: $id$" /tmp/c-dump.out)"   # 3) expect exactly 1 each
+done
+grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-dump.out \
+  | sed -E 's/.*id: //' | sort | uniq -d   # 4) expect empty = no row id silently rendered twice
+```
+
+**Do not** use the exit code, or "it installed and nothing errored", as the "no conflict" criterion: `--dump-config` still exits 0 when a bundle is silently skipped, and duplicate row ids produce no non-zero exit at all. **Do not** treat the header count as a count of `dsh.profile.bundles` — DSH emits one header per contiguous origin run (`dsh-web-app` also patches `dsh-base` rows in place), so a two-bundle template profile already emits 24 headers; a header count may only be compared with the **same home's own** before-install baseline.
+
+**What neither part does prove**: the static comparison proves row-level id disjointness only, it **does not prove** same-layer composition; the dynamic drill deliberately does not install `@jiangzhenguo/dsh-codegraph` (its spec is a `github:` form and cannot be frozen to an exact version), so its coexistence has row-level evidence only; and a resolution-level conflict (pnpm ERESOLVE) not firing on this bundle set does not mean it cannot fire on another. Re-run the same commands against your real `~/.dsh` when you actually migrate (after step 4).
 
 ### Rollback
 
