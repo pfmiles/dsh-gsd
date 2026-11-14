@@ -51,7 +51,7 @@
 - [x] **MIG-01**: install-gsd-dsh.sh 用户迁移 runbook：uninstall 顺序（先卸旧再装新，避免同名 skills 双源）
 - [x] **MIG-02**: 不同部署方式差异表（全局 CLI、GSD_PROFILE 档位、hooks 事件子集）
 - [x] **MIG-03**: 旧脚本保留定位（离线/批量铺/诊断保底）并在 README 顶部互链
-- [ ] **MIG-04**: 同 profile 同时装 dsh-gsd 与其他插件（codegraph/deja/dshmarket 级）无冲突
+- [x] **MIG-04**: 同 profile 同时装 dsh-gsd 与其他插件（codegraph/deja/dshmarket 级）无冲突
 
 ### 端到端验收 (UAT)
 

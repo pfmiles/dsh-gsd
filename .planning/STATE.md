@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: 迁移与并存
 current_plan: 4
-status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-11-13T18:10:03.581Z"
+status: verifying
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-11-14T06:25:11.621Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 04 execution started
-state_head: d6841444fd394087af81a1f8e47ef29bf22125d2
+state_head: 19af44af275b850f3f8a4278e6ad17db6e18b9d7
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 60
 ---
 
@@ -25,10 +25,10 @@ Phase: 04 (迁移与并存) — EXECUTING
 Plan: 4 of 4
 Current Plan: 4
 Total Plans in Phase: 4
-Status: Ready to execute
-Last activity: 2026-11-14 — 04-03 完成（§③ 四层症状表 + ⑭ 围栏感知守卫；DRILL-2 静态 + 运行时实测；全量串行 38/38）
+Status: Phase complete — ready for verification
+Last activity: 2026-11-14 — 04-04 完成（MIG-04 两段式并存判据：静态五 id 两两不相交 + 一次性 home 真装得 `COEXIST-DRILL bundles=5 headers=24->27`、`uniq -d` 空；两半各加「步骤 6 — 并存自检」；全量串行 38/38、docs-consistency 14/14）
 
-Progress: [███████████░] 12/13 plans ([█████████░] 92%) — 3/5 phases (60%)
+Progress: [████████████] 13/13 plans ([██████████] 100%) — 3/5 phases (60%)
 
 ## Current Focus
 
@@ -90,6 +90,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 04 P01 | 8 min | 2 tasks | 3 files |
 | Phase 04 P02 | 5 min | 2 tasks | 5 files |
 | Phase 04 P03 | 10 min | 3 tasks | 4 files |
+| Phase 04 P04 | 5 min | 2 tasks | 2 files |
 
 ## Decisions
 
@@ -140,9 +141,12 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 04]: §② 落位：zh 插在 §①「本机实测值」表之后、独占 --- 之前，en 追加在文件末尾；两半保持「§① → §②」同构，04-03 的 §③ 接在其后即把两半 ## 从各 2 推到各 3 — D-11 要求两半各自完整且章节同构；三节顺序由 D-10 锁定（① runbook ② 差异表 ③ 症状表），§② 必须是第 2 节
 - [Phase 04]: 旧仓备料按 docs/dshmarket 先例落四文件（说明 / snippet.en 正式件 / snippet.zh 备而不用 / pr.md），中文片段首行 HTML 注释声明无落点（D-09 读法 A） — 旧仓 README 实测 CJK 0 / 315 行 / 23653 B，没有中文落点；把中英一起粘进去等于未经对方同意把它的门面改成双语。说明与资产分离是先例已立的形态
 - [Phase 04]: docs/MIGRATION.md 原本无文件末尾换行：追加 §② 后 git 记 1 行删除（末行原样重发射），零内容删除由 361/361 按序保留 + 该行逐字相同证明；§② 末尾也保持无 EOF 换行以免扩大位移面 — 计划判据写「纯追加（无 - 行）」，物理上无法在无 EOF 换行的末行之后追加而不动该行标记；选择如实记录并取证，而不是把判据改写成绿
+- [Phase 04]: 04-04 版本漂移如实记账：人审批准并钉住 dsh-deja@0.24.0 / dshmarket@1.73.15，而复核时 registry 的 dist-tags.latest 已是 0.24.2 / 1.73.19 — 「too-new」这条 SUS 依据相对 latest 已部分过时；证据册与 SUMMARY 都写明，不把 04-RESEARCH 的快照当当前值。
+- [Phase 04]: 04-04 并存判据 = 四条集合判据的合取（stderr 0 字节 / 同一 home 的 H1>H0 且逐 bundle 标签出现 / 四个期望 id 各恰 1 / uniq -d 为空），exit code 与「装上了没报错」一律不作判据 — 同名 row id 是静默双行（add exit 0、零 warning）；实测 bundles=5 而 headers=27，T-4-17 的伪不变量再次自证。
+- [Phase 04]: 04-04 步骤 6 用 ### 追加在两半（步骤 5 之后、回退之前），不新增 ## — 两半的 ## 仍各 3，⑭ 零改动即继续挡「只写一半」；docs/MIGRATION.md 本次 --numstat = 118 0（插入点在中段，末行未动，故无 EOF 位移）。
 
 ## Session
 
-**Last session:** 2026-11-13T18:10:03.515Z
-**Stopped at:** Completed 04-03-PLAN.md
+**Last session:** 2026-11-14T06:25:11.555Z
+**Stopped at:** Completed 04-04-PLAN.md
 **Resume file:** None
