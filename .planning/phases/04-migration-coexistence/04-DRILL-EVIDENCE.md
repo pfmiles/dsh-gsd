@@ -96,3 +96,22 @@
 | 收尾：`rm -f "$TGZ"`；真实 `~/.dsh` 零写入核对；工作树核对 | 2026-11-13T18:01:05Z | 仓根无 `dsh-gsd-*.tgz`；`git status --porcelain` 不因本任务新增任何路径；`~/.dsh` 下 `find -newermt` 仅命中本会话自身的 `sessions/` 与 `storages/session_projcache/`（由正在运行的宿主进程更新，**非**演练写入）；演练的全部写入都在 `/tmp/dsh-mis-wgkIJM` 与临时 npm prefix 内。注入的两处 manifest 均已 `cp` 复原（`dsh-gsd` 的 `engines.dsh` 回到 `>=0.2.2-rc.1 <0.3.0-0`，bridge 包回到无 `engines` 字段） |
 
 **运行时段证不了什么（边界）**：注入值是合成的 `>=9.0.0`，不是一次真实的 DSH 升级；`--dump-config` 的 bundle 级判据只证明「层被跳过 + 一行 stderr」，不证明「会话内 skills 全部失效」；row 级那一条虽然实测到，但 boot 随即因缺少 `DEEPSEEK_API_KEY` 终止，故不证明完整会话行为。另：**这段演练没有用 `allow-version`、没有用 `--force`** —— 两种手段都会让坏状态「变绿」，而演练的目的正是把它记录下来。
+
+## 包合法性门裁决（Task 1，`blocking-human`）
+
+本段是 MIG-04 动态段的**准入条件**，不是证据的替代品。两个 `[SUS]`（too-new）包的安装由人过 `checkpoint:human-verify gate="blocking-human"` 裁决；Task 2 的 `automated` 演练块只认**本文件里最后一条** `APPROVAL:` 行（`grep -E "^APPROVAL: (approved|hold)" … | tail -n 1`），因此改判一律在文件末尾追加新行，**绝不编辑旧行**（T-4-19：先 `approved`、后 `hold` 必须能拦住演练）。
+
+| 项 | 读数（本机只读复核，2026-11-14T06:17:59Z） | 取法 |
+| --- | --- | --- |
+| `dsh-deja` 在用版本 | `0.24.0` | `node -p "require('~/.dsh/profiles/web/node_modules/dsh-deja/package.json').version"` |
+| `dshmarket` 在用版本 | `1.73.15` | 同一取法 |
+| 两者 `scripts.postinstall` | 均 `none`（即 `undefined`） | `node -p "require(…).scripts?.postinstall ?? 'none'"` |
+| `dsh-deja` 源码仓 | `git+https://github.com/vshulcz/deja-vu.git`（`directory: extensions/dsh`） | 包内 `package.json` 的 `repository` |
+| `dshmarket` 源码仓 | `git+https://github.com/dsh-market/dsh-market.git` | 同上 |
+| 演练写入面 | 仅 `mktemp -d /tmp/dsh-coex-XXXXXX` 的一次性 home | 演练块的隔离头（`export DSH_HOME` + 回显） |
+
+**人工裁决**：`approved`。裁决由编排器向人呈现上表证据后取得（`npmjs.com` 包页面对自动抓取返回 HTTP 403，页面级复核由人完成；发布者 `vshulcz` 即 `deja-vu` 仓主，`dshmarket` 由 `fkysly` 经 GitHub Actions OIDC trusted publisher 发布）。
+
+**版本漂移（如实记录，不许当作 RESEARCH 快照仍然有效）**：`04-RESEARCH.md` 的 Package Legitimacy Audit 是 **2026-11-13 的快照**。本机在 2026-11-14T06:18Z 复核 `registry.npmmirror.com`，`dist-tags.latest` 已前进为 **`dsh-deja@0.24.2`** 与 **`dshmarket@1.73.19`**（两者各自的 `0.24.0` / `1.73.15` 仍在 `versions` 列表内且可解析）。本演练**刻意钉住人审批准的两个确切版本**，所以「too-new」这条 `SUS` 依据相对 latest 已**部分过时**——此行的存在正是为了不让读者把 RESEARCH 的判定读成当前值。
+
+APPROVAL: approved 2026-11-14T06:17:59Z
