@@ -941,7 +941,7 @@ grep -l 'GSD-DSH-bridge BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml
 
 - **DSH 安装源码**（本机实现 checkout）：`lib/bin.js`、`lib/plugin-DscIHF4k.js`、`lib/profile-boot-e2mS45fC.js`、`lib/dump-config-D97dwXdd.js`；`node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/{operations,install-spec}.js`；`node_modules/@deepseek-ai/dsh-app-boot/lib/index.js`（5315 行，本会话按区段精读）；`node_modules/@deepseek-ai/dsh-home-paths/lib/index.js`；`node_modules/@deepseek-ai/dsh-official-bundles/lib/index.js`。
 - **旧部署源码**：`/Users/yue.weny/frontWorkspace/gsd-on-dsh/install-gsd-dsh/install-gsd-dsh.sh`（1061 行，全文精读）；`install-gsd-dsh/README.md`（23653 B，章节标题枚举）。
-- **本会话的一次性 `DSH_HOME` 实测**（7 组实验：preflight 拒绝 / 成功 add / `--dump-config` / bundle 漂移 / `remove` / `.tgz` post-install 回滚 / 同 id 双行；另加模板 profile 创建、未知 profile 报错、`npm_config_prefix` 覆盖）。全部临时目录已 `rm -rf`。
+- **本会话的一次性 `DSH_HOME` 实测**（7 组实验：preflight 拒绝 / 成功 add / `--dump-config` / bundle 漂移 / `remove` / `.tgz` post-install 回滚 / 同 id 双行；另加模板 profile 创建、未知 profile 报错、`npm_config_prefix` 覆盖）。全部临时目录已 `rm -rf`（**2026-11-14 订正**：该句原指本研究会话自己的 7 组实验目录；随后 04-01 的演练另建了一批 `/tmp/dsh-mig-*` 并遗留在盘上，故按全机口径读此句即为假 —— 见 `04-SECURITY.md` 的 R-4-01。残留已于同日清理，`ls -d /tmp/dsh-mig-*` 现为 0）。
 - **本机真实状态只读探测**：72 个 `gsd-*`、三目录 marker、`gsd-hooks.dsh.json` 3953 B、`web`+`headless` 的 bridge 块、5 个 `.bak.<epoch>`、全局 `@opengsd/gsd-core@1.16.0`、`~/.gsd/research-cache`、`web` 的四个 bundle 与三个第三方插件 manifest。
 - **仓内真源**：`package.json`、`cordis.patch.yml`、`build/assets/pins.json`、`build/lib/check-pins.mjs`、`tests/docs-consistency.test.mjs`、`tests/pack-contents.test.mjs`、`BUILD.md`、`.planning/config.json`。
 
