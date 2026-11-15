@@ -3,6 +3,22 @@ phase: 04
 review: 04-REVIEW.md
 titles: json
 findings:
+  - id: WR-04
+    severity: warning
+    disposition: open
+    title: "「runbook 里恰有两个块以退出码为判据」为假——静态段也是（zh / en / 证据册三处）"
+  - id: WR-05
+    severity: warning
+    disposition: open
+    title: "`COEXIST-REAL` 的标签判据没有实现它自己写下的 `# == …, patched by <bundle>` 形态"
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "演练块的三个 `<version>` 让整块无法解析（`bash -n` 红），且一个占位符被三个不同的包共用"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "en 半把 3587/3856/72 叫成 \"the last three rows\"，与紧邻的 \"the last row (`24 → 25`)\" 自相矛盾"
   - id: WR-01
     severity: warning
     disposition: open
@@ -31,15 +47,19 @@ findings:
     severity: info
     disposition: open
     title: "守卫 ⑭ 的说明与断言消息引用了不存在的 `# 步骤 N`，计数也已过期（28→30）"
-open: 7
-total: 7
-recorded: 2026-11-14T06:48:23.940Z
+open: 11
+total: 11
+recorded: 2026-11-15T03:22:11.761Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
+| WR-04 | warning | open | - |
+| WR-05 | warning | open | - |
+| IN-05 | info | open | - |
+| IN-06 | info | open | - |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
 | WR-03 | warning | open | - |
