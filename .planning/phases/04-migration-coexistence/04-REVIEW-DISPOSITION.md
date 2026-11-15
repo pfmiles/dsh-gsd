@@ -49,24 +49,24 @@ findings:
     title: "守卫 ⑭ 的说明与断言消息引用了不存在的 `# 步骤 N`，计数也已过期（28→30）"
 open: 0
 total: 11
-recorded: 2026-11-15T03:22:50.900Z
+recorded: 2026-11-15T03:23:03.375Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-04 | warning | fixed | be46e9f (this fix round) |
-| WR-05 | warning | fixed | 4044efc (this fix round) |
-| IN-05 | info | fixed | 3ead903 (this fix round) |
-| IN-06 | info | fixed | e9f1e70 (this fix round) |
+| WR-04 | warning | fixed | 04-REVIEW-FIX.md |
+| WR-05 | warning | fixed | 04-REVIEW-FIX.md |
+| IN-05 | info | fixed | 04-REVIEW-FIX.md |
+| IN-06 | info | fixed | 04-REVIEW-FIX.md |
 | WR-01 | warning | fixed | 04-05 1a6f437 (re-review a0730e5) |
 | WR-02 | warning | fixed | 04-05 8dfeafe (re-review a0730e5) |
 | WR-03 | warning | fixed | 04-05 a7db7a6 (re-review a0730e5) |
 | IN-01 | info | fixed | 04-05 8dfeafe (re-review a0730e5) |
 | IN-02 | info | fixed | 04-05 a7db7a6 (re-review a0730e5) |
 | IN-03 | info | fixed | 04-05 a7db7a6 (re-review a0730e5) |
-| IN-04 | info | fixed | 67e590c (this fix round) |
+| IN-04 | info | fixed | 04-REVIEW-FIX.md |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
