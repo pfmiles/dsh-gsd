@@ -202,3 +202,26 @@ APPROVAL: approved 2026-11-14T06:17:59Z
 - 裁决变量 `MIG_DECIDED_PROFILES` 是**人写的记录**：本段只证明块能判「命中是否已被记录」，**证不了**记录本身对不对（该迁还是该退役、那个 profile 是不是真的不用 GSD）。
 - 六个合成 home 是**手写的 fixture**，**证不了**真实 `~/.dsh` 的 profile 形态（真实 home 里还有 ATC 管理的条目、旧 `.stripped-bak`、`profiles/node_modules` 等）。
 - `GATE: machine-level` 只读机器级 patch 文件的文本计数，**证不了**那一层在运行时是否真的被 DSH 求值。
+### DRILL-4-B — 步骤 6 的真实迁移形态（`COEXIST-REAL`）：四态
+
+> 块由 `docs/MIGRATION.md` 的围栏原样提取（两半各一块；定稿文档上的提取结果是 `extract ok: real@301,730 drill@275,704`），四态都跑在**同一个**一次性 `DSH_HOME`（`mktemp -d /tmp/dsh-gap2-XXXXXX`）上：模板 profile 由 `dsh --profile web --dump-config` 建出，再 `dsh plugin --profile web add "$PWD/<tarball>"` **只装** `dsh-gsd` 一个 bundle。因此 `dsh-deja` / `dshmarket` 都不在册——正好检验「不在册的 bundle 不要求标签」。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| `npm pack`（串行；`prepack` = 全量 build + 全量测试） | 2026-11-15T02:52:33Z | `gates: all passed (A/B/C)`；`copied 76 trees, rewrote paths in 286 files, injected notes into 72 skills`；**`ℹ tests 38` / `ℹ pass 38` / `ℹ fail 0`**；产物 `dsh-gsd-1.20.1-1.dsh022.tgz`（4.6 MB / 958 files / shasum `ae2a80645751ed811696ca6cd4633e069e7887da`） |
+| `dsh plugin --profile web add "$PWD/<tarball>"` | 2026-11-15T02:52:35Z | `+ dsh-gsd 1.20.1-1.dsh022`；`Done in 702ms using pnpm v12.11.2`；`dsh.profile.bundles` 变为 `@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,dsh-gsd`（**只新装 1 个**） |
+| **healthy**：`DSH_HOME=<tmp> bash <zh block>`（真实形态的原样运行） | 2026-11-15T02:52:35Z | **exit=0**；逐字 `COEXIST-REAL env DSH_HOME=<tmp> profile=web` / `COEXIST-REAL listed dsh-gsd` / **`COEXIST-REAL label dsh-gsd PRESENT`** / `COEXIST-REAL absent dsh-deja` / `COEXIST-REAL absent dshmarket` / **`COEXIST-REAL row gsd 1`** / `COEXIST-REAL row gsd-hooks-bridge 1` / `COEXIST-REAL dup 0` / **`COEXIST-REAL PASS`** |
+| 同一 home 上跑 **en** 半的同构块 | 2026-11-15T02:52:35Z | **exit=0**；`^COEXIST-REAL ` 行与 zh 半 **`diff` 无差异**（逐字一致） |
+| **注入跳过**：把已装 `dsh-gsd` 的 `package.json` 的 `engines.dsh` 改成 `>=9.0.0`，再跑同一块 | 2026-11-15T02:52:36Z | **exit=1**；逐字 **`COEXIST-REAL label dsh-gsd MISSING`** / **`COEXIST-REAL row gsd 0`** / `COEXIST-REAL row gsd-hooks-bridge 0` / `COEXIST-REAL dup 0` / **`COEXIST-REAL FAIL stderr-bytes:526 label-missing:dsh-gsd row-gsd:0 row-gsd-hooks-bridge:0`** —— 只有 526 B 的 stderr 与「在册但不挂上」被抓住，判据有牙 |
+| **恢复**：把 `package.json` 原样写回，再跑同一块 | 2026-11-15T02:52:36Z | **exit=0**；`COEXIST-REAL label dsh-gsd PRESENT` / `row gsd 1` / **`COEXIST-REAL PASS`**（症状可逆） |
+| **缺层**：`dsh plugin --profile web remove dsh-gsd` 后跑 en 半的块 | 2026-11-15T02:52:36Z | **exit=1**；`COEXIST-REAL absent dsh-gsd` / **`COEXIST-REAL FAIL required-absent:dsh-gsd`** —— 报的是「不在册」，**不是**「少了一层」；`dsh-deja` / `dshmarket` 仍只打印 `absent`，没有因为不在册而假红 |
+| 演练形态的极性与残留 | 2026-11-15T02:52:36Z | 演练块（`# COEXIST-DRILL`）现含 **`H0 + 3`**（增量 = 本次新装 bundle 数；DRILL-3 的 `27 = 24 + 3`），且**不再含任何真实 home 指令**——块内无 `$HOME/.dsh`、无「把第一行换成」；真实 home 只由 `COEXIST-REAL` 的 `export DSH_HOME=` 行点名。全文也不再要求「步骤 4 之后用同一组命令重跑」 |
+| 收尾 | 2026-11-15T02:52:36Z | 仓根 `dsh-gsd-*.tgz` 已删（`rm -f`）；临时 `DSH_HOME` 已删；真实 `~/.dsh` 零写入（本段全部写入都在临时 home 内） |
+
+> **两次运行的关系（记录 → 确认）**：上表来自第一次运行；随后为步骤 5 / 0-B 补了两处纯正文说明（块的字节未变），**定稿文档上重跑同一块得到逐字相同的五份输出**（`h` / `he` / `b` / `r` / `n` 归一化 home 路径后 `diff` 无差异，zh 与 en 的 `^COEXIST-REAL ` 行亦无差异），故行号位移不影响本表读数。
+
+### DRILL-4-B 这证不了什么
+
+- 临时 home 的 profile 是**模板派生**的（`dsh-base` + `dsh-web-app` + 本次的 `dsh-gsd`），这**证不了**用户真实 `web` profile 的依赖图会得出同样结论——真实 profile 里还有旧 bridge 块、`@jiangzhenguo/dsh-codegraph` 与其他 ATC 管理的条目。
+- `@jiangzhenguo/dsh-codegraph` 仍**没有**被动态安装（它的 spec 是 `github:` 形态、冻结不了确切版本），所以它的并存仍只有行级静态证据。缺口照旧登记为 **G-4 → Phase 5**，本段不声称它已被动态验证。
+- 判据只覆盖「清单里说有的层，渲染里是不是真的挂上了」与 row id 集合；它**证不了** hooks 在运行时真的拦截、skills 真的被会话加载（那是 Phase 5 的 UAT-01）。

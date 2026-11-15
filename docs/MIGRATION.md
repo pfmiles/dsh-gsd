@@ -43,6 +43,8 @@ echo "DSH_HOME=$DSH_HOME"
 
 真实 home 的长度与旧部署的版本都**不由本文档决定**，所以 3084 / 3195 不是你的期望值：**在卸载之前自己量一次基线**（`wc -c` 记下两个 `gsd-*.md` 的值即可），迁移后只与"你自己量到的那个数"比较，命令见步骤 5。
 
+**`H0` 的取法：步骤 2 之后、步骤 4 之前 dump 一次**（那时 `dsh-gsd` 还没装），它就是步骤 5 与步骤 6 演练形态共用的「加包前」基线——这个取法对两者**同等适用**，不是演练专用；真没取到就降级：跳过增量判据，只用步骤 5 的 stderr / 标签 / row 集合与步骤 6 的真实迁移形态（`COEXIST-REAL`，它不比较增量）。另外 `--dump-config` 会重写 `<profile>/cordis.yml`（profile 不存在时还会把它建出来），迁移期它已经是动作的一部分，**不要**把它当只读探针。
+
 ### 步骤 1 — 硬门：先裁决每个 profile 的去向
 
 **命中即中止。** 判据是**两个面**：面 1（技能）与面 2（hooks）。两面都要，因为两种失败模式不同——残留技能的后果是内容串味（新技能用旧正文），残留 bridge 块的后果是双 bridge 重复拦截。机器级 patch 层优先级高于 profile 层，旧脚本**不扫**它，因此必须单独一面。
@@ -215,7 +217,7 @@ ls -d "$PKG"/skills/gsd-* | wc -l
 # 层是否挂上：同一 home 的前后关系，不是「标头数 == bundles 数」
 dsh --profile "$P" --dump-config > /tmp/mig-dump.out 2> /tmp/mig-dump.err
 wc -c < /tmp/mig-dump.err                      # 期望 0：非空 = 有 bundle 被静默跳过
-grep -c '^# == ' /tmp/mig-dump.out             # 加包后 = 加包前 + 1（演练实测 25 = 24 + 1）
+grep -c '^# == ' /tmp/mig-dump.out             # 加包后 = 加包前 + 1（本次新装 1 个 bundle：步骤 4 只加 dsh-gsd；与步骤 6 演练形态的 +3 同一口径）
 grep -q '^# == dsh-gsd' /tmp/mig-dump.out && echo "dsh-gsd layer present"
 grep -cE '^\s*- id: gsd$' /tmp/mig-dump.out              # 期望 1
 grep -cE '^\s*- id: gsd-hooks-bridge$' /tmp/mig-dump.out # 期望 1
@@ -234,37 +236,45 @@ grep -cE '^\s*- id: gsd-hooks-bridge$' /tmp/mig-dump.out # 期望 1
 
 ### 步骤 6 — 并存自检
 
-同一个 profile 里装 `dsh-gsd` 之后，还能不能和别的插件共存？判据**不是**「装上了、没报错、能跑」：DSH 对同名 row id **没有任何冲突仲裁**，两个 bundle 贡献同一个 id 时会静默产生两行（`add` exit 0、零 warning、`--dump-config` 也 exit 0）。所以「无冲突」是一条**集合断言**——下面两段各证一半，两段都要跑。
+同一个 profile 里装 `dsh-gsd` 之后，还能不能和别的插件共存？判据**不是**「装上了、没报错、能跑」：DSH 对同名 row id **没有任何冲突仲裁**，两个 bundle 贡献同一个 id 时会静默产生两行（`add` exit 0、零 warning、`--dump-config` 也 exit 0）。所以「无冲突」是一条**集合断言**——下面**三段**各有分工：**静态段**（零安装，只证行级不相交）与**真实迁移形态 `COEXIST-REAL`**（零安装，判 listed ⇔ labeled 与 row 集合）是**真实迁移要跑的两段**；中间的**演练形态 `COEXIST-DRILL`**（真装三个 bundle）只在**一次性 home** 里演示同层合成，**真实迁移不跑**它。
 
-**第一段：零安装的静态比对。** 只读四个 `cordis.patch.yml`，断言它们贡献的 row id 两两不相交（本仓两个 + `codegraph` / `deja` / `dsh-market`）。这一段只证明**行级**不撞：
+**静态段：零安装的静态比对。** 只读四个 `cordis.patch.yml`（来源一律从 `$DSH_HOME/profiles/<p>/node_modules/...` 取，不依赖 cwd = 仓根），断言它们贡献的 row id 两两不相交（本仓两个 + `codegraph` / `deja` / `dsh-market`）。这一段只证明**行级**不撞；某个来源的包不在盘上时打印 `MISSING: <pkg>` 并继续，只剩一个来源时打印 `coexist-static SKIPPED` 并声明**这不是通过**。本块只读，读的就是 `DSH_HOME` 指向的那个 home。
 
 ```bash
+export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
+echo "DSH_HOME=$DSH_HOME"
 node -e '
 const fs=require("fs"), p=require("path");
-const web=p.join(process.env.HOME,".dsh","profiles","web");
-const src={"dsh-gsd":"cordis.patch.yml",
-  "codegraph":p.join(web,"node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml"),
-  "deja":p.join(web,"node_modules/dsh-deja/cordis.patch.yml"),
-  "dshmarket":p.join(web,"node_modules/dshmarket/cordis.patch.yml")};
-const ids={};
+const home=process.env.DSH_HOME;
+const web=p.join(home,"profiles","web");
+const src={
+  "dsh-gsd":p.join(web,"node_modules","dsh-gsd","cordis.patch.yml"),
+  "codegraph":p.join(web,"node_modules","@jiangzhenguo","dsh-codegraph","cordis.patch.yml"),
+  "deja":p.join(web,"node_modules","dsh-deja","cordis.patch.yml"),
+  "dshmarket":p.join(web,"node_modules","dshmarket","cordis.patch.yml")
+};
+const ids={}; let n=0;
 for (const [k,f] of Object.entries(src)) {
+  if (!fs.existsSync(f)) { console.log("MISSING: "+k); continue; }
+  n++;
   const s=[];
   for (const l of fs.readFileSync(f,"utf8").split("\n")) {
     const m=/^\s*-\s+id:\s*(\S+)\s*$/.exec(l); if (m) s.push(m[1]);
   }
   ids[k]=s;
 }
+if (n<2) { console.log("coexist-static SKIPPED (fewer than two sources present -- this is not a pass)"); process.exit(0); }
 const all=Object.values(ids).flat();
 const dup=all.filter((x,i)=>all.indexOf(x)!==i);
-if (dup.length) throw new Error("duplicate row ids: "+dup.join(","));
-console.log("coexist-static ok:", all.join(" "));
+if (dup.length) { console.log("coexist-static FAIL duplicate row ids: "+dup.join(",")); process.exit(1); }
+console.log("coexist-static ok: "+all.join(" "));
 '
 ```
 
-**第二段：真装一遍再断言。** 在一次性 home 里把插件装进同一个 profile，再对 `--dump-config` 的输出做集合断言。四条**必须同时成立**：
+**演练形态（`COEXIST-DRILL`）：在一次性 home 里真装一遍。** 把三个 bundle 真装进同一个 profile，再对 `--dump-config` 的输出做集合断言。增量判据只有一个口径——**增量 = 本次新装 bundle 数**：本块新装 3 个 ⇒ `H1 = H0 + 3`（DRILL-3 实测 `27 = 24 + 3`）；步骤 5 新装 1 个 ⇒ 同一口径的 `+1`。`H0` 必须在装任何包之前取且非空，否则比较空洞成立。
 
 ```bash
-# 演练形态（一次性 home）。真实迁移时把第一行换成：export DSH_HOME="$HOME/.dsh"
+# COEXIST-DRILL：演练形态（一次性 home；真装三个 bundle）。真实迁移用下面的 COEXIST-REAL——零安装、不比较增量。
 export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
 echo "DSH_HOME=$DSH_HOME"
 export P=web
@@ -276,7 +286,7 @@ dsh plugin --profile "$P" add dshmarket@<version>
 dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
 wc -c < /tmp/c-dump.err            # ① stderr 期望 0 字节：非空 = 有 bundle 被静默跳过
 H1=$(grep -c '^# == ' /tmp/c-dump.out)
-echo "headers $H0 -> $H1"           # ② 期望 H1 > H0（H0 必须非空）
+echo "headers $H0 -> $H1"           # ② 期望 H1 = H0 + 3（本次新装 3 个 bundle；DRILL-3 实测 27 = 24 + 3）
 for p in dsh-gsd dsh-deja dshmarket; do
   grep -qE "^# == .*$p" /tmp/c-dump.out || echo "MISSING layer: $p"   # ②每个期望 bundle 的标头标签必须出现
 done
@@ -287,9 +297,60 @@ grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-dum
   | sed -E 's/.*id: //' | sort | uniq -d   # ④ 期望空 = 没有同名 row 被渲染成两行
 ```
 
-**不要**用 exit code 或「装上了没报错」判「无冲突」：`--dump-config` 在有 bundle 被静默跳过时照样 `exit 0`，同名 row id 也不会产生任何非零退出。**不要**把标头数当作 `dsh.profile.bundles` 的计数——DSH 按连续来源段打标头（`dsh-web-app` 还会就地 patch `dsh-base` 的行），一个 2-bundle 的模板 profile 就会打出 24 个标头；标头只能与**同一个 home 自己**的加包前基线比。
+**真实迁移形态（`COEXIST-REAL`）：零安装的配对判据。** 真实迁移的 `dsh-gsd` 由步骤 4 装上，三条 `add` 在这里全是 no-op ⇒ 增量恒 0，所以**真实迁移形态不比较增量**：`H1 > H0` 在健康 home 上必然为假；反过来若 profile 本来没有 deja/dshmarket，增量还会以与「同层合成」无关的理由误绿（DRILL-3 的 `27 = 24 + 3` 已把机制钉死：增量恒等于新装 bundle 数，而真实迁移的新装数是 0）。真实形态零安装，期望集从 home 自己的清单推出：`dsh-gsd` **必须在** `dsh.profile.bundles` 里（缺 = 步骤 4 没做成），对三个关注 bundle 逐个判 **listed ⇔ labeled**（在册则必须有标头标签 `# == <bundle>` 或 `# == …, patched by <bundle>`；不在册则打印 `COEXIST-REAL absent <bundle>` 并跳过——不在册的 bundle 不要求标签，否则没有装 deja/dshmarket 的真实 profile 会假红），在册 bundle 的期望 row id 各恰 1 行（`dsh-gsd` → `gsd` + `gsd-hooks-bridge`；`dsh-deja` → `deja`；`dshmarket` → `dsh-market`），这些 id 上 `uniq -d` 为空，且 dump 的 stderr 为 0 字节。缺 `dsh-gsd` 时以 `required-absent:dsh-gsd` 报红——报的是「不在册」，不是「少了一层」。
 
-**这两段都还不能证明什么**：静态比对只证行级 id 不相交，**不能证明**同层合成；动态演练刻意没装 `@jiangzhenguo/dsh-codegraph`（它的 spec 是 `github:` 形态、冻结不了确切版本），所以它的并存只有行级证据；解析级冲突（pnpm ERESOLVE）在本组合上未触发，也不代表换一组包不会触发。真实 `~/.dsh` 的并存复验要在迁移时（步骤 4 之后）用同一组命令重跑一次。
+```bash
+# COEXIST-REAL：真实迁移形态（零安装）。真实 home 只由下面这一行 export 点名；本块不装任何东西。
+export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
+echo "DSH_HOME=$DSH_HOME"
+(
+  # 期望集来自 $DSH_HOME/profiles/<p>/package.json 的 dsh.profile.bundles（listed ⇔ labeled），与「刚装了几个」无关。
+  [ -n "${DSH_HOME:-}" ] || { echo "COEXIST-REAL FAIL no-home"; exit 1; }
+  P=${P:-web}
+  echo "COEXIST-REAL env DSH_HOME=$DSH_HOME profile=$P"
+  dsh --profile "$P" --dump-config > /tmp/c-real.out 2> /tmp/c-real.err
+  R=""
+  SB=$(wc -c < /tmp/c-real.err | tr -d ' ')
+  [ "$SB" -eq 0 ] || R="$R stderr-bytes:$SB"
+  MAN="$DSH_HOME/profiles/$P/package.json"
+  LISTED=$(node -e 'const j=require(process.argv[1]);const b=(j.dsh&&j.dsh.profile&&j.dsh.profile.bundles)||[];console.log(b.join(" "))' "$MAN" 2>/dev/null || true)
+  case " $LISTED " in *" dsh-gsd "*) ;; *) R="$R required-absent:dsh-gsd" ;; esac
+  for b in dsh-gsd dsh-deja dshmarket; do
+    case " $LISTED " in
+      *" $b "*)
+        echo "COEXIST-REAL listed $b"
+        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out; then
+          echo "COEXIST-REAL label $b PRESENT"
+        else
+          echo "COEXIST-REAL label $b MISSING"
+          R="$R label-missing:$b"
+        fi
+        ;;
+      *) echo "COEXIST-REAL absent $b" ;;
+    esac
+  done
+  for pair in dsh-gsd:gsd dsh-gsd:gsd-hooks-bridge dsh-deja:deja dshmarket:dsh-market; do
+    b=${pair%%:*}; id=${pair##*:}
+    case " $LISTED " in
+      *" $b "*)
+        n=$(grep -cE "^[[:space:]]*- id: $id$" /tmp/c-real.out || true)
+        echo "COEXIST-REAL row $id ${n:-0}"
+        [ "${n:-0}" -eq 1 ] || R="$R row-$id:${n:-0}"
+        ;;
+    esac
+  done
+  ND=$(grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-real.out | sed -E 's/.*id: //' | sort | uniq -d | wc -l | tr -d ' ')
+  echo "COEXIST-REAL dup $ND"
+  [ "$ND" -eq 0 ] || R="$R duplicate-row-ids:$ND"
+  if [ -n "$R" ]; then echo "COEXIST-REAL FAIL$R"; exit 1; fi
+  echo "COEXIST-REAL PASS"
+  exit 0
+)
+```
+
+**不要**用宿主的 exit code 或「装上了没报错」判「无冲突」：`--dump-config` 在有 bundle 被静默跳过时照样 `exit 0`，同名 row id 也不会产生任何非零退出。本小节的裁决只看 `COEXIST-REAL` 块自己的退出码（0 通过 / 1 失败）与它打印的裁决行——这不违反上面那句，因为那句限定的正是**宿主命令**（`--dump-config` / `plugin add`）。**不要**把标头数当作 `dsh.profile.bundles` 的计数——DSH 按连续来源段打标头（`dsh-web-app` 还会就地 patch `dsh-base` 的行），一个 2-bundle 的模板 profile 就会打出 24 个标头；标头只能与**同一个 home 自己**的加包前基线比。
+
+**这三段都还不能证明什么**：静态段只证行级 id 不相交，**不能证明**同层合成；演练形态刻意没装 `@jiangzhenguo/dsh-codegraph`（它的 spec 是 `github:` 形态、冻结不了确切版本），所以它的并存只有行级证据；解析级冲突（pnpm ERESOLVE）在本组合上未触发，也不代表换一组包不会触发。真实迁移形态（`COEXIST-REAL`）同样判不了「hooks 在运行时真的拦截」「skills 真的被会话加载」，也判不了 `codegraph` 的同层合成——后者仍只有行级静态证据（G-4，移交 Phase 5）。
 
 ### 回退
 
@@ -409,6 +470,8 @@ echo "DSH_HOME=$DSH_HOME"
 ```
 
 Neither the length of your real home nor your legacy deployment's version is decided by this document, so 3084 / 3195 are simply not your expectations: **measure your own baseline before uninstalling** (a `wc -c` on the two `gsd-*.md` files is enough) and after migrating compare only against the number you measured yourself; the commands are in step 5.
+
+**Where `H0` comes from: dump once after step 2 and before step 4** (at that point `dsh-gsd` is not installed yet). That is the before-install baseline shared by step 5 and step 6's drill form — the same recipe applies to both, it is not drill-only; if you genuinely could not take it, degrade gracefully: skip the increment criterion and rely only on step 5's stderr / labels / row set and step 6's real-migration form (`COEXIST-REAL`, which compares no increment). Note also that `--dump-config` rewrites `<profile>/cordis.yml` (and creates the profile when it does not exist), so during the migration it is already part of the action — do **not** treat it as a read-only probe.
 
 ### Step 1 — hard gate: decide each profile's destination first
 
@@ -583,7 +646,7 @@ ls -d "$PKG"/skills/gsd-* | wc -l
 # Did the layer mount? A before/after relation inside one home, not "header count == bundle count"
 dsh --profile "$P" --dump-config > /tmp/mig-dump.out 2> /tmp/mig-dump.err
 wc -c < /tmp/mig-dump.err                      # expect 0: anything here means a bundle was silently skipped
-grep -c '^# == ' /tmp/mig-dump.out             # after installing = before + 1 (the drill measured 25 = 24 + 1)
+grep -c '^# == ' /tmp/mig-dump.out             # after installing = before + 1 (one newly installed bundle: step 4 adds only dsh-gsd; same definition as the +3 in step 6)
 grep -q '^# == dsh-gsd' /tmp/mig-dump.out && echo "dsh-gsd layer present"
 grep -cE '^\s*- id: gsd$' /tmp/mig-dump.out              # expect 1
 grep -cE '^\s*- id: gsd-hooks-bridge$' /tmp/mig-dump.out # expect 1
@@ -602,37 +665,45 @@ The criteria are **content, byte counts and sets**; none of them relies on an ex
 
 ### Step 6 — coexistence self-check
 
-After installing `dsh-gsd` into a profile, can other plugins still share that profile? The criterion is **not** "it installed, nothing errored, it runs": DSH has **no conflict arbitration** for duplicate row ids — when two bundles contribute the same id you silently get two rows (`add` exits 0, zero warnings, and `--dump-config` exits 0 too). So "no conflict" is a **set assertion**, and the two parts below each prove one half; run both.
+After installing `dsh-gsd` into a profile, can other plugins still share that profile? The criterion is **not** "it installed, nothing errored, it runs": DSH has **no conflict arbitration** for duplicate row ids — when two bundles contribute the same id you silently get two rows (`add` exits 0, zero warnings, and `--dump-config` exits 0 too). So "no conflict" is a **set assertion** — the **three parts** below have distinct jobs: the **static part** (zero install, proves row-level disjointness only) and the **real-migration form `COEXIST-REAL`** (zero install, judges listed ⇔ labeled plus the row set) are **the two parts a real migration runs**; the middle **drill form `COEXIST-DRILL`** (really installs three bundles) only demonstrates same-layer composition inside a **one-shot home** — **a real migration does not run it**.
 
-**Part 1: the zero-install static comparison.** Read four `cordis.patch.yml` files only, and assert that the row ids they contribute are pairwise disjoint (the two from this repository plus `codegraph` / `deja` / `dsh-market`). This part proves **row-level** non-collision only:
+**Static part: the zero-install comparison.** Read four `cordis.patch.yml` files only (every source is taken from `$DSH_HOME/profiles/<p>/node_modules/...`, no dependence on cwd being the repo root) and assert that the row ids they contribute are pairwise disjoint (the two from this repository plus `codegraph` / `deja` / `dsh-market`). This part proves **row-level** non-collision only; a source whose package is not on disk prints `MISSING: <pkg>` and is skipped, and when only one source remains it prints `coexist-static SKIPPED` and states that **this is not a pass**. The block is read-only and reads the very home `DSH_HOME` points at.
 
 ```bash
+export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
+echo "DSH_HOME=$DSH_HOME"
 node -e '
 const fs=require("fs"), p=require("path");
-const web=p.join(process.env.HOME,".dsh","profiles","web");
-const src={"dsh-gsd":"cordis.patch.yml",
-  "codegraph":p.join(web,"node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml"),
-  "deja":p.join(web,"node_modules/dsh-deja/cordis.patch.yml"),
-  "dshmarket":p.join(web,"node_modules/dshmarket/cordis.patch.yml")};
-const ids={};
+const home=process.env.DSH_HOME;
+const web=p.join(home,"profiles","web");
+const src={
+  "dsh-gsd":p.join(web,"node_modules","dsh-gsd","cordis.patch.yml"),
+  "codegraph":p.join(web,"node_modules","@jiangzhenguo","dsh-codegraph","cordis.patch.yml"),
+  "deja":p.join(web,"node_modules","dsh-deja","cordis.patch.yml"),
+  "dshmarket":p.join(web,"node_modules","dshmarket","cordis.patch.yml")
+};
+const ids={}; let n=0;
 for (const [k,f] of Object.entries(src)) {
+  if (!fs.existsSync(f)) { console.log("MISSING: "+k); continue; }
+  n++;
   const s=[];
   for (const l of fs.readFileSync(f,"utf8").split("\n")) {
     const m=/^\s*-\s+id:\s*(\S+)\s*$/.exec(l); if (m) s.push(m[1]);
   }
   ids[k]=s;
 }
+if (n<2) { console.log("coexist-static SKIPPED (fewer than two sources present -- this is not a pass)"); process.exit(0); }
 const all=Object.values(ids).flat();
 const dup=all.filter((x,i)=>all.indexOf(x)!==i);
-if (dup.length) throw new Error("duplicate row ids: "+dup.join(","));
-console.log("coexist-static ok:", all.join(" "));
+if (dup.length) { console.log("coexist-static FAIL duplicate row ids: "+dup.join(",")); process.exit(1); }
+console.log("coexist-static ok: "+all.join(" "));
 '
 ```
 
-**Part 2: really install, then assert.** Inside a one-shot home, install the plugins into the same profile, then assert on the `--dump-config` output. All four conditions **must hold together**:
+**Drill form (`COEXIST-DRILL`): really install once inside a one-shot home.** Install the three bundles into the same profile, then assert on the `--dump-config` output. The increment criterion has exactly one definition — **the increment equals the number of newly installed bundles**: this block installs 3, so `H1 = H0 + 3` (DRILL-3 measured `27 = 24 + 3`); step 5 installs 1, so it is `+1` under the same definition. `H0` must be taken before installing anything and must be non-empty, else the comparison holds vacuously.
 
 ```bash
-# drill form (one-shot home). For a real migration replace the first line with: export DSH_HOME="$HOME/.dsh"
+# COEXIST-DRILL: the drill form (one-shot home; really installs three bundles). For a real migration use COEXIST-REAL below -- zero install, compares no increment.
 export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
 echo "DSH_HOME=$DSH_HOME"
 export P=web
@@ -644,7 +715,7 @@ dsh plugin --profile "$P" add dshmarket@<version>
 dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
 wc -c < /tmp/c-dump.err            # 1) stderr must be 0 bytes: anything here means a bundle was silently skipped
 H1=$(grep -c '^# == ' /tmp/c-dump.out)
-echo "headers $H0 -> $H1"           # 2) expect H1 > H0 (H0 must be non-empty)
+echo "headers $H0 -> $H1"           # 2) expect H1 = H0 + 3 (three newly installed bundles; DRILL-3 measured 27 = 24 + 3)
 for p in dsh-gsd dsh-deja dshmarket; do
   grep -qE "^# == .*$p" /tmp/c-dump.out || echo "MISSING layer: $p"   # 2) each expected bundle's header label must be present
 done
@@ -655,9 +726,60 @@ grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-dum
   | sed -E 's/.*id: //' | sort | uniq -d   # 4) expect empty = no row id silently rendered twice
 ```
 
-**Do not** use the exit code, or "it installed and nothing errored", as the "no conflict" criterion: `--dump-config` still exits 0 when a bundle is silently skipped, and duplicate row ids produce no non-zero exit at all. **Do not** treat the header count as a count of `dsh.profile.bundles` — DSH emits one header per contiguous origin run (`dsh-web-app` also patches `dsh-base` rows in place), so a two-bundle template profile already emits 24 headers; a header count may only be compared with the **same home's own** before-install baseline.
+**Real-migration form (`COEXIST-REAL`): the zero-install pairing criterion.** In a real migration `dsh-gsd` is installed by step 4, so all three `add`s here are no-ops and the increment is necessarily 0 — **the real-migration form compares no increment**: `H1 > H0` is necessarily false on a healthy home, and in the other direction, if the profile never had deja/dshmarket the increment would go green for a reason unrelated to same-layer composition (DRILL-3 pins the mechanism: the increment always equals the number of newly installed bundles, and a real migration installs 0). So the real form installs nothing and derives its expectation set from the home's own manifest: `dsh-gsd` **must be** in `dsh.profile.bundles` (missing = step 4 did not succeed), and each of the three bundles of interest is judged **listed ⇔ labeled** (when listed it must carry a header label `# == <bundle>` or `# == ..., patched by <bundle>`; when absent it prints `COEXIST-REAL absent <bundle>` and is skipped — an absent bundle is not required to have a label, otherwise a real profile without deja/dshmarket would go falsely red); every listed bundle's expected row ids must appear exactly once (`dsh-gsd` -> `gsd` + `gsd-hooks-bridge`; `dsh-deja` -> `deja`; `dshmarket` -> `dsh-market`); `uniq -d` over those ids must be empty; and the dump's stderr must be 0 bytes. A missing `dsh-gsd` reddens as `required-absent:dsh-gsd` — it reports "not listed", not "one layer short".
 
-**What neither part does prove**: the static comparison proves row-level id disjointness only, it **does not prove** same-layer composition; the dynamic drill deliberately does not install `@jiangzhenguo/dsh-codegraph` (its spec is a `github:` form and cannot be frozen to an exact version), so its coexistence has row-level evidence only; and a resolution-level conflict (pnpm ERESOLVE) not firing on this bundle set does not mean it cannot fire on another. Re-run the same commands against your real `~/.dsh` when you actually migrate (after step 4).
+```bash
+# COEXIST-REAL: the real-migration form (zero install). The real home is named by exactly one export line below; this block installs nothing.
+export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
+echo "DSH_HOME=$DSH_HOME"
+(
+  # The expectation set comes from dsh.profile.bundles in $DSH_HOME/profiles/<p>/package.json (listed <=> labeled), never from "how many were just installed".
+  [ -n "${DSH_HOME:-}" ] || { echo "COEXIST-REAL FAIL no-home"; exit 1; }
+  P=${P:-web}
+  echo "COEXIST-REAL env DSH_HOME=$DSH_HOME profile=$P"
+  dsh --profile "$P" --dump-config > /tmp/c-real.out 2> /tmp/c-real.err
+  R=""
+  SB=$(wc -c < /tmp/c-real.err | tr -d ' ')
+  [ "$SB" -eq 0 ] || R="$R stderr-bytes:$SB"
+  MAN="$DSH_HOME/profiles/$P/package.json"
+  LISTED=$(node -e 'const j=require(process.argv[1]);const b=(j.dsh&&j.dsh.profile&&j.dsh.profile.bundles)||[];console.log(b.join(" "))' "$MAN" 2>/dev/null || true)
+  case " $LISTED " in *" dsh-gsd "*) ;; *) R="$R required-absent:dsh-gsd" ;; esac
+  for b in dsh-gsd dsh-deja dshmarket; do
+    case " $LISTED " in
+      *" $b "*)
+        echo "COEXIST-REAL listed $b"
+        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out; then
+          echo "COEXIST-REAL label $b PRESENT"
+        else
+          echo "COEXIST-REAL label $b MISSING"
+          R="$R label-missing:$b"
+        fi
+        ;;
+      *) echo "COEXIST-REAL absent $b" ;;
+    esac
+  done
+  for pair in dsh-gsd:gsd dsh-gsd:gsd-hooks-bridge dsh-deja:deja dshmarket:dsh-market; do
+    b=${pair%%:*}; id=${pair##*:}
+    case " $LISTED " in
+      *" $b "*)
+        n=$(grep -cE "^[[:space:]]*- id: $id$" /tmp/c-real.out || true)
+        echo "COEXIST-REAL row $id ${n:-0}"
+        [ "${n:-0}" -eq 1 ] || R="$R row-$id:${n:-0}"
+        ;;
+    esac
+  done
+  ND=$(grep -oE '^[[:space:]]*- id: (gsd|gsd-hooks-bridge|deja|dsh-market)$' /tmp/c-real.out | sed -E 's/.*id: //' | sort | uniq -d | wc -l | tr -d ' ')
+  echo "COEXIST-REAL dup $ND"
+  [ "$ND" -eq 0 ] || R="$R duplicate-row-ids:$ND"
+  if [ -n "$R" ]; then echo "COEXIST-REAL FAIL$R"; exit 1; fi
+  echo "COEXIST-REAL PASS"
+  exit 0
+)
+```
+
+**Do not** use the host's exit code, or "it installed and nothing errored", as the "no conflict" criterion: `--dump-config` still exits 0 when a bundle is silently skipped, and duplicate row ids produce no non-zero exit at all. This section's verdict reads only `COEXIST-REAL`'s own exit code (0 pass / 1 fail) and the verdict lines it prints — which does not contradict the sentence above, because that sentence scopes exactly the **host commands** (`--dump-config` / `plugin add`). **Do not** treat the header count as a count of `dsh.profile.bundles` — DSH emits one header per contiguous origin run (`dsh-web-app` also patches `dsh-base` rows in place), so a two-bundle template profile already emits 24 headers; a header count may only be compared with the **same home's own** before-install baseline.
+
+**What none of the three parts proves**: the static part proves row-level id disjointness only, it **does not prove** same-layer composition; the drill form deliberately does not install `@jiangzhenguo/dsh-codegraph` (its spec is a `github:` form and cannot be frozen to an exact version), so its coexistence has row-level evidence only; and a resolution-level conflict (pnpm ERESOLVE) not firing on this bundle set does not mean it cannot fire on another. The real-migration form cannot prove "hooks really intercept at runtime" or "skills are really loaded by a session" either, nor can it prove codegraph's same-layer composition — that still has row-level static evidence only (G-4, handed to Phase 5).
 
 ### Rollback
 
