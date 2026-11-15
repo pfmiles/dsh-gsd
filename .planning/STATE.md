@@ -2,33 +2,33 @@
 gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: 迁移与并存
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-11-14T18:53:45.102Z"
-last_activity: 2026-11-14
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-11-15T02:57:16.551Z"
+last_activity: 2026-11-15
 last_activity_desc: Phase 04 execution started
-state_head: c220a6e2467159c9eeace21110674a897d2c9ef6
+state_head: a7db7a64bb1a5ba4b3049de939ffc2a9bbe2be94
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 0
+  completed_plans: 14
+  percent: 60
 ---
 
 # STATE: dsh-gsd
 
 ## Current Position
 
-Phase: 04 (迁移与并存) — READY TO EXECUTE
-Plan: 4 of 4
-Current Plan: 4
+Phase: 04 (迁移与并存) — EXECUTING
+Plan: 5 of 5
+Current Plan: 5
 Total Plans in Phase: 5
 Status: Ready to execute
-Last activity: 2026-11-14 — 04-04 完成（MIG-04 两段式并存判据：静态五 id 两两不相交 + 一次性 home 真装得 `COEXIST-DRILL bundles=5 headers=24->27`、`uniq -d` 空；两半各加「步骤 6 — 并存自检」；全量串行 38/38、docs-consistency 14/14）
+Last activity: 2026-11-15 — Phase 04 execution started
 
-Progress: [████████████] 13/13 plans ([░░░░░░░░░░] 0%) — 3/5 phases (60%)
+Progress: [████████████] 13/13 plans ([██████░░░░] 60%) — 3/5 phases (60%)
 
 ## Current Focus
 
@@ -91,6 +91,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 04 P02 | 5 min | 2 tasks | 5 files |
 | Phase 04 P03 | 10 min | 3 tasks | 4 files |
 | Phase 04 P04 | 5 min | 2 tasks | 2 files |
+| Phase 04 P05 | 13min | 3 tasks | 5 files |
 
 ## Decisions
 
@@ -144,9 +145,12 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 04]: 04-04 版本漂移如实记账：人审批准并钉住 dsh-deja@0.24.0 / dshmarket@1.73.15，而复核时 registry 的 dist-tags.latest 已是 0.24.2 / 1.73.19 — 「too-new」这条 SUS 依据相对 latest 已部分过时；证据册与 SUMMARY 都写明，不把 04-RESEARCH 的快照当当前值。
 - [Phase 04]: 04-04 并存判据 = 四条集合判据的合取（stderr 0 字节 / 同一 home 的 H1>H0 且逐 bundle 标签出现 / 四个期望 id 各恰 1 / uniq -d 为空），exit code 与「装上了没报错」一律不作判据 — 同名 row id 是静默双行（add exit 0、零 warning）；实测 bundles=5 而 headers=27，T-4-17 的伪不变量再次自证。
 - [Phase 04]: 04-04 步骤 6 用 ### 追加在两半（步骤 5 之后、回退之前），不新增 ## — 两半的 ## 仍各 3，⑭ 零改动即继续挡「只写一半」；docs/MIGRATION.md 本次 --numstat = 118 0（插入点在中段，末行未动，故无 EOF 位移）。
+- [Phase 04]: 04-05 GAP-1 走路线①：步骤 1 的 MIG-GATE 块补卸载前面 1 探针（skills 基线 + undecided profile），块退出码 = 裁决（0/1/2）；MIG_DECIDED_PROFILES 是逐 profile 记录，命中集必须完整覆盖，机器级 DIRTY 无豁免 — 路线②把 D-03 的第二触发条件交回人脑，而缺的恰是能提前中止无条件 rm -rf 的信息；演练场 skills 必然非空，所以判据落在 profile 是否仍只靠 home 级技能
+- [Phase 04]: 04-05 GAP-2：步骤 6 拆静态 / COEXIST-DRILL / COEXIST-REAL 三段；真实迁移形态零安装、判 listed ⇔ labeled（期望集来自 profile 自己的 dsh.profile.bundles），增量口径统一为「本次新装 bundle 数」（演练 +3 / 步骤 5 +1），真实迁移不比较增量 — 增量恒等于新装 bundle 数，真实迁移新装数为 0 ⇒ H1>H0 在健康 home 上必假，反向还会以无关理由误绿（DRILL-3 的 27 = 24 + 3）
+- [Phase 04]: 04-05 块首契约改写：带标记块 = 标记行 → 紧接 export DSH_HOME= 与回显；无标记块首行即 export；由门逐块断言（三类标记 # MIG-GATE / # COEXIST-DRILL / # COEXIST-REAL） — 旧句「每个可粘贴块的第一行都是 export」在有标记块之后为假，保留它会让文档自相矛盾
 
 ## Session
 
-**Last session:** 2026-11-14T06:25:11.555Z
-**Stopped at:** Completed 04-04-PLAN.md
+**Last session:** 2026-11-15T02:57:16.492Z
+**Stopped at:** Completed 04-05-PLAN.md
 **Resume file:** None
