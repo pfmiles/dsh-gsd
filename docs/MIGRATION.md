@@ -176,10 +176,11 @@ command -v gsd_run 2>/dev/null || echo "no gsd_run on PATH"
 ```bash
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
+: "${V_GSD:?set V_GSD to the dsh-gsd version}"
 # 演练形态：本仓自己打出的 tarball，必须给绝对路径
-dsh plugin --profile web add "$PWD/dsh-gsd-<version>.tgz"
+dsh plugin --profile web add "$PWD/dsh-gsd-$V_GSD.tgz"
 # 真实迁移形态：registry 上的精确版本号
-dsh plugin --profile web add dsh-gsd@<version>
+dsh plugin --profile web add "dsh-gsd@$V_GSD"
 ```
 
 两种 spec 的判定路径**不同**：`.tgz` 先真装进 `node_modules` 再判定，兼容门不满足时回滚 `package.json` / `pnpm-lock.yaml`，但 `node_modules` 会留在盘上；registry / 目录 spec 走 preflight，装之前就拒绝。演练用的是前者。
@@ -279,11 +280,14 @@ console.log("coexist-static ok: "+all.join(" "));
 export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
 echo "DSH_HOME=$DSH_HOME"
 export P=web
+: "${V_GSD:?set V_GSD to the dsh-gsd version}"
+: "${V_DEJA:?set V_DEJA to the dsh-deja version}"
+: "${V_MARKET:?set V_MARKET to the dshmarket version}"
 dsh --profile "$P" --dump-config > /tmp/c-l0.out 2> /tmp/c-l0.err  # 装包前先取 H0
 H0=$(grep -c '^# == ' /tmp/c-l0.out)
-dsh plugin --profile "$P" add dsh-gsd@<version>
-dsh plugin --profile "$P" add dsh-deja@<version>
-dsh plugin --profile "$P" add dshmarket@<version>
+dsh plugin --profile "$P" add "dsh-gsd@$V_GSD"
+dsh plugin --profile "$P" add "dsh-deja@$V_DEJA"
+dsh plugin --profile "$P" add "dshmarket@$V_MARKET"
 dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
 wc -c < /tmp/c-dump.err            # ① stderr 期望 0 字节：非空 = 有 bundle 被静默跳过
 H1=$(grep -c '^# == ' /tmp/c-dump.out)
@@ -606,10 +610,11 @@ command -v gsd_run 2>/dev/null || echo "no gsd_run on PATH"
 ```bash
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
+: "${V_GSD:?set V_GSD to the dsh-gsd version}"
 # Drill form: the tarball this repository packs itself; the path must be absolute
-dsh plugin --profile web add "$PWD/dsh-gsd-<version>.tgz"
+dsh plugin --profile web add "$PWD/dsh-gsd-$V_GSD.tgz"
 # Real migration form: an exact version from the registry
-dsh plugin --profile web add dsh-gsd@<version>
+dsh plugin --profile web add "dsh-gsd@$V_GSD"
 ```
 
 The two specs take **different** decision paths: a `.tgz` is really installed into `node_modules` first and judged afterwards, so an incompatible one is rolled back out of `package.json` / `pnpm-lock.yaml` while `node_modules` stays on disk; a registry / directory spec goes through preflight and is rejected before anything is installed. The drill uses the former.
@@ -709,11 +714,14 @@ console.log("coexist-static ok: "+all.join(" "));
 export DSH_HOME="$(mktemp -d /tmp/dsh-coex-XXXXXX)"
 echo "DSH_HOME=$DSH_HOME"
 export P=web
+: "${V_GSD:?set V_GSD to the dsh-gsd version}"
+: "${V_DEJA:?set V_DEJA to the dsh-deja version}"
+: "${V_MARKET:?set V_MARKET to the dshmarket version}"
 dsh --profile "$P" --dump-config > /tmp/c-l0.out 2> /tmp/c-l0.err  # take H0 before installing anything
 H0=$(grep -c '^# == ' /tmp/c-l0.out)
-dsh plugin --profile "$P" add dsh-gsd@<version>
-dsh plugin --profile "$P" add dsh-deja@<version>
-dsh plugin --profile "$P" add dshmarket@<version>
+dsh plugin --profile "$P" add "dsh-gsd@$V_GSD"
+dsh plugin --profile "$P" add "dsh-deja@$V_DEJA"
+dsh plugin --profile "$P" add "dshmarket@$V_MARKET"
 dsh --profile "$P" --dump-config > /tmp/c-dump.out 2> /tmp/c-dump.err
 wc -c < /tmp/c-dump.err            # 1) stderr must be 0 bytes: anything here means a bundle was silently skipped
 H1=$(grep -c '^# == ' /tmp/c-dump.out)
