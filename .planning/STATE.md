@@ -1,34 +1,34 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 04
-current_phase_name: 迁移与并存
-current_plan: 5
-status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-11-15T02:57:16.551Z"
+current_phase: 5
+current_phase_name: 端到端 UAT 与 1.0 收官
+current_plan: Not started
+status: planning
+stopped_at: Phase 04 complete, ready to plan Phase 5
+last_updated: "2026-11-15T03:37:16.899Z"
 last_activity: 2026-11-15
-last_activity_desc: Phase 04 execution started
-state_head: a7db7a64bb1a5ba4b3049de939ffc2a9bbe2be94
+last_activity_desc: Phase 04 complete, transitioned to Phase 5
+state_head: 3aa64ce899b4987fe70e3e6461ad4eb3b2b7d335
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
   completed_plans: 14
-  percent: 60
+  percent: 80
 ---
 
 # STATE: dsh-gsd
 
 ## Current Position
 
-Phase: 04 (迁移与并存) — EXECUTING
+Phase: 5 — 端到端 UAT 与 1.0 收官
 Plan: 5 of 5
-Current Plan: 5
+Current Plan: Not started
 Total Plans in Phase: 5
-Status: Ready to execute
-Last activity: 2026-11-15 — Phase 04 execution started
+Status: Ready to plan
+Last activity: 2026-11-15 — Phase 04 complete, transitioned to Phase 5
 
-Progress: [████████████] 13/13 plans ([██████░░░░] 60%) — 3/5 phases (60%)
+Progress: [████████████] 14/14 plans ([████████░░] 80%) — 4/5 phases (80%)
 
 ## Current Focus
 
@@ -60,6 +60,8 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - Phase 3 待纳管：`tests/pending-phase-3/pack-contents.test.mjs`（发布面 tarball 内容防线，3/3 绿）刻意置于 `tests/*.test.mjs` glob 之外以免污染 Phase 02 计数；纳管时需同步更新 BUILD.md/文档计数
 
 ## Progress Log
+
+- 2026-11-15 执行 04-05（gap closure，`--gaps-only`）并收官 Phase 04：`1a6f437`（步骤 1 硬门成可裁决双面门 + DRILL-4 六类合成 home）/ `8dfeafe`（步骤 6 拆静态·COEXIST-DRILL·COEXIST-REAL，增量口径统一）/ `a7db7a6`（WR-03 三分归类 + IN-03 314 行 + IN-04）/ `ce4724c`（SUMMARY）。编排层独立复核而非采纳自述：构建门 `gates: all passed (A/B/C)` / 76 树 / 72 技能；测试门与回归门各以 `node --test --test-concurrency=1`（**非 `npm test`**，后者缺 `--test-concurrency=1`）跑得 `38/38` exit 0；6 个带标记块 `bash -n` 全绿；20 个 bash 围栏块首 `export DSH_HOME=` 零违反；`/Users/` 0 处；两半 `##` 各 3。**code review 两轮**：`a0730e5` 复审把 7 条旧 finding 判为 6 fixed / 1 open 并新提 4 条（WR-04 假计数、**WR-05 正则不认自己正文承诺的 `patched by <bundle>` 形态 ⇒ 假红**、IN-05 裸 `<version>` 使演练块 `bash -n` 红、IN-06 en 半「last three rows」与「last row」自相矛盾）；`be46e9f`/`4044efc`/`3ead903`/`e9f1e70`/`67e590c` 五条修复后台账 **11/11 fixed、open 0**（`73dc3ae`，另 `7636521` 对齐 fix-report 标题使对账可自动复现）。**verifier 判 passed 48/48**（`v3:sha256:f6353fd9…`，19 covered files；两条缺口按行为闭合：GAP-1 用 8 个合成 home / 12 次运行、GAP-2 用真 `dsh 0.2.2-rc.1` 对真实 profile 只读副本的四态）→ `phase.complete`（plans 5/5，next=Phase 5）→ `requirements mark-complete MIG-01..04`。**三处编排层纠错**：① ROADMAP Phase 4 的 `**Requirements**: MIG-01..04` 是区间形态，CLI 不展开 ⇒ `phase.complete` 自报 `requirements_updated: false` 且判 `req-line-misparse`，已改写为四个显式 ID 再以 `requirements mark-complete` 逐条落 `[x]` ② `state update-progress` 自报 `updated: true, percent: 20` 却**一个字节都没写**（Progress 行原样），故 `completed_phases`/`percent` 按可证事实手改为 4 / 80（ROADMAP 4 个 `[x]` + 14/14 计划已总结）——与 2026-11-13 的同类订正同口径 ③ 我先前给 `04-SECURITY.md` 加的前向注记把 marker 行号写成 @59/@492，实为 @60/@493（取的是围栏行而非 marker 行），verifier 指出后已改。**已知仍未修（不属本 phase）**：`package.json` 的 `test`/`prepack` 与 CI 均缺 `--test-concurrency=1`（结构性假红隐患）；`chmod` 在本环境被 SIGKILL（rc=137）⇒ 可执行 fixture 桩会静默假红，须改用 `export -f` 函数桩
 
 - 2026-11-13 verification 续跑（Phase 03）：review-fix（`54edd58`/`9fed9cd`/`4fae49d`/`aacdbfa`，删 3 条恒真断言 + 改写 BUILD.md:110）触碰 03 的 4 个 covered files 致 stale；`/gsd-execute-phase 03` 走 #4682 复用产物路径（0 plan 重跑）——verify:post 三钩子均以证据免重派（nyquist 引用的「门只在注释里」突变现场复验仍使 ⑧ 红、security `threats_open` 0、ui 无前端文件改动）→ code-review 第三轮复审修复面 **clean 0 findings**（`e37b949`；前 10 findings 全 fixed/skipped，`open: 0`，`57ed89d`）→ regression gate 5 套件全绿（`npm test` 37/37 exit 0）→ verifier 13/13 passed（新 digest `v3:c61afb20`，18 covered files）→ phase.complete（`eed6bdd`）。**两处编排层纠错（均为 verifier/CLI 自述与实测不符）**：① verifier 声称「指纹原样复制 CLI 输出」，实际写入 `v4:sha256:e5dfaa…` —— 该前缀在**任何 CLI 代码中都不存在**（只出现在 `gsd-core/` 的 `agents/gsd-verifier.md` 与 `templates/verification-report.md` 两份文档里），权威查询因此判 `stale`；改用 CLI 实值 `v3:c61afb20` 后 `passed`，`covered_files` 18 条经核对逐字正确 ② STATE 的 `completed_phases: 2` / `percent: 40` 与 ROADMAP 实况（3/5 个 `[x]`）矛盾，CLI 自报 `preserved-over-disagreeing-derived` 选择保留陈值；已按可证事实订正为 3/60 并同步正文进度行。**IN-02 处置收窄**：HEAD 领先 CI 验证 sha `9e99cd6` 共 10 提交，但 `git diff 9e99cd6..HEAD` 对 `package.json files` 白名单（index.js/cordis.patch.yml/locale/icon.svg/skills/gsd-core/hooks/config/scripts + 恒含的 package.json/README/LICENSE）**为空** ⇒ npm 发布面与 CI 验证字节相同，未过 CI 的只是 `.planning/`、BUILD.md 与 3 个测试文件
 - 2026-11-12 execution 03-03（3091 实例）：**首次 push 与 CI 首绿完成**（推送 `d3c8e89..20e20c0`，run `43218878911` conclusion=success，`total_count` 0→1，无红跑历史）——Task 1 六项证据当场串行复跑（四格 4/4：install-ok 656 包 / reject 601 包；三档构建 1.20.1→1.19.0→默认 1.20.1，均 gates 全过 + `copied 76 trees`；actionlint 0 findings；全量 32/32 与 `BUILD.md:16` 等值；status 0 行 / 无 tgz / origin=SSH / `total_count`=0；待推 106）。Task 2 blocking-human 由人类裁决为 **「先在一个临时仓库干跑一次，绿了再推」**；执行期发现三层阻塞：① **SSH 不可用**（`~/.ssh/id_rsa` 非 `pfmiles` 有效 key；`PubkeyAcceptedAlgorithms` 三档算法均无效）② HTTPS 缺 `workflow` scope（人类执行 `gh auth refresh -s workflow -s delete_repo`）③ `osxkeychain` 提供旧 token（须 `git -c credential.helper= -c credential.helper='!gh auth git-credential'`）。探针私仓 `pfmiles/dsh-gsd-ci-probe` 同 SHA 跑绿（run 43218482632，1m36s）后删除（API 404）；真仓只推一次、只有一条 run（`run_attempt=1`）。`origin` 保持 SSH **未改写**（仍不可用；`origin/main` 跟踪 ref 停在 `d3c8e89`，权威远端 sha 用 `gh api`）。PUB-01 闭合；本 phase 3/3 计划完成，待 `/gsd-verify-work 03`。4 条 first-class 偏离 + 4 条记录性差异记入 03-03-SUMMARY
@@ -152,5 +154,5 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 ## Session
 
 **Last session:** 2026-11-15T02:57:16.492Z
-**Stopped at:** Completed 04-05-PLAN.md
+**Stopped at:** Phase 04 complete, ready to plan Phase 5
 **Resume file:** None

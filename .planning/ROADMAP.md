@@ -11,7 +11,7 @@
 - [x] **Phase 1: 生产化构建（build.mjs 换源 + 引擎独立可用）** - 构建源从本机部署改为 @opengsd/gsd-core npm tarball，GSD_VERSION 参数化，scripts/ 兄弟目录齐备 (completed 2026-11-11)
 - [x] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化 (completed 2026-11-12)
 - [x] **Phase 3: 发布（GitHub + npm + dshmarket）** - 发布就绪：建仓并推送、prepack 校验、CHANGELOG、L37 修复后 CI 首绿 (completed 2026-11-12)
-- [ ] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链
+- [x] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链 (completed 2026-11-15)
 - [ ] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录
 
 ## Phase Details
@@ -89,13 +89,13 @@ Plans:
 
 **Goal**: 脚本部署用户的无痛迁移，两种方式可解释可回退。
 **Depends on**: Phase 3
-**Requirements**: MIG-01..04
+**Requirements**: MIG-01, MIG-02, MIG-03, MIG-04
 **Success Criteria**:
   1. runbook 全流程在验证机走通（uninstall → add → 复验）
   2. install-gsd-dsh.sh README 顶部互链，定位重述为保底/离线
   3. 同 profile 与 codegraph/deja/dshmarket 并存无冲突实测
 
-**Plans**: 5/5 plans executed（原列 2 项，plan-phase 按需求簇拆为 4：MIG-01 / MIG-02+MIG-03 / HOOK-05 / MIG-04；`/gsd-verify-work` 前身 `04-VERIFICATION.md` 判 `gaps_found` 后，`/gsd-plan-phase 04 --gaps` 追加 `04-05`（`gap_closure: true`），故本 phase 共 5 份计划）
+**Plans**: 5/5 plans complete（原列 2 项，plan-phase 按需求簇拆为 4：MIG-01 / MIG-02+MIG-03 / HOOK-05 / MIG-04；`/gsd-verify-work` 前身 `04-VERIFICATION.md` 判 `gaps_found` 后，`/gsd-plan-phase 04 --gaps` 追加 `04-05`（`gap_closure: true`），故本 phase 共 5 份计划）
 
 **Wave 1**
 - [x] 04-01: 迁移 runbook 与实测 —— tracer 端到端演练（临时 home）+ §① + README 双语入口
