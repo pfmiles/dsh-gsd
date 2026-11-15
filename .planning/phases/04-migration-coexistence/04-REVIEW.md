@@ -1,8 +1,9 @@
 ---
 phase: 04-migration-coexistence
 reviewed: 2026-11-14T06:45:14Z
+re_reviewed: 2026-11-15T03:11:10Z
 depth: standard
-files_reviewed: 8
+files_reviewed: 10
 files_reviewed_list:
   - BUILD.md
   - README.md
@@ -12,19 +13,24 @@ files_reviewed_list:
   - docs/oldrepo-link/snippet.en.md
   - docs/oldrepo-link/snippet.zh.md
   - tests/docs-consistency.test.mjs
+  - .planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md
+  - package.json
 findings:
   critical: 0
-  warning: 3
-  info: 4
-  total: 7
+  warning: 5
+  info: 6
+  total: 11
+open_findings: 5
+fixed_findings: 6
 status: issues_found
 ---
 
 # Phase 4: Code Review Report
 
 **Reviewed:** 2026-11-14T06:45:14Z
+**Re-reviewed:** 2026-11-15T03:11:10Z（04-05 gap-closure delta，`d106944..HEAD`）
 **Depth:** standard
-**Files Reviewed:** 8
+**Files Reviewed:** 10（原 8 + 重审新增的 `04-DRILL-EVIDENCE.md` 与 `package.json`）
 **Status:** issues_found
 
 ## Summary
@@ -63,7 +69,167 @@ status: issues_found
 系统必然为红；① 末尾的示例说明在 zh 半边把"哪些行会变"说错，并与 en 半边、与同一文件 `:27` 的
 公式三方矛盾。
 
+## Re-review 2026-11-15 — 04-05 gap-closure delta
+
+**范围：** `git diff d106944..HEAD` 的产品面 5 个文件——`docs/MIGRATION.md`（+401）、
+`docs/oldrepo-link/README.md`、`docs/oldrepo-link/snippet.zh.md`、`tests/docs-consistency.test.mjs`、
+`.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md`（+55/−0，纯追加）。
+`BUILD.md` 与 `package.json` 经 `git diff --stat d106944..HEAD -- BUILD.md package.json` 复核为**零 diff**（输出为空）。
+depth 仍为 `standard`。上一轮的 Summary 与 7 条 finding 原文在下面**逐字保留**，本节只做裁决与追加。
+
+**立场：** `04-05-SUMMARY.md` 的每一条自述都按假设处理——裁决只认（a）我跑过的命令及其输出，
+或（b）当前文件里的逐字引用。**命令退出码本身也不作数**：本 phase 已被"shell 块无法解析 / 门为错误的理由变绿"
+咬过两次，所以 7 个 `<automated>` 块是提取成文件后**真跑**的，两个文档块是在合成 home 上**真跑**的
+（`npm pack` 那条除外，见末尾"只读未执行"）。
+
+### 裁决表
+
+| ID | 原 severity | 裁决 | 证据（跑过的命令 + 关键输出 / 当前引用） |
+| --- | --- | --- | --- |
+| WR-01 | warning | **fixed** | `docs/MIGRATION.md:52-55` 给出面 1 的两条可观察（`skills=<N>` 基线 + `undecided=<profile…>`），`:59-123` 的块里两者都有命令。实跑：`04-05-PLAN.md` 的 `<automated>` #1（提取后 `bash gate1.sh`）→ `risky/undecided: exit=1`、`decided: exit=0`、`partial: exit=1`、`clean: exit=0`、`machine-dirty: exit=2`、`multirow/undecided: exit=1`、`two-profile/partial: exit=1`、`no-home/interactive: exit=2`，末行 `GAP1-GATE PASS`；我另用自己的 risky home 直跑块：`GATE: ABORT undecided=web bridge=web multirow=-` / EXIT=1，`MIG_DECIDED_PROFILES=web` → `GATE: PASS` / EXIT=0 |
+| WR-02 | warning | **fixed** | `:300`/`:729` 明写真实形态不比较增量，`:302-349` 是零安装的 `COEXIST-REAL` 块。我把它原样提取、用函数形态的 `dsh` 桩跑 7 个 fixture：healthy → `COEXIST-REAL PASS` / 块退出 **0**；listed-but-skipped → `label dsh-gsd MISSING` + `row gsd 0` / 退出 1；`dsh-gsd` 不在册 → `required-absent:dsh-gsd` / 退出 1；重复 row → `row gsd 2` + `dup 1` / 退出 1；stderr 非空 → `stderr-bytes:39` / 退出 1。`H1 > H0` 只剩解释"为什么不用"的一句；全文再无「步骤 4 之后重跑同一组命令」（gate4 的两条"残留即红"断言为绿，我另行 grep 确认只剩 `:130` 的"重跑步骤 1"与 `:357` 的"重跑旧脚本"） |
+| WR-03 | warning | **fixed** | `:362` 与 en `:791` 现在同构：前三行随 home 长度/版本变（并复述 `3195 - 7×(20-L)`）、后三行 3587/3856/72 是包内产物、最后一行 `24 → 25` 随 profile 的 bundle 组合变。`前两行` / `后四行` 已不存在（gate6 有两道否定断言）。**残留一处英文措辞**另立 IN-06 |
+| IN-01 | info | **fixed** | `:243-272` 静态块首行 `export DSH_HOME=`、读 `process.env.DSH_HOME`、四个来源全走 `$DSH_HOME/profiles/web/node_modules/…`。实跑 5 个 fixture：空 home → 4 行 `MISSING:` + `coexist-static SKIPPED (… this is not a pass)`（退出 0，**不再抛栈**）；单来源 → 同上；两来源 → `coexist-static ok: gsd gsd-hooks-bridge deja`；重复 id → `coexist-static FAIL duplicate row ids: gsd` + 退出 **1**；同一 fixture 从 `/` 目录跑输出逐字相同（不再要求 cwd = 仓根） |
+| IN-02 | info | **fixed** | `:205-211` 改成两步式（`HT=$(grep -c … || true)` + `${HT:-0}`）。实跑三种 fixture（文件缺失 / 文件在且计数 0 / 计数 1），输出行数都是 **1**；`grep -c '\|\| echo 0' docs/MIGRATION.md` = **0** |
+| IN-03 | info | **fixed** | 旧仓实测（`../install-gsd-dsh`，HEAD `41fcc7a`）：`wc -l README.md` = **314**、23653 B；`grep -n '^## '` 尾部为 `:281 ## Troubleshooting` → `:300 ## Compatibility` → `:309 ## License and credits`。`docs/oldrepo-link/README.md:11` 与 `snippet.zh.md:1` 两处都写 314，该目录内没有第二套行数口径（gate6 会拒任何 ≠314 的 `N 行`） |
+| IN-04 | info | **open**（部分修复） | 写死计数已去掉、`# 步骤 N` 已消失；但"说明与现场不符"仍在。`tests/docs-consistency.test.mjs:339-341` 列的三个"真实形态"里只有一个成立：`# A 阴性对照`（`docs/MIGRATION.md:194`）是 column-0 ✓；`# 面 2a：…` 在 `:88` 是**缩进 6 空格**的，不是 column-0 ✗；`# drill form …` 全文 0 次，真实形态是 `:607` 的 `# Drill form:`（大写 D）✗。而本轮 delta 新造的三个 column-0 注释——`:60 # MIG-GATE…`、`:277 # COEXIST-DRILL…`、`:303 # COEXIST-REAL…`——一个都没被引用 |
+
+**裁决小结：6 fixed / 1 open（IN-04）/ 0 regressed / 0 skipped。**
+上一轮 3 条 Warning 的两个缺口（GAP-1 / GAP-2）在**执行层**是真的闭合了：`# MIG-GATE` 在 6 类合成 home 上
+按预期给出 0/1/2 三种退出码，`# COEXIST-REAL` 在健康 fixture 上 exit 0、在"在册但没挂上"上 exit 1 并点名
+`label dsh-gsd MISSING`。剩下的是**叙述层**：两条新 Warning 都是"正文写下的判据与块里的检查不是同一条"
+（WR-04 数错了以退出码为判据的块数；WR-05 写了一个块不接受的标签形态）——正是本 phase 反复栽的那个坑。
+
 ## Narrative Findings (AI reviewer)
+
+**New in the 2026-11-15 re-review.**（下面 4 条是本轮新增；再往下的 7 条是 2026-11-14 原文。）
+
+### WR-04: 「runbook 里恰有两个块以退出码为判据」为假——静态段也是（zh / en / 证据册三处）
+
+**File:** `docs/MIGRATION.md:134`（zh）、`:563`（en）、`.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md:177`
+
+**Issue:** 本轮新增的这句话把退出码判据的块数钉成 **2**（`# MIG-GATE` 与 `# COEXIST-REAL`），
+并顺手把"exit code 不作判据"那条禁令收窄到宿主命令。但同一节里靠前的**静态段**也是一个退出码判据：
+`docs/MIGRATION.md:269`（en `:698`）是
+`if (dup.length) { console.log("coexist-static FAIL duplicate row ids: "+…); process.exit(1); }`，
+而且它是块的最后一条命令，所以块的退出码就是它的裁决。
+
+我实跑复现（合成 home，两个来源贡献同一个 row id）：
+
+```
+$ DSH_HOME=<fixture> bash <extracted block 8>   # 步骤 6 静态段
+MISSING: codegraph
+MISSING: dshmarket
+coexist-static FAIL duplicate row ids: gsd
+BLOCK-EXIT=1
+```
+
+所以"恰有两个"是**假**的：三个（`# MIG-GATE`、静态段、`# COEXIST-REAL`）。
+危害不是风格问题：这句子是给"什么时候可以看退出码"划界的，读者按它会把 `coexist-static FAIL` 的
+非零退出当噪声（该 FAIL 行确实也打在 stdout 上，所以还不是静默——这也是它只算 Warning 的原因）。
+证据册 `:177` 重复了同一个错误数字（"来自本仓自定义的两个块"）。
+
+**为什么门没抓住：** `04-05-PLAN.md` 的 gate4 对这句话只断言 `zh.includes("宿主的 exit code")`
+（子串存在即绿），没有断言数字与实际的块数一致；gate2 / gate6 也不数 `process.exit(`。
+
+**Fix:** 三处都改成"三个"并把静态段写进清单；或把该句改成不写数字的形态
+（"runbook 里以退出码为判据的块，都是本仓自定义的裁决块，它们的退出码与打印的裁决行一一对应；
+宿主命令的退出码一律不作判据"）——后者更耐将来新增块。若保留数字，请让门去数
+（`grep -c 'process\.exit(1)'` + `exit 1` 的出现块数），别再让人手维护。
+
+### WR-05: `COEXIST-REAL` 的标签判据没有实现它自己写下的 `# == …, patched by <bundle>` 形态
+
+**File:** `docs/MIGRATION.md:300` 与 `:322`（en：`:729` 与 `:751`）
+
+**Issue:** 正文把可接受的标头标签写成两种：`# == <bundle>` **或** `# == …, patched by <bundle>`。
+块里的实现是
+
+```bash
+if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out; then
+```
+
+这个正则接受的是「`<b>` 在前」与「`<b>, patched by X`」，**不接受**「`X, patched by <b>`」。
+而真实 dump 里 `patched by` 后面跟的是**打补丁者**，不是被打补丁者。我在一次性 home 上跑真
+`dsh --profile web --dump-config`（`DSH_HOME=$(mktemp -d)`）得到 24 个 `^# ==` 标头 / 1243 行，
+其中 11 个形如
+
+```
+# == @deepseek-ai/dsh-base, patched by @deepseek-ai/dsh-web-app
+```
+
+（这同时独立复算了文档 `:228` 的 24 标头 / 1243 行读数——对上了。）
+
+用桩把标签造成正文承诺会通过的那种形态，块判红：
+
+```
+# 输入 dump 里只有这一条 dsh-gsd 的标签：
+# == @deepseek-ai/dsh-base, patched by dsh-gsd
+COEXIST-REAL listed dsh-gsd
+COEXIST-REAL label dsh-gsd MISSING
+COEXIST-REAL row gsd 1
+COEXIST-REAL FAIL label-missing:dsh-gsd
+BLOCK-EXIT=1
+```
+
+即：**正文承诺会通过的形态会被判红**（假红）。这不是 WR-02 那种"健康系统上必红"的必假判据，
+而是一条比正文更严的检查——两者必须对齐，否则下一位维护者会按正文去排查一个根本不是缺陷的红。
+
+**未验证的部分（明确标注，不作推断）：** 这三个 bundle（`dsh-gsd` / `dsh-deja` / `dshmarket`）里是否有任何一个
+**只**以 patcher 身份出现，我没验证——那需要真装 `dsh-deja` / `dshmarket`（本轮没装，`npm pack` 被任务禁止）。
+若三者永远只作为来源出现（像 `dsh-gsd` 那样打出 `# == dsh-gsd`），这条的**当前**可达性为零，
+但正文那句话仍然是不该写下的承诺。
+
+**Fix:** 二选一，zh / en 同步：
+1. 把正文的第二种形态删掉，只留 `# == <bundle>` 与 `# == <bundle>, patched by …`（与实现在语义上一致）；
+2. 或让检查也接受 patcher 槽位：
+
+```bash
+if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out \
+   || grep -qE "^# == .*, patched by ${b}$" /tmp/c-real.out; then
+```
+
+### IN-05: 演练块的三个 `<version>` 让整块无法解析（`bash -n` 红），且一个占位符被三个不同的包共用
+
+**File:** `docs/MIGRATION.md:283-285`（en `:712-714`）；对照 `:3` / `:431` 的"可以整段粘贴 / safe to paste as a whole"
+
+**Issue:** 把演练块原样提取出来，`bash -n` 直接红：
+
+```
+$ bash -n /tmp/blocks/b9.sh
+/tmp/blocks/b9.sh: line 7: syntax error near unexpected token `newline'
+/tmp/blocks/b9.sh: line 7: `dsh plugin --profile "$P" add dsh-gsd@<version>'
+```
+
+（`<` 被 bash 读成输入重定向。）把它 source 进 shell 更能看出后果：前 6 行**会真跑**
+（`mktemp -d` 建一次性 home、`--dump-config` 取 `H0`），随后在第 7 行中止，三个 `add` 一个都没执行，块退出 1。
+另外 `<version>` 这一个 token 同时代表 **三个不同包** 的版本；读者若"全部替换"成 `dsh-gsd` 的版本，
+会拿错版本去装 `dsh-deja` / `dshmarket`。
+
+**Severity 说明（为什么是 info 而不是 warning）：** 失败是**响的**、不在半途写坏真实 home
+（写入点是一次性 home）、且步骤 4 的同一占位符形态在上一轮已被判为"占位符本身强制读者动手，不计分"。
+但它把 `:3`「下面的命令块可以整段粘贴」与 `:431`「Every block below is safe to paste as a whole」
+变成假话，而且这次是**新块**里的三倍剂量——所以记账。
+
+**Fix:** 三个占位符改成不同名（`<dsh-gsd-version>` / `<dsh-deja-version>` / `<dshmarket-version>`），
+或先 `export DSH_GSD_VERSION=… DSH_DEJA_VERSION=…` 再在块里用变量；若都不改，就把"整段粘贴"限定成
+"除带 `<…>` 占位符的块之外"（两半各一处）。
+
+### IN-06: en 半把 3587/3856/72 叫成 "the last three rows"，与紧邻的 "the last row (`24 → 25`)" 自相矛盾
+
+**File:** `docs/MIGRATION.md:791`（zh 对应 `:362`）
+
+**Issue:** 表共 7 行。en 半现在说 "the first three rows move …; **the last three rows** (3587 / 3856 / 72)
+are in-package artifacts …; and **the last row** (`24 → 25`) …"。3 + 3 + 1 恰好等于 7，
+但英文里 "the last three rows" 指第 5–7 行，紧接着又说"最后一行"是第 7 行——同一个集合被叫了两个名字；
+读者按字面会以为 3587 也在最后三行里。zh 的「后三行」在中文里可读作"接下来的三行"，所以 zh **没有**这个毛病。
+⑭ 守卫对这类偏差免疫（只数 `## ` 与查 CJK），只能人读。
+
+**Fix:** `the last three rows` → `the next three rows`（或 `the three in-package rows`）；不改也行，
+但那就等于承认 en 半的这句读起来是错的。
+
+---
+
+### Prior findings from the 2026-11-14 review（原文逐字保留，未改动）
 
 ### WR-01: 步骤 1 声明"两个面"，但块里没有面 1（技能）的任何命令
 
@@ -392,8 +558,58 @@ en 半 CJK = 0、README 两半各含 `docs/MIGRATION.md`，均成立。若需机
 
 `BUILD.md:16` 的 38 同样不是跑出来的，是数出来的：`grep -c '^test('` 逐文件 2 + 8 + 14 + 4 + 7 + 3 = 38。
 
+## Re-review Verification（2026-11-15：执行了什么 / 只读了什么）
+
+### A. 真跑过（命令 + 关键输出）
+
+| # | 对象 | 命令 | 结果 |
+| --- | --- | --- | --- |
+| 1 | `04-05-PLAN.md` `<automated>` #1（gate1） | 提取成文件后 `bash -n` + `bash gate1.sh` | `extract ok: gate@58,486 uninstall@3`；11 行读数（risky/decided/partial/clean/machine-dirty/multirow×2/two-profile×2/machine-clean/no-home）；`GAP1-GATE PASS`；退出 0。这同时就是 **`# MIG-GATE` 块的 11 次实跑**（6 类合成 home + 1 次 `bash -i` 无 home） |
+| 2 | `<automated>` #2（gate2，gap1-doc-evidence） | 同法 | `gap1-doc-evidence ok` |
+| 3 | `<automated>` #4（gate4，gap2-doc） | 同法 | `gap2-doc ok` |
+| 4 | `<automated>` #6（gate6，nonblocking） | 同法 | `nonblocking ok` |
+| 5 | `<automated>` #7（全量） | `node --test --test-concurrency=1 tests/*.test.mjs`（串行、单独跑、期间不在仓内做任何别的事） | `ℹ tests 38 / ℹ pass 38 / ℹ fail 0`；⑭ 在输出里是 `✔` |
+| 6 | `# COEXIST-REAL`（`:302-349`） | 块原样 `source` 进一个定义了 `dsh()` 函数的 shell，7 个 fixture | healthy → `COEXIST-REAL PASS` / 块退出 0；listed-but-skipped → `label dsh-gsd MISSING` + `row gsd 0` / 1；absent → `required-absent:dsh-gsd` / 1；patched-by 形态 → `label dsh-gsd MISSING` / 1（见 WR-05）；重复 row → `row gsd 2` + `dup 1` / 1；stderr 非空 → `stderr-bytes:39` / 1；deja 在册无标签 → `label dsh-deja MISSING` + `row deja 0` / 1 |
+| 7 | `# MIG-GATE`（`:59-123`） | 自建 risky home，两次直跑 | 无裁决 → `GATE: ABORT undecided=web bridge=web multirow=-` / EXIT=1；`MIG_DECIDED_PROFILES=web` → `GATE: PASS` / EXIT=0 |
+| 8 | `# COEXIST-DRILL`（`:276-298`） | `bash -n` + `source` | `bash -n` **红**（`line 7: syntax error near unexpected token 'newline'`）；source 时前 6 行执行、第 7 行中止、块退出 1（见 IN-05） |
+| 9 | 步骤 6 静态段（`:243-272`） | 5 个 fixture（空 / 单来源 / 两来源不相交 / 重复 id / 从 `/` 跑） | 见 IN-01 裁决：`MISSING:` / `SKIPPED` / `ok` / `FAIL`+退出 1，且 cwd 无关 |
+| 10 | 步骤 5 的 E 段（`:205-211`） | 3 个 fixture（缺失 / 在且计数 0 / 计数 1） | 输出行数均 **1**（IN-02） |
+| 11 | 真实 dump 的标头形态 | `T=$(mktemp -d); DSH_HOME=$T dsh --profile web --dump-config` | 退出 0、stderr 0 B、**24 个 `^# ==` 标头 / 1243 行**、11 行含 `, patched by`；与文档 `:228` 的 24 / 1243 独立对上 |
+| 12 | 旧仓基线 | `cd ../install-gsd-dsh && git rev-parse --short HEAD && wc -l README.md && grep -n '^## '` | `41fcc7a`、`314 README.md`、`:300 ## Compatibility`（位于 `:281` 与 `:309` 之间） |
+| 13 | 双语同构 | 围栏感知切两半（按第二个 H1），去注释行后逐行比 | 10 ↔ 10 一一对应；**8/10 逐行相同**；步骤 5 与演练块只在**行尾注释语言**上不同（命令逐字相同） |
+| 14 | 计数类断言 | `grep -c` / `node -e` | 全文 `\|\| echo 0` = **0**；`grep -c '^# 步骤'` = **0**；围栏内 column-0 的 `# ` 注释 = **28**，`grep -c '^# '` = **30**（含 2 个 H1）；围栏 20 个（两半各 10） |
+| 15 | 零 diff 复核 | `git diff --stat d106944..HEAD -- BUILD.md package.json` | **空**（零 diff） |
+| 16 | 证据册是否是纯追加 | `git diff --stat/-numstat d106944..HEAD -- …04-DRILL-EVIDENCE.md` | `55 insertions(+), 1 deletion(-)`，且被删的那 1 行不是内容行（无 `-[^-]` 行）——DRILL-1/2/3 确实一字未动 |
+
+### B. 只读过、**没有**执行的（明确标记，不冒充）
+
+- **没有跑 `npm pack`**（任务明令禁止）。因此 `<automated>` #3 只做了 `bash -n`（通过），**未执行**；
+  DRILL-4-B 的四个真实态（engines 注入 / 恢复 / remove）、`526 B` stderr、`27 = 24 + 3`、`1255 行`
+  我**没有**复算，只做了逻辑层复现（A#6）与 24 / 1243 的独立复算（A#11）。
+- **没有安装 `dsh-deja` / `dshmarket`**：WR-05 的"某个 bundle 是否只以 patcher 出现"因此标为**未验证**。
+- **DRILL-1/2/3 的读数未重跑**（演练场已销毁）：1.16.0 / 3084 / 3195 / 1877 B / `hits=1` / 24→27 全部按
+  "已签名证据"引用，不宣称我复算过。
+- `# COEXIST-DRILL` 未在真 `dsh` 上跑过（要三个包的真安装）。
+- `<automated>` #5（`node --test tests/docs-consistency.test.mjs`）没有单独跑：它被 A#5 的全量串行跑覆盖
+  （⑭ 在 38/38 里是 ✔，`grep -c '^test('` = 14 由 gate6 复核）。
+
+### C. 方法披露（含一次踩坑）
+
+- 为了让 `dsh` 可替换，我是把**提取出来的块原样 `source`** 进一个定义了 `dsh()` 函数的 shell；块文本一字未改。
+- 第一次尝试里，桩脚本因 `chmod` 被执行环境 SIGKILL 而没有执行位（`chmod rc=137`），PATH 回落到了**真实的 `dsh`**，
+  它对着我手搓的 `package.json` 跑了两遍 `--dump-config`（stderr 234 / 236 B、stdout 空）。两次的 `DSH_HOME`
+  都在 `mktemp -d` 内；事后 `find "$HOME/.dsh" -mmin -20` 只有本会话的 session 文件，
+  `~/.dsh/cordis.patch.yml`（Nov 5）与 `gsd-hooks.dsh.json`（Nov 9）mtime 未变——**真实 `~/.dsh` 未被写**。
+  写在这里是因为它影响第一轮 fixture 的读数（那一轮全是假红，已作废并用函数桩重跑）。
+- 顺带一条与 WR-05 无关但与"三态"有关的实测：本机真实 `~/.dsh/cordis.patch.yml` 里
+  `gsd-hooks-bridge` 计数为 **0**（只有 ATC 的 MCP 块）——即 `machine-level=CLEAN` 不是假想分支，
+  它就是本机真实形态（`ABSENT` 之外的那一支确实会被走到）。
+- 全部 fixture 都在 `mktemp -d /tmp/…` 下；我建的那些已删除；仓根无 `dsh-gsd-*.tgz`；评审开始时
+  `git status --porcelain` 为空，本轮唯一的仓内改动就是本文件。
+
 ---
 
 _Reviewed: 2026-11-14T06:45:14Z_
+_Re-reviewed: 2026-11-15T03:11:10Z（adjudicated 7 prior findings: 6 fixed, 1 open; 4 new findings）_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
