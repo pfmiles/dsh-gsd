@@ -320,7 +320,7 @@ echo "DSH_HOME=$DSH_HOME"
     case " $LISTED " in
       *" $b "*)
         echo "COEXIST-REAL listed $b"
-        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out; then
+        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$|^# == .*patched by ${b}$" /tmp/c-real.out; then
           echo "COEXIST-REAL label $b PRESENT"
         else
           echo "COEXIST-REAL label $b MISSING"
@@ -750,7 +750,7 @@ echo "DSH_HOME=$DSH_HOME"
     case " $LISTED " in
       *" $b "*)
         echo "COEXIST-REAL listed $b"
-        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$" /tmp/c-real.out; then
+        if grep -qE "^# == (.*, )?${b}(, patched by .*)?$|^# == .*patched by ${b}$" /tmp/c-real.out; then
           echo "COEXIST-REAL label $b PRESENT"
         else
           echo "COEXIST-REAL label $b MISSING"
