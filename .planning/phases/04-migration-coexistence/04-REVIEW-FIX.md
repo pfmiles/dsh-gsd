@@ -34,7 +34,7 @@ status: all_fixed
 
 ---
 
-### WR-04: 「runbook 里恰有两个块以退出码为判据」为假
+### WR-04: 「runbook 里恰有两个块以退出码为判据」为假——静态段也是（zh / en / 证据册三处）
 
 **Files modified:** `docs/MIGRATION.md`、`.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md`
 **Commit:** `be46e9f`
@@ -69,7 +69,7 @@ $ grep -n "恰有两个\|exactly \*\*two\*\*\|only this block and step 6" docs/M
 
 ---
 
-### WR-05: `COEXIST-REAL` 不接受自己正文承诺的 `patched by` 形态
+### WR-05: `COEXIST-REAL` 的标签判据没有实现它自己写下的 `# == …, patched by <bundle>` 形态
 
 **Files modified:** `docs/MIGRATION.md`
 **Commit:** `4044efc`
@@ -113,7 +113,7 @@ patched 分支的输出里**没有** `label-missing:dsh-gsd`。两个块另过 `
 
 ---
 
-### IN-05: 三个 `<version>` 让演练块无法解析，且一个占位符代表三个包
+### IN-05: 演练块的三个 `<version>` 让整块无法解析（`bash -n` 红），且一个占位符被三个不同的包共用
 
 **Files modified:** `docs/MIGRATION.md`
 **Commit:** `3ead903`
@@ -183,7 +183,7 @@ gsd
 
 ---
 
-### IN-06: en 半把 3587/3856/72 叫成 “the last three rows”，又说 `24 → 25` 是 “the last row”
+### IN-06: en 半把 3587/3856/72 叫成 "the last three rows"，与紧邻的 "the last row (`24 → 25`)" 自相矛盾
 
 **Files modified:** `docs/MIGRATION.md`
 **Commit:** `e9f1e70`
@@ -214,7 +214,7 @@ table en data rows: 7
 
 ---
 
-### IN-04: 守卫注释引用了不存在的注释形态
+### IN-04: 守卫 ⑭ 的说明与断言消息引用了不存在的 `# 步骤 N`，计数也已过期（28→30）
 
 **Files modified:** `tests/docs-consistency.test.mjs`
 **Commit:** `67e590c`
