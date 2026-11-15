@@ -364,7 +364,7 @@ echo "DSH_HOME=$DSH_HOME"
 
 ### 本机实测值（示例，本机 2026-11-13）
 
-下表是演练场（20 字符 home + `@opengsd/gsd-core@1.16.0`）上的读数，逐字原文见 `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md` 的 DRILL-1 段。**它们只是示例**：换 home 长度或换旧部署版本，**前三行**就变（第 3 行 3195 按 `3195 - 7×(20-L)` 随 home 长度走）；**后三行**（3587 / 3856 / 72）是包内产物，与路径、版本都无关；**最后一行**（`24 → 25`）既不随路径也不随版本变，它随 profile 的 bundle 组合变（见步骤 5）。
+下表是演练场（20 字符 home + `@opengsd/gsd-core@1.16.0`）上的读数，逐字原文见 `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md` 的 DRILL-1 段。**它们只是示例**：换 home 长度或换旧部署版本，**前三行**（第 1–3 行）就变（第 3 行 3195 按 `3195 - 7×(20-L)` 随 home 长度走）；**第 4–6 行**（3587 / 3856 / 72）是包内产物，与路径、版本都无关；**第 7 行**（`24 → 25`）既不随路径也不随版本变，它随 profile 的 bundle 组合变（见步骤 5）。
 
 | 项 | 读数 | 取法 |
 | ---- | ---- | ---- |
@@ -798,7 +798,7 @@ echo "DSH_HOME=$DSH_HOME"
 
 ### Measured values on this machine (examples, measured 2026-11-13)
 
-The table below is what the drill box (20-character home + `@opengsd/gsd-core@1.16.0`) reported; the verbatim log lives in the DRILL-1 section of `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md`. **They are only examples**: change the home length or the legacy deployment version and the first three rows move (row 3, 3195, follows `3195 - 7×(20-L)`); the last three rows (3587 / 3856 / 72) are in-package artifacts and are independent of both path and version; and the last row (`24 → 25`) is independent of path and version as well — it follows the bundle composition of the profile (see step 5).
+The table below is what the drill box (20-character home + `@opengsd/gsd-core@1.16.0`) reported; the verbatim log lives in the DRILL-1 section of `.planning/phases/04-migration-coexistence/04-DRILL-EVIDENCE.md`. **They are only examples**: change the home length or the legacy deployment version and the first three rows (rows 1–3) move (row 3, 3195, follows `3195 - 7×(20-L)`); rows 4–6 (3587 / 3856 / 72) are in-package artifacts and are independent of both path and version; and row 7 (`24 → 25`) is independent of path and version as well — it follows the bundle composition of the profile (see step 5).
 
 | Item | Reading | How it was taken |
 | ---- | ---- | ---- |
