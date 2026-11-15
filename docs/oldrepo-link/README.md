@@ -8,7 +8,7 @@
 - remote：`git@github.com:pfmiles/install-gsd-dsh.git`
 - 观测基准 sha：`41fcc7a`。**`41fcc7a` 是观测时的 HEAD，不是 patch 基准** —— 本目录不提供 `git patch`，也不假定它还能 clean apply。旧仓任何一次提交都会让 sha 漂移，这正是不做 patch 的原因（D-09）。
 - 插入位置（**章节锚点，不用行号**）：旧仓 `README.md` 的 `## Quick start` 之前；该标题之上是独占一行的 `---`。章节锚点是语义锚点，插一行不会让它移动；行号则会随旧仓任一次编辑漂移。
-- 旧仓 `README.md` 的实测形态（观测时）：23653 B / 315 行 / CJK 字符数 **0**，纯英文单语，没有 `---` 双语分隔。它的章节顺序是 `# install-gsd-dsh` → `## Quick start` → … → `## Uninstall` → `## Troubleshooting` → `## License and credits`。
+- 旧仓 `README.md` 的实测形态（观测时）：23653 B / 314 行 / CJK 字符数 **0**，纯英文单语，没有 `---` 双语分隔。它的章节顺序是 `# install-gsd-dsh` → `## Quick start` → … → `## Uninstall` → `## Troubleshooting` → `## Compatibility` → `## License and credits`。
 
 ## 2. 两个片段的角色分工
 

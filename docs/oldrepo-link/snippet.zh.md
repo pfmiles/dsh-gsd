@@ -1,2 +1,2 @@
-<!-- 本片段当前无落点：旧仓 README 为纯英文（CJK 字符数 0、315 行），没有中文落点，故备而不用；Phase 5 若该仓补中文 README 才使用。 -->
+<!-- 本片段当前无落点：旧仓 README 为纯英文（CJK 字符数 0、314 行），没有中文落点，故备而不用；Phase 5 若该仓补中文 README 才使用。 -->
 > **用 DeepSeek Harness，并且想用原生插件方式装 GSD？** 这个脚本继续可用，是批量铺机器、完全离线安装、以及它自己那份逐 profile 诊断输出的正确选择 —— 需要这些就留着它。若希望把 GSD 装成 DSH 插件（一条命令、profile 级、可 enable/disable/remove、升级与回滚都是一条命令、不写 profile 之外的任何位置），见 [pfmiles/dsh-gsd](https://github.com/pfmiles/dsh-gsd)：`dsh plugin --profile web add dsh-gsd`。已经用这个脚本装过？[迁移指南](https://github.com/pfmiles/dsh-gsd/blob/main/docs/MIGRATION.md) 给出「卸载旧部署 → 装插件 → 复验」的完整顺序，以及怎么回退。
