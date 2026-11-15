@@ -337,8 +337,8 @@ test('⑬ R-1 manifest 元数据守卫（repository/homepage/bugs/keywords/autho
 // ─────────────────────────────────────────────────────────────────────────────
 // ⑭（Phase 4）：MIGRATION 双语入口 + 迁移文档双语同构守卫（D-08 / D-10 / D-11）。
 // 为什么必须围栏感知：`docs/MIGRATION.md` 的 bash 块里有 column-0 的 `# …` 注释
-// （真实形态如 `# 面 2a：…` / `# A 阴性对照` / `# drill form …`；文档里从没有过
-// 「行首写步骤编号」那种注释形态），直接 `/^# .+$/gm` 会把它们数成一级标题（naive
+// （真实形态如 `# MIG-GATE…` / `# COEXIST-DRILL…` / `# COEXIST-REAL…` / `# A 阴性对照`；
+// 文档里从没有过「行首写步骤编号」那种注释形态），直接 `/^# .+$/gm` 会把它们数成一级标题（naive
 // `grep -c '^# '` 的得数远大于真实的 2，且会随新块增长——判据只看围栏外，不要把
 // 某个当时的数字写死），这条守卫就会恒红——04-02 的一版临时统计脚本当场把
 // zh/en 两半切反。判据是行首三个反引号（代码里写 \x60{3} 以免与本文件的
@@ -370,7 +370,7 @@ test('⑭ MIGRATION 入口双语存在 + 文档两半各恰 3 个二级标题（
   assert.equal(
     h1s.length, 2,
     `docs/MIGRATION.md 应恰有 2 个一级标题（zh/en 各一），实际 ${h1s.length}`
-      + '（围栏感知计数：runbook 里行首的 `# 面 2a：…` / `# A 阴性对照` 是 bash 注释，不是标题）',
+      + '（围栏感知计数：runbook 里行首的 `# MIG-GATE…` / `# COEXIST-REAL…` 是 bash 注释，不是标题）',
   )
   assert.ok(raw.includes('---'), 'docs/MIGRATION.md 缺独占一行的 --- 双语分隔')
   const cut = h1s[1].i
