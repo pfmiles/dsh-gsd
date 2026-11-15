@@ -171,3 +171,34 @@ APPROVAL: approved 2026-11-14T06:17:59Z
 - **解析级（pnpm ERESOLVE）在本演练的包组合上未触发**，这**证不了**换一组包不会触发：本节四条判据判的是「行级 + 合成」，判不了 peer 解析冲突。
 - **临时 home 的 profile 是模板派生的**（`@deepseek-ai/dsh-base` + `@deepseek-ai/dsh-web-app` 两个模板 bundle + 本次三个），这**证不了**用户真实 `web` profile 的依赖图会得出同样结论——真实 profile 里还有旧 bridge 块、`@jiangzhenguo/dsh-codegraph` 与其他 ATC 管理的条目。
 - **「装上了没报错」不是判据**：三次 `add` 的 exit code 都是 0，`--dump-config` 的 exit code 也是 0，它们一个都不区分「合成成功」与「静默双行 / 被跳过」。判据只有 ①②③④ 四条集合断言。
+
+## DRILL-4 — 缺口修复的双向复核
+
+> **口径说明（本段是证据册前言的显式例外）**：本文件开头的**前言**（`:6`）写「exit code 一律不作判据」——那条禁令只约束**宿主命令**（`--uninstall` / `--dump-config` / `plugin add`：三者恒 `exit 0`，不区分「完成」与「什么都没做」）。本段记的 `exit=0/1/2` 来自**本仓自定义**的两个块——`docs/MIGRATION.md` 步骤 1 的 `MIG-GATE` 与步骤 6 的 `COEXIST-REAL`——它们的退出码由我们定义、且与打印的裁决行一一对应，因此是那条前言规则的**显式例外**。前言与 DRILL-1/2/3 一字未动，例外只写在本段。
+> **本轮未重跑 DRILL-1/2/3**（它们是已签名证据，且编排器已删除演练残留）。DRILL-1 里「`hits=1` 之后继续」在今天的文档语义下等价于**演练场的裁决记录**：一次性 home 已被裁决为可弃，故可把实际 profile 名写进 `MIG_DECIDED_PROFILES` 放行。这是把当时的动作显式化，不是对历史结论的改写。
+> **一切写入只在 `mktemp -d` 的合成 home 内**；真实 `~/.dsh` 全程零读写（D-02）。合成 home 由三种文件构成：`profiles/<p>/package.json`（`dsh.profile.bundles`）、`profiles/<p>/cordis.patch.yml`、可选 `$DSH_HOME/cordis.patch.yml` 与 `$DSH_HOME/skills/gsd-*`。
+
+### DRILL-4-A — 步骤 1 的 `MIG-GATE`：六类合成 home + 三种裁决
+
+块的取法：从 `docs/MIGRATION.md` 的围栏里原样提取两半各一块（`extract ok: gate@54,419`），逐次 `DSH_HOME=<fixture> bash <block>`；退出码由块自己给出。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| risky（`skills/gsd-health` 在场、`web` 的 `bundles` 无 `dsh-gsd`、`web` 带 bridge 块）+ 未设 `MIG_DECIDED_PROFILES` | 2026-11-15T02:49:30Z | **exit=1**；`GATE: skills=1` / `GATE: profiles=1 decided=-` / `GATE: undecided=web` / `GATE: bridge=web` / `GATE: multirow=-` / `GATE: machine-level=ABSENT` / **`GATE: ABORT undecided=web bridge=web multirow=-`** |
+| 同一 risky home + `MIG_DECIDED_PROFILES=web` | 2026-11-15T02:49:30Z | **exit=0**；`GATE: profiles=1 decided=web`、其余同上，末行 **`GATE: PASS`** |
+| 同一 risky home + `MIG_DECIDED_PROFILES=headless`（裁决集与命中集**不相交**） | 2026-11-15T02:49:30Z | **exit=1**；`GATE: profiles=1 decided=headless` 而 `GATE: undecided=web` ⇒ 仍是 `GATE: ABORT …`（决策变量不是「设了就行」的开关） |
+| clean（`web` 的 `bundles` 含 `dsh-gsd`、无 skills 目录、机器级文件不存在） | 2026-11-15T02:49:31Z | **exit=0**；`GATE: skills=0` / `GATE: undecided=-` / `GATE: bridge=-` / `GATE: multirow=-` / **`GATE: machine-level=ABSENT`** / `GATE: PASS` |
+| 机器级脏（`$DSH_HOME/cordis.patch.yml` 含 1 行 `gsd-hooks-bridge`）+ `MIG_DECIDED_PROFILES=web` | 2026-11-15T02:49:31Z | **exit=2**；`GATE: machine-level=DIRTY` + **`GATE: HARD-ABORT machine-level=DIRTY`**（全量裁决也豁免不了机器级那一面） |
+| 机器级 `CLEAN`（`cordis.patch.yml` 在、但只有 `- id: atc-mcp`，`gsd-hooks-bridge` 计数 0） | 2026-11-15T02:49:31Z | **exit=0**；**`GATE: machine-level=CLEAN`** / `GATE: PASS`（把「文件存在」一律当 `DIRTY` 的实现在此会 exit 2） |
+| multirow（`web` 的 patch 有**两行** `gsd-hooks-bridge`）+ 未设裁决 | 2026-11-15T02:49:31Z | **exit=1**；`GATE: undecided=-` / `GATE: bridge=web` / **`GATE: multirow=web`** / `GATE: ABORT undecided=- bridge=web multirow=web` |
+| 同一 multirow home + `MIG_DECIDED_PROFILES=web` | 2026-11-15T02:49:31Z | **exit=0**；`GATE: multirow=web` 仍在，末行 **`GATE: PASS`**（`multirow` 是 profile 级面，由逐 profile 裁决覆盖，不是机器级那一面） |
+| 两 profile（`web` 有 `dsh-gsd` + bridge 块；`headless` 无 `dsh-gsd`）+ `MIG_DECIDED_PROFILES=web` | 2026-11-15T02:49:31Z | **exit=1**；`GATE: profiles=2 decided=web` / `GATE: undecided=headless` / `GATE: bridge=web` / `GATE: ABORT undecided=headless bridge=web multirow=-`（判据是「覆盖」，不是「交集非空」；第二个命中 profile 被点名） |
+| 同一两 profile home + `MIG_DECIDED_PROFILES=web headless` | 2026-11-15T02:49:31Z | **exit=0**；`GATE: profiles=2 decided=web headless` / 末行 **`GATE: PASS`** |
+| 无 `DSH_HOME` 的**交互式** shell：`env -u DSH_HOME bash --noprofile --norc -i < <block>` | 2026-11-15T02:49:31Z | **exit=2**；stdout 逐字为 `DSH_HOME=` 换行 **`GATE: ABORT no-home`** —— `${DSH_HOME:?}` 在交互 shell 里只打印消息、后续照跑，所以这一支必须由块内的无-home 守卫兜住 |
+| zh / en 两半对同一 home（risky + `MIG_DECIDED_PROFILES=web`）的 `^GATE:` 行 | 2026-11-15T02:49:31Z | `diff` **无差异**（逐字一致），且全部落在 ASCII 区间；两半的命令逐条同构，差异只在注释语言 |
+
+### DRILL-4-A 这证不了什么
+
+- 裁决变量 `MIG_DECIDED_PROFILES` 是**人写的记录**：本段只证明块能判「命中是否已被记录」，**证不了**记录本身对不对（该迁还是该退役、那个 profile 是不是真的不用 GSD）。
+- 六个合成 home 是**手写的 fixture**，**证不了**真实 `~/.dsh` 的 profile 形态（真实 home 里还有 ATC 管理的条目、旧 `.stripped-bak`、`profiles/node_modules` 等）。
+- `GATE: machine-level` 只读机器级 patch 文件的文本计数，**证不了**那一层在运行时是否真的被 DSH 求值。

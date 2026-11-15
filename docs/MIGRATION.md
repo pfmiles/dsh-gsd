@@ -11,7 +11,7 @@
 
 ### 步骤 0 — 选你的迁移场
 
-迁移场决定**一切写动作落在哪个 home 上**。`DSH_HOME` 是 DSH 三个入口（`dsh plugin add/remove`、`--dump-config`、机器级 patch 层）共同认的根，也是旧脚本的根。**每个可粘贴块的第一行都是 `export DSH_HOME=`，第二行回显它**——漏掉这一行，命令就落到你正在用的 home 上。
+迁移场决定**一切写动作落在哪个 home 上**。`DSH_HOME` 是 DSH 三个入口（`dsh plugin add/remove`、`--dump-config`、机器级 patch 层）共同认的根，也是旧脚本的根。**每个可粘贴块都在块首给出 `export DSH_HOME=`**：带标记的块先起一行 `# <标记>`（本步的 `# MIG-GATE`，步骤 6 的 `# COEXIST-*` 同形），紧接着是 `export DSH_HOME=` 与回显；没有标记的块第一行就是 `export DSH_HOME=`。漏掉这一行，命令就落到你正在用的 home 上。
 
 #### 0-A 演练场（本仓库维护者用）
 
@@ -28,9 +28,11 @@ echo "npm prefix=$(npm config get prefix)"
 
 另一条前提是**旧部署的 GSD 版本**：上面那组基线是 `@opengsd/gsd-core@1.16.0` 的产物（上游 `SKILL.md` 本身就随版本变化）。所以演练把版本钉成 `1.16.0`，并在卸载**之前**断言两个读数都等于它——`gsd-core` 会在卸载时被删掉，断言放到之后就取不到了。
 
+演练场里的步骤 1 **必然命中**（新建 home 的 `web` 还没有插件、旧脚本刚把 bridge 块装上）：一次性 home 的整个 home 已经是「可弃」的裁决，所以放行方式是把实际 profile 名写进 `MIG_DECIDED_PROFILES`（见步骤 1）。
+
 #### 0-B 真实迁移（脚本用户用）
 
-**先执行步骤 1 的逐 profile 裁决，命中即中止**：`--uninstall` 是机器级的，一次会波及该 home 下所有 profile，真实 home 上没有"只迁一个 profile"这种安全形态。
+**先执行步骤 1 的逐 profile 裁决，命中即中止**：`--uninstall` 是机器级的，一次会波及该 home 下所有 profile，真实 home 上没有"只迁一个 profile"这种安全形态。 裁决结果**逐个 profile** 写进 `MIG_DECIDED_PROFILES`（不得把它当默认值）。
 
 这一步**不**隔离 npm 全局 prefix——真实迁移的第 3 步就是要卸掉你自己的全局 CLI。
 
@@ -45,22 +47,91 @@ echo "DSH_HOME=$DSH_HOME"
 
 **命中即中止。** 判据是**两个面**：面 1（技能）与面 2（hooks）。两面都要，因为两种失败模式不同——残留技能的后果是内容串味（新技能用旧正文），残留 bridge 块的后果是双 bridge 重复拦截。机器级 patch 层优先级高于 profile 层，旧脚本**不扫**它，因此必须单独一面。
 
+**面 1 由两个可观察构成**（它不是「技能数 > 0 就报警」的开关：脚本装过的 home 里 `$DSH_HOME/skills/gsd-*` 必然非空，按那个判法 0-A 与 0-B 全都过不去）：
+
+- **`GATE: skills=<N>`** —— `$DSH_HOME/skills/gsd-*` 的条目数。它是**基线**，也是步骤 5 项 A「卸载后为 0」赖以成立的前提：`N=0` 时那条阴性对照是空洞的。面 1 与步骤 5 项 A 是**同一个量的前后两点**（卸载前 > 0、卸载后 0）；跳过步骤 1 的读者拿不到基线，那个 `0` 也就证明不了「旧源已死」。
+- **`GATE: undecided=<profile…>`** —— `dsh.profile.bundles` 里没有 `dsh-gsd` 的那些 profile。它们此刻仍只靠 home 级 `skills/gsd-*` 拿到 GSD 技能，正是 D-03 第二触发条件（「或仍依赖 `~/.dsh/skills` 下的 gsd-*」）的机器形态。
+
+**为什么面 1 必须在卸载前判**：旧脚本对 `$DSH_HOME/skills/gsd-*` 是**无条件** `rm -rf`、不查 marker（见步骤 2）；这个动作一旦执行，双源就在场，再测只能记录、不能中止。
+
 ```bash
+# MIG-GATE：步骤 1 的硬门（只读）。本块自己的退出码就是裁决：0 放行 / 1 命中未裁决 / 2 硬中止。
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
-# 面 2a：哪些 profile 仍引用旧 bridge 块（有输出 = 命中）
-grep -l 'GSD-DSH-bridge BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# 面 2b：逐 profile 数 gsd-hooks-bridge 行（期望每 profile 1 行；出现第二行 = 有第二条直连）
-grep -c 'gsd-hooks-bridge' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# 机器级一面：必须区分「文件不存在」与「文件存在且干净」
-if [ -e "$DSH_HOME/cordis.patch.yml" ]; then
-  echo "machine-level: PRESENT gsd-hooks-bridge=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || echo 0)"
-else
-  echo "machine-level: ABSENT"
-fi
+(
+  # 宿主的 --uninstall 恒 0、不作判据；runbook 里只有本块与步骤 6 的 COEXIST-REAL 以退出码为判据。
+  # 面 1a = skills 基线；面 1b = 仍只靠 home 级技能拿到 GSD 的 profile；面 2a = 旧 bridge 块；
+  # 面 2b = 第二个 gsd-hooks-bridge 行；machine-level = 机器级 patch 层三态。
+  # 无-home 守卫：${DSH_HOME:?} 只在非交互 shell 里中止；贴进交互式 shell 时它只打印消息、后续照跑，
+  # 于是空 home 会得到空命中集并打印 GATE: PASS。守卫把这一支变成硬中止（exit 2）。
+  [ -n "${DSH_HOME:-}" ] || { echo "GATE: ABORT no-home"; exit 2; }
+  # 面 1a：旧源技能计数（步骤 5 项 A 的基线）
+  SK=$(ls -d "$DSH_HOME"/skills/gsd-* 2>/dev/null | wc -l | tr -d ' ')
+  echo "GATE: skills=$SK"
+  # 逐 profile 扫：跳过 node_modules，只处理含 package.json 或 cordis.patch.yml 的目录
+  U=""; B=""; M=""; N=0
+  for d in "$DSH_HOME"/profiles/*/; do
+    [ -d "$d" ] || continue
+    p=$(basename "${d%/}")
+    [ "$p" = "node_modules" ] && continue
+    [ -f "$d/package.json" ] || [ -f "$d/cordis.patch.yml" ] || continue
+    N=$((N+1))
+    # 面 1b：用 node 读清单，不用 grep 近似（dependencies 里可能仍留着该键而 bundles 已不含它）
+    if [ -f "$d/package.json" ]; then
+      if ! node -e 'const j=require(process.argv[1]);const b=(j.dsh&&j.dsh.profile&&j.dsh.profile.bundles)||[];process.exit(b.includes("dsh-gsd")?0:1)' "$d/package.json" >/dev/null 2>&1; then
+        U="$U $p"
+      fi
+    fi
+    if [ -f "$d/cordis.patch.yml" ]; then
+      # 面 2a：旧 bridge 块
+      grep -q 'GSD-DSH-bridge BEGIN' "$d/cordis.patch.yml" 2>/dev/null && B="$B $p"
+      # 面 2b：第二行 gsd-hooks-bridge（两步式取数：零匹配时 grep -c 先打印 0 再以 1 退出）
+      HT=$(grep -c 'gsd-hooks-bridge' "$d/cordis.patch.yml" 2>/dev/null || true)
+      [ "${HT:-0}" -gt 1 ] && M="$M $p"
+    fi
+  done
+  U=$(printf '%s' "$U" | sed -e 's/^ *//' -e 's/ *$//')
+  B=$(printf '%s' "$B" | sed -e 's/^ *//' -e 's/ *$//')
+  M=$(printf '%s' "$M" | sed -e 's/^ *//' -e 's/ *$//')
+  DEC=$(printf '%s' "${MIG_DECIDED_PROFILES:-}" | sed -e 's/^ *//' -e 's/ *$//' -e 's/  */ /g')
+  echo "GATE: profiles=$N decided=${DEC:--}"
+  echo "GATE: undecided=${U:--}"
+  echo "GATE: bridge=${B:--}"
+  echo "GATE: multirow=${M:--}"
+  # 机器级一面：三态必须分开（ABSENT / CLEAN / DIRTY）
+  ML="$DSH_HOME/cordis.patch.yml"
+  if [ ! -e "$ML" ]; then
+    MC=ABSENT
+  else
+    HT=$(grep -c 'gsd-hooks-bridge' "$ML" 2>/dev/null || true)
+    if [ "${HT:-0}" -gt 0 ]; then MC=DIRTY; else MC=CLEAN; fi
+  fi
+  echo "GATE: machine-level=$MC"
+  # 机器级脏没有豁免：它没有 profile 可裁决，只能手工清理
+  if [ "$MC" = "DIRTY" ]; then echo "GATE: HARD-ABORT machine-level=DIRTY"; exit 2; fi
+  # 命中集 = undecided ∪ bridge ∪ multirow（去重后的 profile 名集合），必须被 MIG_DECIDED_PROFILES 完整覆盖
+  HITS=$(printf '%s %s %s\n' "$U" "$B" "$M" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+  MISS=""
+  for h in $HITS; do
+    case " $DEC " in *" $h "*) ;; *) MISS="$MISS $h" ;; esac
+  done
+  if [ -n "$MISS" ]; then echo "GATE: ABORT undecided=${U:--} bridge=${B:--} multirow=${M:--}"; exit 1; fi
+  echo "GATE: PASS"
+  exit 0
+)
 ```
 
-**机器级一面为什么要分两支**：裸 `grep -c … || true` 在文件缺失时同样返回 0，它证明的是"文件不存在"，不是"文件干净"。把两者混为一谈，就会把一次缺失读成一次通过。演练机上这一面命中的是 `ABSENT`（`mktemp -d` 出来的新 home 里根本没有机器级 patch 文件）。
+**六行状态 + 三种裁决。** 块内机器可读输出**一律 ASCII**（解释留在这里，这样 zh / en 两半对同一个 home 会产出逐字相同的 `GATE:` 行）：`GATE: skills=<N>`（面 1a 基线）、`GATE: profiles=<n> decided=<list|->`、`GATE: undecided=<list|->`（面 1b）、`GATE: bridge=<list|->`（面 2a）、`GATE: multirow=<list|->`（面 2b：某个 profile 出现了第二行 `gsd-hooks-bridge`）、`GATE: machine-level=<ABSENT|CLEAN|DIRTY>`；裁决行是 `GATE: PASS` / `GATE: ABORT …` / `GATE: HARD-ABORT machine-level=DIRTY`，退出码依次 0 / 1 / 2。`-` 表示该集合为空。
+
+**机器级一面为什么要分三支**：`ABSENT`（文件不存在）、`CLEAN`（文件在，但 `gsd-hooks-bridge` 计数为 0——真实健康 home 的根级 `cordis.patch.yml` 常常只有 ATC 的 MCP 块，**必须放行**）、`DIRTY`（计数 > 0）。裸 `grep -c … || true` 在文件缺失时同样返回 0，它证明的是「文件不存在」，不是「文件干净」；把「文件存在」一律当 `DIRTY`，又会在真实健康 home 上 exit 2。**`DIRTY` 没有豁免**：`--uninstall` 根本不扫机器级层，留在那儿的 bridge 块优先级更高、卸载后仍然生效，而这一面没有 profile 可裁决、只能手工清理，所以一律 `exit 2`。
+
+**`MIG_DECIDED_PROFILES` 是逐 profile 的决定记录，不是放行开关。** 命中集 = `undecided ∪ bridge ∪ multirow`（**去重后的 profile 名集合**；三面同权、都是 profile 级，所以都能被逐 profile 的裁决覆盖）。命中集必须被它**完整**覆盖；覆盖不全仍 `exit 1`——命中集有两个 profile 而只裁决其中一个，同样 `exit 1`（判据是「覆盖」，不是「交集非空」）。机器级脏不适用它。形态示例：`MIG_DECIDED_PROFILES="web headless"`。命中后的动作：先决定每个 profile 的去向（迁移它 / 退役它 / 它本来就不用 GSD），把名字写进来，重跑步骤 1 直到 `GATE: PASS`。**`multirow`（第二个 `gsd-hooks-bridge` 行）也是 profile 级面**——它与 bridge 块一样由逐 profile 的裁决覆盖，**不是机器级那一面**、也没有第三个退出码。
+
+**`GATE: PASS` 只表示每个命中 profile 都有记录，不表示记录是对的。** 记录是人写的；本块判的是「是否已裁决」，判不了「裁决对不对」——与 DRILL-4 的「这证不了什么」同口径。
+
+**为什么本块的退出码可以作判据**：runbook 里**恰有两个**块以退出码为判据——本块与步骤 6 的真实迁移形态 `COEXIST-REAL`。两者的退出码都由我们定义、且与打印的裁决行一一对应。宿主的 `--uninstall` / `--dump-config` / `plugin add` 仍恒 0，**不作**判据。
+
+**0-A 演练场里这一步必然命中**（新建 home 的 `web` 还没有插件、旧脚本刚把 bridge 块装上）：一次性 home 的整个 home 已经被裁决为可弃，所以放行方式是把实际 profile 名写进 `MIG_DECIDED_PROFILES`（例如 `MIG_DECIDED_PROFILES=web`）。这是把 DRILL-1 里「命中后继续」的动作**显式化**，不是绕过。**0-B 则必须先做逐 profile 裁决再写这个变量**，且**不得**把它当默认值。
 
 > 探测命令一律带 `2>/dev/null` 或 `|| true`：不存在的 profile 名会让 `dsh` 抛栈而不是打印一行提示。
 
@@ -118,7 +189,8 @@ dsh plugin --profile web add dsh-gsd@<version>
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
 P=web
-# A 阴性对照：旧源必须死（期望 0）
+# A 阴性对照：旧源必须死（期望 0）。这就是步骤 1 的 GATE: skills=<N> 那个量的「后一点」——
+# 没有卸载前量到的基线，这个 0 也证明不了「旧源已死」
 ls -d "$DSH_HOME"/skills/gsd-* 2>/dev/null | wc -l
 # B 旧受管目录（期望三行全 absent）
 for d in gsd-core hooks scripts; do
@@ -128,9 +200,10 @@ done
 ls "$DSH_HOME"/gsd-hooks.dsh.json* 2>/dev/null
 # D 面 2：bridge / sandbox 块（期望无输出）
 grep -l -e 'GSD-DSH-bridge BEGIN' -e 'GSD-DSH-sandbox BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# E 机器级一面：ABSENT 与 PRESENT-and-clean 是两种状态
+# E 机器级一面：ABSENT 与 PRESENT-and-clean 是两种状态（两步式取数，零匹配时不会多打一个 0）
 if [ -e "$DSH_HOME/cordis.patch.yml" ]; then
-  echo "machine-level: PRESENT gsd-hooks-bridge=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || echo 0)"
+  HT=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || true)
+  echo "machine-level: PRESENT gsd-hooks-bridge=${HT:-0}"
 else
   echo "machine-level: ABSENT"
 fi
@@ -305,7 +378,7 @@ This file is **not shipped with the npm package** (`docs/` is absent from the ni
 
 ### Step 0 — choose your migration arena
 
-The arena decides **which home every write lands in**. `DSH_HOME` is the root that all three DSH entry points (`dsh plugin add/remove`, `--dump-config`, the machine-level patch layer) agree on, and it is also the root the legacy script uses. **The first line of every pasteable block is `export DSH_HOME=`, the second echoes it** — drop that line and your commands land in the very home you are using right now.
+The arena decides **which home every write lands in**. `DSH_HOME` is the root that all three DSH entry points (`dsh plugin add/remove`, `--dump-config`, the machine-level patch layer) agree on, and it is also the root the legacy script uses. **Every pasteable block carries `export DSH_HOME=` at its head** — a marked block opens with one marker line (`# <marker>`; here `# MIG-GATE`, in step 6 `# COEXIST-*`), immediately followed by `export DSH_HOME=` and then the echo; an unmarked block has `export DSH_HOME=` on its first line. Drop that line and your commands land in the very home you are using right now.
 
 #### 0-A Drill box (for this repository's maintainers)
 
@@ -322,9 +395,11 @@ echo "npm prefix=$(npm config get prefix)"
 
 The other premise is **the GSD version of the legacy deployment**: that baseline is an artifact of `@opengsd/gsd-core@1.16.0` (the upstream `SKILL.md` itself changes between versions). The drill therefore pins the version to `1.16.0` and asserts both readings equal it **before** uninstalling — `gsd-core` is deleted by the uninstall, so the assertion would be unobtainable afterwards.
 
+In the drill box step 1 **necessarily hits** (the new home's `web` has no plugin yet, and the legacy script has just installed the bridge block): the whole one-shot home has already been decided as disposable, so the way to pass is to write the actual profile name into `MIG_DECIDED_PROFILES` (see step 1).
+
 #### 0-B Real migration (for shell-script users)
 
-**Run the per-profile decision from step 1 first; a hit means abort**: `--uninstall` is machine-wide and touches every profile under the home at once, so on a real home there is no such thing as a safe "migrate just one profile".
+**Run the per-profile decision from step 1 first; a hit means abort**: `--uninstall` is machine-wide and touches every profile under the home at once, so on a real home there is no such thing as a safe "migrate just one profile". Write the outcome into `MIG_DECIDED_PROFILES`, one profile at a time — and never treat it as a default.
 
 This step deliberately does **not** isolate the npm global prefix — step 3 of a real migration is precisely about removing your own global CLI.
 
@@ -339,22 +414,92 @@ Neither the length of your real home nor your legacy deployment's version is dec
 
 **A hit means abort.** There are **two faces** to check: face 1 (skills) and face 2 (hooks). Both are required, because the two failure modes differ — leftover skills mean content contamination (new skills running old bodies), leftover bridge blocks mean a doubled bridge intercepting twice. The machine-level patch layer outranks profile layers and the legacy script **never** scans it, so it needs its own face.
 
+**Face 1 is made of two observables** (it is not an "any skills ⇒ alarm" switch: on any home the script ever touched, `$DSH_HOME/skills/gsd-*` is necessarily non-empty, and that criterion would fail both 0-A and 0-B):
+
+- **`GATE: skills=<N>`** — the number of entries under `$DSH_HOME/skills/gsd-*`. This is the **baseline**, and it is what makes step 5 item A ("expect 0 after uninstall") meaningful: with `N=0` that negative control is vacuous. Face 1 and step 5 item A are **two points of the same quantity** (above 0 before the uninstall, 0 after it); skip step 1 and you have no baseline, so the `0` proves nothing about "the legacy source is dead".
+- **`GATE: undecided=<profile…>`** — the profiles whose `dsh.profile.bundles` does not contain `dsh-gsd`. They are the ones still getting GSD skills only from the home-level `skills/gsd-*`, which is exactly the machine-readable form of D-03's second trigger ("or still depend on the gsd-* under `~/.dsh/skills`").
+
+**Why face 1 must be judged before the uninstall**: the legacy script `rm -rf`s `$DSH_HOME/skills/gsd-*` **unconditionally**, without consulting any marker (see step 2); once that has run, both sources are on disk and a probe can only record, never abort.
+
 ```bash
+# MIG-GATE: step 1's hard gate (read-only). This block's own exit code is the verdict: 0 pass / 1 hit undecided / 2 hard abort.
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
-# Face 2a: which profiles still reference the legacy bridge block (any output = a hit)
-grep -l 'GSD-DSH-bridge BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# Face 2b: count gsd-hooks-bridge rows per profile (expect 1 each; a second row = a second direct dependency)
-grep -c 'gsd-hooks-bridge' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# Machine-level face: must distinguish "file absent" from "file present and clean"
-if [ -e "$DSH_HOME/cordis.patch.yml" ]; then
-  echo "machine-level: PRESENT gsd-hooks-bridge=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || echo 0)"
-else
-  echo "machine-level: ABSENT"
-fi
+(
+  # The host's --uninstall always exits 0 and is never a criterion; only this block and step 6's COEXIST-REAL judge by exit code.
+  # face 1a = skills baseline; face 1b = profiles still getting GSD only from home-level skills; face 2a = legacy bridge block;
+  # face 2b = a second gsd-hooks-bridge row; machine-level = the three states of the machine-level patch layer.
+  # No-home guard: ${DSH_HOME:?} aborts only a non-interactive shell; pasted into an interactive one it just prints a
+  # message and the rest still runs, so an empty home would yield an empty hit set and print GATE: PASS. This makes it exit 2.
+  [ -n "${DSH_HOME:-}" ] || { echo "GATE: ABORT no-home"; exit 2; }
+  # face 1a: legacy skill count (the baseline for step 5 item A)
+  SK=$(ls -d "$DSH_HOME"/skills/gsd-* 2>/dev/null | wc -l | tr -d ' ')
+  echo "GATE: skills=$SK"
+  # per profile: skip node_modules, only dirs holding package.json or cordis.patch.yml
+  U=""; B=""; M=""; N=0
+  for d in "$DSH_HOME"/profiles/*/; do
+    [ -d "$d" ] || continue
+    p=$(basename "${d%/}")
+    [ "$p" = "node_modules" ] && continue
+    [ -f "$d/package.json" ] || [ -f "$d/cordis.patch.yml" ] || continue
+    N=$((N+1))
+    # face 1b: read the manifest with node rather than approximating with grep (dependencies may still carry
+    # the key while bundles no longer does)
+    if [ -f "$d/package.json" ]; then
+      if ! node -e 'const j=require(process.argv[1]);const b=(j.dsh&&j.dsh.profile&&j.dsh.profile.bundles)||[];process.exit(b.includes("dsh-gsd")?0:1)' "$d/package.json" >/dev/null 2>&1; then
+        U="$U $p"
+      fi
+    fi
+    if [ -f "$d/cordis.patch.yml" ]; then
+      # face 2a: the legacy bridge block
+      grep -q 'GSD-DSH-bridge BEGIN' "$d/cordis.patch.yml" 2>/dev/null && B="$B $p"
+      # face 2b: a second gsd-hooks-bridge row (two-step count: on zero matches grep -c prints 0 and then exits 1)
+      HT=$(grep -c 'gsd-hooks-bridge' "$d/cordis.patch.yml" 2>/dev/null || true)
+      [ "${HT:-0}" -gt 1 ] && M="$M $p"
+    fi
+  done
+  U=$(printf '%s' "$U" | sed -e 's/^ *//' -e 's/ *$//')
+  B=$(printf '%s' "$B" | sed -e 's/^ *//' -e 's/ *$//')
+  M=$(printf '%s' "$M" | sed -e 's/^ *//' -e 's/ *$//')
+  DEC=$(printf '%s' "${MIG_DECIDED_PROFILES:-}" | sed -e 's/^ *//' -e 's/ *$//' -e 's/  */ /g')
+  echo "GATE: profiles=$N decided=${DEC:--}"
+  echo "GATE: undecided=${U:--}"
+  echo "GATE: bridge=${B:--}"
+  echo "GATE: multirow=${M:--}"
+  # machine-level face: the three states must stay apart (ABSENT / CLEAN / DIRTY)
+  ML="$DSH_HOME/cordis.patch.yml"
+  if [ ! -e "$ML" ]; then
+    MC=ABSENT
+  else
+    HT=$(grep -c 'gsd-hooks-bridge' "$ML" 2>/dev/null || true)
+    if [ "${HT:-0}" -gt 0 ]; then MC=DIRTY; else MC=CLEAN; fi
+  fi
+  echo "GATE: machine-level=$MC"
+  # A dirty machine level has no exemption: it has no profile to decide and can only be cleaned by hand
+  if [ "$MC" = "DIRTY" ]; then echo "GATE: HARD-ABORT machine-level=DIRTY"; exit 2; fi
+  # hit set = undecided ∪ bridge ∪ multirow (the deduplicated set of profile names); MIG_DECIDED_PROFILES must cover it all
+  HITS=$(printf '%s %s %s\n' "$U" "$B" "$M" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+  MISS=""
+  for h in $HITS; do
+    case " $DEC " in *" $h "*) ;; *) MISS="$MISS $h" ;; esac
+  done
+  if [ -n "$MISS" ]; then echo "GATE: ABORT undecided=${U:--} bridge=${B:--} multirow=${M:--}"; exit 1; fi
+  echo "GATE: PASS"
+  exit 0
+)
 ```
 
-**Why the machine-level face needs two branches**: a bare `grep -c … || true` also returns 0 when the file is missing, and what it proves then is "the file does not exist", not "the file is clean". Conflating the two turns a missing file into a passing check. On the drill box this face reported `ABSENT` (a `mktemp -d` home has no machine-level patch file at all).
+**Six status lines, three verdicts.** Every machine-readable line inside the block is **ASCII** (the explanation lives here, so the zh and en halves emit word-for-word identical `GATE:` lines for the same home): `GATE: skills=<N>` (face 1a baseline), `GATE: profiles=<n> decided=<list|->`, `GATE: undecided=<list|->` (face 1b), `GATE: bridge=<list|->` (face 2a), `GATE: multirow=<list|->` (face 2b: some profile carries a second `gsd-hooks-bridge` row), `GATE: machine-level=<ABSENT|CLEAN|DIRTY>`; the verdict lines are `GATE: PASS` / `GATE: ABORT …` / `GATE: HARD-ABORT machine-level=DIRTY`, with exit codes 0 / 1 / 2. `-` means the set is empty.
+
+**Why the machine-level face needs three branches**: `ABSENT` (no such file), `CLEAN` (the file exists but its `gsd-hooks-bridge` count is 0 — a real, healthy home's root `cordis.patch.yml` often carries nothing but ATC MCP blocks, and it **must pass**), `DIRTY` (count > 0). A bare `grep -c … || true` also returns 0 when the file is missing, and what it proves then is "the file does not exist", not "the file is clean"; conversely, treating mere file existence as `DIRTY` turns a healthy real home red. **`DIRTY` has no exemption**: `--uninstall` never scans the machine-level layer, so a bridge block left there outranks the profiles and survives the uninstall, and this face has no profile to decide — it can only be cleaned by hand, hence `exit 2`.
+
+**`MIG_DECIDED_PROFILES` is a per-profile decision record, not a release switch.** The hit set is `undecided ∪ bridge ∪ multirow` (a **deduplicated set of profile names**; the three faces are peers, all profile-level, so a per-profile decision covers any of them). The decision record must **fully** cover the hit set; partial coverage still exits 1 — a hit set of two profiles with only one of them decided exits 1 (the criterion is coverage, not a non-empty intersection). A dirty machine level is not covered by it at all. Shape example: `MIG_DECIDED_PROFILES="web headless"`. What to do on a hit: decide where each profile goes (migrate it / retire it / it never needed GSD), write the names in, and re-run step 1 until `GATE: PASS`. **`multirow` (a second `gsd-hooks-bridge` row) is a profile-level face too** — a per-profile decision covers it exactly like the bridge block; it is **not a machine-level face** and gets no third exit code.
+
+**`GATE: PASS` only says every hit profile has a record — it does not mean the record is right.** The record is written by a human; this block judges "has it been decided", not "was the decision correct" — the same boundary as DRILL-4's "what this does not prove".
+
+**Why this block may judge by exit code**: exactly **two** blocks in this runbook judge by exit code — this one and step 6's real-migration form `COEXIST-REAL`. Both define their own exit codes, and each maps one-to-one onto the verdict lines they print. The host's `--uninstall` / `--dump-config` / `plugin add` still always exit 0 and are **never** criteria.
+
+**On the 0-A drill box this step necessarily hits** (the new home's `web` has no plugin yet, and the legacy script has just installed the bridge block): the whole one-shot home has already been decided as disposable, so the way to pass is to write the actual profile name into `MIG_DECIDED_PROFILES` (e.g. `MIG_DECIDED_PROFILES=web`). That makes DRILL-1's "continue after hits=1" **explicit** rather than a bypass. **0-B must decide per profile first and only then write this variable** — and must **not** treat it as a default.
 
 > Always append `2>/dev/null` or `|| true` to probes: a non-existent profile name makes `dsh` throw a stack trace instead of printing a one-line notice.
 
@@ -412,7 +557,8 @@ Both criteria **must hold together**: with only the negative control, a broken p
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
 P=web
-# A Negative control: the legacy source must be dead (expect 0)
+# A Negative control: the legacy source must be dead (expect 0). This is the "after" point of the same
+# quantity as GATE: skills=<N> in step 1 -- without the baseline measured before the uninstall, 0 proves nothing
 ls -d "$DSH_HOME"/skills/gsd-* 2>/dev/null | wc -l
 # B Legacy managed directories (expect all three lines to read absent)
 for d in gsd-core hooks scripts; do
@@ -422,9 +568,10 @@ done
 ls "$DSH_HOME"/gsd-hooks.dsh.json* 2>/dev/null
 # D Face 2: bridge / sandbox blocks (expect no output)
 grep -l -e 'GSD-DSH-bridge BEGIN' -e 'GSD-DSH-sandbox BEGIN' "$DSH_HOME"/profiles/*/cordis.patch.yml 2>/dev/null
-# E Machine-level face: ABSENT and PRESENT-and-clean are two different states
+# E Machine-level face: ABSENT and PRESENT-and-clean are two different states (two-step count: no extra 0)
 if [ -e "$DSH_HOME/cordis.patch.yml" ]; then
-  echo "machine-level: PRESENT gsd-hooks-bridge=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || echo 0)"
+  HT=$(grep -c 'gsd-hooks-bridge' "$DSH_HOME/cordis.patch.yml" 2>/dev/null || true)
+  echo "machine-level: PRESENT gsd-hooks-bridge=${HT:-0}"
 else
   echo "machine-level: ABSENT"
 fi
