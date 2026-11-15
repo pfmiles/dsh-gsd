@@ -174,7 +174,7 @@ APPROVAL: approved 2026-11-14T06:17:59Z
 
 ## DRILL-4 — 缺口修复的双向复核
 
-> **口径说明（本段是证据册前言的显式例外）**：本文件开头的**前言**（`:6`）写「exit code 一律不作判据」——那条禁令只约束**宿主命令**（`--uninstall` / `--dump-config` / `plugin add`：三者恒 `exit 0`，不区分「完成」与「什么都没做」）。本段记的 `exit=0/1/2` 来自**本仓自定义**的两个块——`docs/MIGRATION.md` 步骤 1 的 `MIG-GATE` 与步骤 6 的 `COEXIST-REAL`——它们的退出码由我们定义、且与打印的裁决行一一对应，因此是那条前言规则的**显式例外**。前言与 DRILL-1/2/3 一字未动，例外只写在本段。
+> **口径说明（本段是证据册前言的显式例外）**：本文件开头的**前言**（`:6`）写「exit code 一律不作判据」——那条禁令只约束**宿主命令**（`--uninstall` / `--dump-config` / `plugin add`：三者恒 `exit 0`，不区分「完成」与「什么都没做」）。本段记的 `exit=0/1/2` 来自**本仓自定义**的裁决块与失败信号：`docs/MIGRATION.md` 步骤 1 的 `MIG-GATE` 与步骤 6 的 `COEXIST-REAL` 的退出码是**裁决**（与打印的裁决行一一对应）；步骤 6 静态段的 `exit 1` 是 `coexist-static FAIL`（重复 row id）的**失败信号**，不是裁决。它们都不是宿主命令，因此是那条前言规则的**显式例外**。前言与 DRILL-1/2/3 一字未动，例外只写在本段。
 > **本轮未重跑 DRILL-1/2/3**（它们是已签名证据，且编排器已删除演练残留）。DRILL-1 里「`hits=1` 之后继续」在今天的文档语义下等价于**演练场的裁决记录**：一次性 home 已被裁决为可弃，故可把实际 profile 名写进 `MIG_DECIDED_PROFILES` 放行。这是把当时的动作显式化，不是对历史结论的改写。
 > **一切写入只在 `mktemp -d` 的合成 home 内**；真实 `~/.dsh` 全程零读写（D-02）。合成 home 由三种文件构成：`profiles/<p>/package.json`（`dsh.profile.bundles`）、`profiles/<p>/cordis.patch.yml`、可选 `$DSH_HOME/cordis.patch.yml` 与 `$DSH_HOME/skills/gsd-*`。
 

@@ -61,7 +61,8 @@ echo "DSH_HOME=$DSH_HOME"
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
 (
-  # 宿主的 --uninstall 恒 0、不作判据；runbook 里只有本块与步骤 6 的 COEXIST-REAL 以退出码为判据。
+  # 宿主的 --uninstall 恒 0、不作判据；runbook 里以退出码承载裁决的是本块与步骤 6 的 COEXIST-REAL
+  # （步骤 6 静态段的 exit 1 只是 coexist-static FAIL 的失败信号，不是裁决）。
   # 面 1a = skills 基线；面 1b = 仍只靠 home 级技能拿到 GSD 的 profile；面 2a = 旧 bridge 块；
   # 面 2b = 第二个 gsd-hooks-bridge 行；machine-level = 机器级 patch 层三态。
   # 无-home 守卫：${DSH_HOME:?} 只在非交互 shell 里中止；贴进交互式 shell 时它只打印消息、后续照跑，
@@ -131,7 +132,7 @@ echo "DSH_HOME=$DSH_HOME"
 
 **`GATE: PASS` 只表示每个命中 profile 都有记录，不表示记录是对的。** 记录是人写的；本块判的是「是否已裁决」，判不了「裁决对不对」——与 DRILL-4 的「这证不了什么」同口径。
 
-**为什么本块的退出码可以作判据**：runbook 里**恰有两个**块以退出码为判据——本块与步骤 6 的真实迁移形态 `COEXIST-REAL`。两者的退出码都由我们定义、且与打印的裁决行一一对应。宿主的 `--uninstall` / `--dump-config` / `plugin add` 仍恒 0，**不作**判据。
+**为什么本块的退出码可以作判据**：runbook 里以退出码**承载裁决**的块由本仓自己定义——本块与步骤 6 的真实迁移形态 `COEXIST-REAL`，它们的退出码与打印的裁决行一一对应。步骤 6 的静态段也会在重复 row id 时 `exit 1`，但那是 `coexist-static FAIL` 的**失败信号**（同一句也打在 stdout 上），不构成通过 / 不通过的裁决。宿主的 `--uninstall` / `--dump-config` / `plugin add` 仍恒 0，**不作**判据。
 
 **0-A 演练场里这一步必然命中**（新建 home 的 `web` 还没有插件、旧脚本刚把 bridge 块装上）：一次性 home 的整个 home 已经被裁决为可弃，所以放行方式是把实际 profile 名写进 `MIG_DECIDED_PROFILES`（例如 `MIG_DECIDED_PROFILES=web`）。这是把 DRILL-1 里「命中后继续」的动作**显式化**，不是绕过。**0-B 则必须先做逐 profile 裁决再写这个变量**，且**不得**把它当默认值。
 
@@ -489,7 +490,8 @@ Neither the length of your real home nor your legacy deployment's version is dec
 export DSH_HOME="${DSH_HOME:?run step 0-A or 0-B first}"
 echo "DSH_HOME=$DSH_HOME"
 (
-  # The host's --uninstall always exits 0 and is never a criterion; only this block and step 6's COEXIST-REAL judge by exit code.
+  # The host's --uninstall always exits 0 and is never a criterion; the runbook's exit-code verdicts are this block and
+  # step 6's COEXIST-REAL (the static part's exit 1 is a coexist-static FAIL signal, not a verdict).
   # face 1a = skills baseline; face 1b = profiles still getting GSD only from home-level skills; face 2a = legacy bridge block;
   # face 2b = a second gsd-hooks-bridge row; machine-level = the three states of the machine-level patch layer.
   # No-home guard: ${DSH_HOME:?} aborts only a non-interactive shell; pasted into an interactive one it just prints a
@@ -560,7 +562,7 @@ echo "DSH_HOME=$DSH_HOME"
 
 **`GATE: PASS` only says every hit profile has a record — it does not mean the record is right.** The record is written by a human; this block judges "has it been decided", not "was the decision correct" — the same boundary as DRILL-4's "what this does not prove".
 
-**Why this block may judge by exit code**: exactly **two** blocks in this runbook judge by exit code — this one and step 6's real-migration form `COEXIST-REAL`. Both define their own exit codes, and each maps one-to-one onto the verdict lines they print. The host's `--uninstall` / `--dump-config` / `plugin add` still always exit 0 and are **never** criteria.
+**Why this block may judge by exit code**: the runbook's exit-code **verdicts** are defined by this repository itself — this block and step 6's real-migration form `COEXIST-REAL` — and their exit codes map one-to-one onto the verdict lines they print. Step 6's static part also exits 1 on duplicate row ids, but that is a **failure signal** (`coexist-static FAIL` also prints on stdout), not a pass/fail verdict. The host's `--uninstall` / `--dump-config` / `plugin add` still always exit 0 and are **never** criteria.
 
 **On the 0-A drill box this step necessarily hits** (the new home's `web` has no plugin yet, and the legacy script has just installed the bridge block): the whole one-shot home has already been decided as disposable, so the way to pass is to write the actual profile name into `MIG_DECIDED_PROFILES` (e.g. `MIG_DECIDED_PROFILES=web`). That makes DRILL-1's "continue after hits=1" **explicit** rather than a bypass. **0-B must decide per profile first and only then write this variable** — and must **not** treat it as a default.
 
