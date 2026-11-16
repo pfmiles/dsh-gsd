@@ -116,18 +116,35 @@ Plans:
 
 **Goal**: 干净机器全量验收，发布 1.0。
 **Depends on**: Phase 4
-**Requirements**: UAT-01..06, INST-01..06 全量复验, PUB-01（npm 首发部分）, PUB-03（PR 本体部分）
+**Requirements**: UAT-01, UAT-02, UAT-03, UAT-04, UAT-05, UAT-06, INST-01, INST-02, INST-03, INST-04, INST-05, INST-06, PUB-01, PUB-03, D-10-1, D-10-2, D-10-3, D-10-4, D-10-5
+
+> **D-10 回写说明**（逐 ID 显式列出，不用区间形态 `UAT-01..06` —— Phase 4 的 `req-line-misparse` 就是因为 CLI 不展开区间）：`D-10-1` = `--test-concurrency=1` 三处齐备（`package.json` 的 `test`/`prepack` + `compat-matrix.yml` 全量测试步；`prepack` 缺它会假红并中止发布）；`D-10-2` = G-4 codegraph 并存复验（真实迁移 `web` 后重跑步骤 6 静态段四条来源断言 + `COEXIST-REAL`；`MISSING:` 必须判红）；`D-10-3` = 真实 `~/.dsh` 整体迁移（`web`/`headless` 一并处置）；`D-10-4` = 旧仓 `pfmiles/install-gsd-dsh` 互链提交与推送；`D-10-5` = `SKIP_DIRS` 补 `.gsd-build-tmp` 且经得住 `node build.mjs` 重建（落 `build/assets/` + 构建期拷贝，不手改构建产物）。
+
 **Success Criteria**:
   1. UAT-01..05 全绿（干净 DSH_HOME 安装、skills、健康、拦截、scaffold、升级回滚）
   2. hooks 回归（commit 校验拦截错误格式、injection 扫描落日志）
   3. 启动开销数字与技能 watch 行为记录入 README
   4. 1.0 发布 + UAT 报告
   5. 对外动作执行：`npm publish`（registry 通道复验）+ GitHub Release + dshmarket PR 本体（Phase 3 备料的落地）
+  6. （D-10-1）`--test-concurrency=1` 在 `package.json` 的 `test`、`package.json` 的 `prepack` 与 `.github/workflows/compat-matrix.yml` 的全量测试步**三处**齐备，且有一条计数断言守着它
+  7. （D-10-2）G-4 闭合：真实迁移 `web` 后步骤 6 静态段的四条来源 row id 两两不相交（`MISSING:` 判红）且 `COEXIST-REAL` 通过
+  8. （D-10-3）真实 `~/.dsh` 迁移完成：旧源为零、`web` 与 `headless` 的插件 row 各恰 1、包内 72 技能与两项字节数对齐
+  9. （D-10-4）旧仓 `pfmiles/install-gsd-dsh` 互链已推送：远端 main 的 sha 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致
+  10. （D-10-5）`gsd-core/bin/lib/ui-frontend-evidence.cjs` 在**构建后**的 `SKIP_DIRS` 含 `.gsd-build-tmp`，连跑两次 `node build.mjs` 仍成立
 
-**Plans**: TBD
-Plans:
-- [ ] 05-01: 干净机器 UAT 执行与报告
-- [ ] 05-02: 1.0 发布收尾
+**Plans**: 4 plans（原列 2 项；按 D-10 的「五件全纳入」扩到 4，收口段单独成最后一波 —— D-11 要求它必须在所有 `.planning/` 产物提交之后）
+
+**Wave 1**
+- [ ] 05-01: 判据 harness 与安装/会话面 —— tracer（干净 `/tmp` home → 装插件 → 会话谓词）+ INST-02..05 + UAT-02/03 + `--test-concurrency=1` 三处与 ⑮（D-01 / D-02 / D-10-1）
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 05-02: 残余判据、构建补丁与报告 —— hooks 两向（UAT-04）+ 升级回滚（UAT-05）+ 三点开销与 watch 处置（UAT-06）+ `SKIP_DIRS` 构建期补丁（D-10-5）+ `05-UAT.md`
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 05-03: 发布态树与不可逆对外动作 —— 四处 manifest 改动 + README/CHANGELOG + dry-run + `checkpoint:decision`（D-04）+ 人类 `npm publish` + registry 复验 + Release + dshmarket PR（PUB-01 / PUB-03）
+
+**Wave 4** *(blocked on Wave 3 completion — 机器级收口，最后一个波次)*
+- [ ] 05-04: 只读预检 → 3091 刷新 → 真实 `~/.dsh` 迁移与 G-4 → 旧仓互链推送（D-10-2 / D-10-3 / D-10-4）
 
 ## Milestones
 
