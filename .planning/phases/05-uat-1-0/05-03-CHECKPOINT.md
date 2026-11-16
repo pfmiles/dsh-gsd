@@ -9,16 +9,16 @@
 | 字段 | 值 |
 | ---- | -- |
 | phase / plan | `05-uat-1-0` / 03 |
-| 计划状态 | **未完成**：Task 1 done / Task 2 停在裁决门 / Task 3 未开始 |
-| 本段完成任务 | 1 of 3 |
-| 任务提交 | `3287bbd`（chore(05-03)） |
+| 计划状态 | **未完成**：Task 1 done / Task 2 **done**（D-04 裁决已回 + 两次 CI 全绿）/ Task 3 未开始（停在 `checkpoint:human-verify gate="blocking-human"`，等人类 `npm publish`） |
+| 本段完成任务 | 2 of 3 |
+| 任务提交 | `3287bbd`（chore(05-03)，Task 1）+ `a0529ac`（docs(05-03)，D-04 口径订正；**它就是 `PUBLISHED_SHA`**） |
 | 本记录提交 | docs(05-03)（见 `git log --oneline`） |
 | plan_head_before | `c82d844aac20e75a0ecad4c7a7bd04c25fe089f5` |
-| plan_head_after | `3287bbd115c4f9b0b63a2daa329aee5279d68008` |
-| 实测提交数 | 1（`git rev-list --count c82d844..3287bbd`） |
-| actuals.tokens | 4279（chars/4 over the Task 1 diff：17 118 B） |
-| 时长 | 14 min（2026-11-16T07:28Z → 07:42Z） |
-| requirements-completed | 无（PUB-01 / PUB-03 / UAT-06 / UAT-01 均未在本计划内成立） |
+| plan_head_after | `a0529acf57e1ab01d59bd0730af0e7964d680033`（截至续执行段 2 的推送点） |
+| 实测提交数 | 3（`git rev-list --count c82d844..a0529ac` = `3287bbd` + `eefbf12` + `a0529ac`） |
+| actuals.tokens | 4279（chars/4 over the Task 1 diff：17 118 B）+ 续执行段 2 的 docs diff |
+| 时长 | 14 min（Task 1，2026-11-16T07:28Z → 07:42Z）+ 续执行段 2（08:40Z → 08:55Z） |
+| requirements-completed | 无（PUB-01 / PUB-03 / UAT-06 / UAT-01 均未在本计划内成立；`PUBLISHED_SHA` 与两次 CI 绿只是它们的前置） |
 
 tags: npm-publish, publish-state, dry-run, tag-guard, registry-pin, checkpoint, not-complete
 
@@ -113,11 +113,15 @@ tags: npm-publish, publish-state, dry-run, tag-guard, registry-pin, checkpoint, 
 1. **dry-run 门是有牙的**：本机 npm 12.2.1 对 prerelease 版本缺显式 tag 时在**写网络之前**硬拒（`publish.js:131-138`），所以 `with tag latest` 这一行同时证明 `publishConfig.tag` 生效、且 `registry` 没有落回本机只读镜像。两条失败可区分（tag 缺 → 命令到不了打包之后；registry 错 → exit 仍 0，只有那一行变）。
 2. **字节不可复现（见偏离 3）**：`npm publish` 一定会重建，而 build 每次换 59 个文件的随机 heredoc nonce ⇒ 发出去的 tarball 在构造上不可能等于任何此前被验过的 tarball。**这不阻止发布，但它改变了「验过什么」的表述**：可以证的是「同一提交 + 同一套构建门 + 同一套串行测试 + 该提交上 CI 绿」，不能证「字节指纹相同」。
 
-## 停在哪个门
+## 停了两个门
 
-**Task 2 — `checkpoint:decision`，`gate="blocking"`，`reversibility: one-way`。** auto-mode 关闭（`workflow.auto_advance: false`、`_auto_chain_active: false`），故**不得自选**，也未执行 Task 2 的 `<action>`（没有推送、没有 `workflow_dispatch`、没有写判据段 10）。
+### 门 1（**已通过**）：Task 2 的 D-04 裁决
 
-### 三个选项（`05-03-PLAN.md` 原文）
+**`checkpoint:decision`，`gate="blocking"`，`reversibility: one-way`。** 第一段 dispatch 停在这里（auto-mode 关闭 ⇒ 不得自选），把三个选项原样交给人。
+
+**人的裁决（2026-11-16T08:40:03Z，本次续执行 dispatch 的起点）＝ `publish-as-is`（选项 A）**。裁决记录（选项、结果、时间、理由）见 `05-UAT-EVIDENCE.md` **判据段 10**。
+
+#### 三个选项（当时摆在人面前的原文，保留作记录）
 
 | id | 名称 | 收益 | 代价 |
 | -- | ---- | ---- | ---- |
@@ -138,7 +142,40 @@ tags: npm-publish, publish-state, dry-run, tag-guard, registry-pin, checkpoint, 
 - **代码树零 diff**：`git diff 9e99cd6..HEAD --stat -- index.js cordis.patch.yml locale icon.svg skills gsd-core hooks config scripts` → 空；含工作树再跑一次仍为空。白名单面上变的只有 `package.json` 与 `README.md`（都属于「发布态本身」）。
 - **抢注复查（只读，供裁决参考）**：`curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/dsh-gsd` → **404**（对照组 `@opengsd/gsd-core` → 200，2026-11-16T07:41:27Z）⇒ 名字仍空，选项 A 在名字面上可执行。
 - **`gh auth status`（只读）**：登录 `pfmiles`，scopes `delete_repo, gist, read:org, repo, workflow`，`Git operations protocol: ssh`（故推送必须走 `--credential.helper='!gh auth git-credential'` 的 HTTPS 形态，`origin` 保持 SSH 不改写）。`delete_repo` 的收窄（D-08）仍在 Task 3。
-- **未执行**：Task 2 的推送/`workflow_dispatch`/判据段 10 写作；Task 3 的全部动作（含任何 registry 读、`gh release create`、dshmarket PR、D-08 的 scope 收窄）。
+- **未执行**（第一段 dispatch 的读数；其中的 Task 2 推送与判据段 10 已在**续执行段 2** 完成）：Task 2 的推送/`workflow_dispatch`/判据段 10 写作；Task 3 的全部动作（含任何 registry 读、`gh release create`、dshmarket PR、D-08 的 scope 收窄）。
+
+## 续执行段 2 — Task 2 第 3–6 步（2026-11-16T08:40Z → 08:55Z）
+
+**裁决已回 `publish-as-is`，按 D-04 走完推送与两次 CI，现在停在 Task 3 的 `gate="blocking-human"`（人类的 `npm publish`）。**
+
+### Step 0（先于任何推送）：D-04 的字节口径订正
+
+提交 **`a0529ac`**（`docs(05-03): correct D-04's byte-identity claim to the commit-level claim`）。**它是「任何推送之前」的独立提交**，也是后来被推上 main 的那个提交（即 `PUBLISHED_SHA`）。改的是什么、为什么必须改，见 `05-UAT-EVIDENCE.md` 判据段 9 的「D-04 的字节口径订正」小节：
+
+- 旧表述「发布的字节 = CI run `43238375397` 验过的字节」**构造上不成立**（`prepack` 重建 + `generateArgsNonce()` 给 59 个成员换新 nonce）；
+- 新表述（唯一可证）：**同一 commit + 同一构建门（`gates: all passed (A/B/C)`）+ 同一串行套件（`node --test --test-concurrency=1`）+ 该 commit 的 CI 绿**；
+- 落点 9 处 `05-03-PLAN.md` + 判据段 9 订正小节 + `05-CONTEXT.md` D-04 的依据订正注（**裁决本身不变**）。
+
+### Task 2 action 3–6 的实际动作与读数
+
+| 步骤 | 命令 / 动作 | 时间 (UTC) | 读数 |
+| ---- | ----------- | ---------- | ---- |
+| 3 | `git -c credential.helper= -c credential.helper='!gh auth git-credential' push https://github.com/pfmiles/dsh-gsd.git HEAD:refs/heads/phase-5/publish-tree` | 08:45:27Z | `* [new branch] HEAD -> phase-5/publish-tree`（`origin` 未改写，仍是 SSH URL） |
+| 4 | `gh workflow run compat-matrix.yml --ref phase-5/publish-tree` | 08:45:38Z | run **43833863547**（`workflow_dispatch`）；08:46:58Z `completed/success`；四格逐格 `gates: all passed` + `tests 47 / pass 40 / fail 0 / skipped 7` |
+| 5 | 推 main ×3 次网络层失败后成功（详见证据册判据段 10 的「一次网络层失败」小节） | 08:47:36 / 08:49:13 / 08:50:27 失败；08:52:27 成功 | `9e99cd6..a0529ac  HEAD -> main`（fast-forward） |
+| 5 | `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha` | 08:52:36Z | **`a0529acf57e1ab01d59bd0730af0e7964d680033`** ⇒ `PUBLISHED_SHA` |
+| 5 | main 的 run 轮询 | 08:52:32Z → 08:53:21Z | run **43834802996**（`push` / `main`）`completed/success`；四格同上全绿 |
+| 6 | 两次 run 的 `(databaseId, headSha, conclusion)` 与 `PUBLISHED_SHA` | 08:54Z | 写进 `05-UAT-EVIDENCE.md` **判据段 10**（计划写 9，因 05-02 已占用 8、dry-run 顺延为 9） |
+
+### 现在的状态
+
+- 远端 `refs/heads/main` = `a0529ac`，`refs/heads/phase-5/publish-tree` = `a0529ac`（预演分支**保留不删**）。
+- 本机 `HEAD` = `a0529ac` + 本记录提交（`.planning/` 之外的字节与 `a0529ac` 相同 —— `.planning/` 不在 `files` 白名单内）。
+- **没有发布任何东西**：registry 上 `dsh-gsd` 仍是 404；没有 tag、没有 Release、没有 dshmarket PR；`delete_repo` scope 仍在（D-08 属 Task 3）。
+
+### 门 2（**当前停在这里**）：Task 3 的 `checkpoint:human-verify gate="blocking-human"`
+
+**下一步是人的动作，agent 不代跑**（D-07：`npm publish` 需 OTP）。要看的两样东西与回执形态写在下面「Next Phase Readiness」与 `05-03-PLAN.md` Task 3 的 `<how-to-verify>` 里。
 
 ## Issues Encountered
 
@@ -151,14 +188,33 @@ tags: npm-publish, publish-state, dry-run, tag-guard, registry-pin, checkpoint, 
 
 ## Next Phase Readiness
 
-**续执行器的接续点**：D-04 的裁决（`publish-as-is` / `bump-rev` / `defer`）。
+**接续点**：`05-03-PLAN.md` **Task 3** —— `checkpoint:human-verify gate="blocking-human"`。门 1（D-04 裁决）已过，Task 2 的推送与两次 CI 已完成；**没有发布任何东西**，所以不要在这里做任何 registry 观测。
 
-- 回 `publish-as-is` → 执行 Task 2 action 3–6：推 `phase-5/publish-tree` 预演分支 → `gh workflow run compat-matrix.yml --ref phase-5/publish-tree` 轮询到 `completed/success` → 推 main → `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha` 取 `PUBLISHED_SHA` → 轮询 main 的 run 至 `success`；两次 run 的 `(databaseId, headSha, conclusion)` 与 `PUBLISHED_SHA` 写进判据段 10（计划写 9），**并把五项裁决证据一次摆全**。
-- 回 `bump-rev` → **停止本计划**，把版本号变更交回上游裁决（改 `package.json`、`CHANGELOG`、`ROADMAP`、`05-UAT.md` 与本计划里的版本串后重跑 Task 1），不得私自抬 rev。
-- 回 `defer` → 记录裁决与理由，停在 Task 2 之前。
-- 完成后把本文件重写为 `05-03-SUMMARY.md`（`status: complete`）并补上 `requirements-completed`（PUB-01 / PUB-03 / UAT-06 / UAT-01 中真正成立的子集）。
+### 需要人做的（三步，与 `05-03-PLAN.md` Task 3 的 `<how-to-verify>` 一致）
 
-## Self-Check: PASSED
+1. 确认 `npm whoami` 返回 `pfmiles`（此前实测 `ENEEDAUTH`，需先 `npm login`），且 2FA/OTP 可用。
+2. 在**仓根**执行（**不要**加 `--force`、**不要**加 `--tag`，`publishConfig` 已声明 registry 与 tag）：
+   `npm publish --registry https://registry.npmjs.org/`
+   （npm 会为此弹 OTP；本机默认 registry 是只读镜像 `registry.npmmirror.com`，所以这条命令显式钉了 npmjs。）
+3. 回执：**只回 `published`** 并贴回两样 —— 输出末行 `+ dsh-gsd@1.20.1-1.dsh022`，以及 UTC 时间（`date -u +"%Y-%m-%dT%H:%M:%SZ"`）。发布失败则回 `failed` + 完整错误（不要 `npm unpublish`、不要 `--force` 重试）。
+
+**回 `approved` 不算发布**：agent 收到 `approved` 时什么都不做（不读 registry、不判定）——把「还没发」读成「复验变红」会一字不差地触发出 `.dsh023` + deprecate 一条从没发出去的版本。
+
+### 收到 `published` 之后 agent 做的事（D-07 分级的后半）
+
+4. registry 复验（**每条读都带 `--registry https://registry.npmjs.org/`**）：`dist-tags.latest` 等值、该版本 `dist.tarball` 可解析、在新的 `/tmp` home 上用 registry 通道重跑 UAT-01 会话谓词；单次 404/超时不算红，≥5 分钟窗口后仍红才进 D-05（发 `.dsh023` + `npm deprecate`，**不 unpublish**）。
+5. `gh release create 1.20.1-1.dsh022 --target a0529acf57e1ab01d59bd0730af0e7964d680033 --title 1.20.1-1.dsh022 --notes-file <CHANGELOG 条目>`（不加 `-p`、不加 `--verify-tag`），再用 `git ls-remote` 的 `^{}` 解引用核对 tag 指向等于 `PUBLISHED_SHA`。
+6. dshmarket 单文件 PR（逐字节复制 `docs/dshmarket/pfmiles__dsh-gsd.yml`，`cmp` 为证），完成判据＝PR 已开 + 四检通过（D-09，不等合并）。
+7. 以上三段读数写进 `05-UAT-EVIDENCE.md` **判据段 11**（计划写 10）；`05-UAT.md` 补 PUB-01 / PUB-03 两行与三条开放项；**然后**才是 D-08 的 `gh auth refresh --remove-scopes delete_repo`。
+8. 全部完成后把本文件重写为 `05-03-SUMMARY.md`（`status: complete`）并补上 `requirements-completed` 里真正成立的子集。
+
+### 不要做的事
+
+- 不要在本机 `origin/main` 上取权威 sha（它停在 `d3c8e89…`，比远端落后 199 个提交）；权威读法是 `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha`。
+- 不要删除预演分支 `phase-5/publish-tree`，不要改写历史。
+- 不要把 `PUBLISHED_SHA` 说成「字节指纹」——它标识提交（见判据段 9 的订正）。
+
+## Self-Check（第一段 dispatch：Task 1）: PASSED
 
 - 文件存在：`05-03-CHECKPOINT.md` FOUND（**故意不叫 SUMMARY**，理由见文件头）/ `05-UAT-EVIDENCE.md` 判据段 9 FOUND（`grep -n '^## 判据段 9'` 命中）
 - 提交可达：`3287bbd` FOUND（`git merge-base --is-ancestor 3287bbd HEAD` = 真）
@@ -168,4 +224,17 @@ tags: npm-publish, publish-state, dry-run, tag-guard, registry-pin, checkpoint, 
 - dry-run（提交后同树复跑）：exit 0，`Publishing to https://registry.npmjs.org/ with tag latest` 在场
 - 代码树零 diff：对 `9e99cd6` 的两条 `git diff … --stat` 均为空输出
 - 证据册无凭据材料：`grep -c 'sk-'` = 0
-- 未做的动作：无 `git push` / 无 tag / 无 `gh release` / 无 `npm publish`（真跑）——本 dispatch 的 `git status` 与 `git log` 可复核
+- 未做的动作（**仅指第一段 dispatch**）：无 `git push` / 无 tag / 无 `gh release` / 无 `npm publish`（真跑）——本 dispatch 的 `git status` 与 `git log` 可复核
+
+## Self-Check（续执行段 2：Task 2 第 3–6 步）: PASSED
+
+- Step 0 订正提交在**任何推送之前**：`a0529ac` 的父提交是 `eefbf12`，而第一次推送（`phase-5/publish-tree`，08:45:27Z）已包含它 ⇒ 顺序可核
+- 仓库根：`git rev-parse --show-toplevel` = `/Users/yue.weny/frontWorkspace/gsd-on-dsh/dsh-gsd`，与 orchestrator 的 pin 一致（每次提交前都跑过 #4254 守卫）
+- 预演分支在远端：`ls-remote --heads` 有 `refs/heads/phase-5/publish-tree` = `a0529ac…`
+- 预演 run 绿：**43833863547** `completed/success`，`headSha` = `a0529ac…`，四格逐格 `gates: all passed` + `tests 47`
+- main 的 run 绿：**43834802996** `completed/success`，`headSha` = `a0529ac…`，四格同上
+- `PUBLISHED_SHA` 取自 API 而非本地：`gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha` = `a0529acf57e1ab01d59bd0730af0e7964d680033`（本机 `origin/main` = `d3c8e89…`，两者不同即是证据）
+- 未做的动作（续执行段 2）：无 `npm publish` / 无 tag / 无 `gh release` / 无 `npm unpublish` / 无 `--force` / 无 `gh auth refresh` / **无任何 registry 读**
+- `05-03-SUMMARY.md` **仍未创建**（`ls .planning/phases/05-uat-1-0/05-03-SUMMARY.md` → No such file）
+- 文件存在：判据段 10 FOUND（`grep -n '^## 判据段 10' 05-UAT-EVIDENCE.md` 命中）
+- 工作树：提交后 `git status --short` 为空

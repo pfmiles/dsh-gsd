@@ -328,3 +328,63 @@ D-04 的裁决（`1.20.1-1.dsh022` 原样发布）**不因这条订正而改变*
 - `total files: 958` 与 `shasum` 只描述**这一次** dry-run 的 tarball；任何一次后续改动（含 Task 2/3 的补丁）都会改变 shasum，届时必须重跑本段。
 - 不证明 `prepack` 里那条 `--test-concurrency=1` 的**必要性**（并发假红本轮未复现，见判据段 1 的对照）；它证的是 flag 在位且链跑完。
 - 判据段编号：计划写的是「判据段 8」，但 05-02 的偏离 3 已经把判据段 8 用于 UAT-06，故本段落在 9；段名前缀 `## 判据段 ` 与复验序的引用格式不变。
+
+## 判据段 10 — D-04 裁决与「先预演后主推」的两次 CI（计划编号 9；因 05-02 占用 8、dry-run 顺延为 9，本段落在 10）
+
+> 本段覆盖 `05-03-PLAN.md` Task 2 的第 3–6 步：人已裁决 `publish-as-is`，agent 推预演分支 → `workflow_dispatch` 预演 CI → 绿了推 main → 取权威 `PUBLISHED_SHA` → 记录 main 的 run。**本段不发布任何东西**：`npm publish` 仍未执行，它停在 Task 3 的 `checkpoint:human-verify gate="blocking-human"`。
+> **口径**（承本文件判据段 9 的「D-04 的字节口径订正」）：本段能证的是**提交级**背书 —— 同一 commit + 同一构建门 + 同一串行套件 + 该 commit 的 CI 绿。tarball 字节不可复现，**不**作判据；`PUBLISHED_SHA` 标识提交，不标识字节。
+
+### 裁决记录
+
+| 字段 | 值 |
+| ---- | -- |
+| 裁决类型 | `checkpoint:decision`，`gate="blocking"`，`reversibility: one-way` |
+| 摆在人面前的三个选项 | A `publish-as-is` / B `bump-rev` / C `defer` |
+| **人的裁决** | **A `publish-as-is`** —— 按 D-04 把 `1.20.1-1.dsh022` 原样发布，发布前先把这棵树推上远端 main 以取得该提交的 CI 绿 |
+| 裁决回执时间 (UTC) | **2026-11-16T08:40:03Z**（本次续执行 dispatch 的起点；人未附新条件、未要求补证据） |
+| 理由 | D-04 既定裁决不变；代码树对 `9e99cd6` 零 diff；dry-run 已证 `with tag latest` 与 npmjs registry（判据段 9）。**依据口径按判据段 9 订正为提交级** |
+| B / C 的处置 | 未采纳：B（抬 rev）让新号脱保且违反 D-04；C（暂缓）的内容已包含在 A 的执行顺序里 |
+
+### 放行前的五项证据（Task 2 action 1）
+
+| # | 证据 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | 全套串行 `node --test --test-concurrency=1 tests/*.test.mjs`（仓根） | 2026-11-16T08:44:58Z | exit **0**；`ℹ tests **47**` / `ℹ pass **40**` / `ℹ fail **0**` / `ℹ skipped **7**` ⇒ 与 `BUILD.md:16` 的「预期 47」等值（`skipped 7` = 无 live 环境下 7 条 live 用例全 skip） |
+| 2 | `npm publish --dry-run` 的关键行 | 2026-11-16T07:33:58Z（判据段 9 的读数；此后**打包面无任何提交改动**——Step 0 只改 `.planning/`，不在 `files` 白名单内） | `npm notice Publishing to https://registry.npmjs.org/ with tag latest and default access (dry-run)`；prepack 段的 `gates: all passed (A/B/C)` |
+| 3 | `git diff 9e99cd6..HEAD --stat -- index.js cordis.patch.yml locale icon.svg skills gsd-core hooks config scripts` | 2026-11-16T08:45:13Z | **空输出** ⇒ 代码树零 diff（此时 HEAD = `a0529ac`） |
+| 4 | 抢注复查 `curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/dsh-gsd` | 2026-11-16T08:45:13Z | **404**；对照组 `@opengsd/gsd-core` → **200**（证明 404 是「名字空着」，不是「网络不可达」） |
+| 5 | `gh auth status` 的 scope 清单 | 2026-11-16T08:54:48Z | 登录 `pfmiles`（keyring）；`Git operations protocol: ssh`；scopes `delete_repo, gist, read:org, repo, workflow` ⇒ 推送必须走 `--credential.helper='!gh auth git-credential'` 的 HTTPS 形态。**`delete_repo` 的收窄（D-08）仍未执行**，属 Task 3 |
+
+### 两次 CI run（预演 + main）
+
+| run 用途 | databaseId | headSha | event / ref | 创建 → 完成 (UTC) | conclusion |
+| -------- | ---------- | ------- | ----------- | ----------------- | ---------- |
+| 预演 | **43833863547** | `a0529acf57e1ab01d59bd0730af0e7964d680033` | `workflow_dispatch` / `phase-5/publish-tree` | 08:45:40 → 08:46:58 | **success** |
+| main（推送触发） | **43834802996** | `a0529acf57e1ab01d59bd0730af0e7964d680033` | `push` / `main` | 08:52:32 → 08:53:21 | **success** |
+
+两个 run 的四格矩阵逐格 `success`（`0.2.2-rc.1×1.20.1` / `0.2.2-rc.1×1.19.0` / `0.2.1-rc.5×1.20.1` / `0.2.1-rc.5×1.19.0`），且**每一格都打印了** `gates: all passed (A/B/C)` 与 `ℹ tests 47 / ℹ pass 40 / ℹ fail 0 / ℹ skipped 7` —— 预演与 main 跑的是同一套门与同一套串行套件，不是只看了一个绿徽章。
+
+### PUBLISHED_SHA
+
+```
+PUBLISHED_SHA=a0529acf57e1ab01d59bd0730af0e7964d680033
+```
+
+- 取自 `gh api repos/pfmiles/dsh-gsd/commits/main --jq .sha`（2026-11-16T08:52:36Z），**不是** `origin/main`：本机 `origin/main` 跟踪 ref 停在 `d3c8e89…`（SSH 不可用，跟踪 ref 不随 HTTPS 推送更新），拿它当权威值会指到一个 199 个提交之前的位置。
+- 它是**本 phase 后续 tag 的唯一合法目标**：`gh release create 1.20.1-1.dsh022 --target "$PUBLISHED_SHA"`。
+- 它标识的是**提交**，不是字节（见判据段 9 的订正）。
+- `git ls-remote --heads https://github.com/pfmiles/dsh-gsd.git` 的两个 ref 都指向它：`refs/heads/main`、`refs/heads/phase-5/publish-tree`（预演分支保留不删）。
+
+### 推送通道与一次网络层失败（如实记录）
+
+- 命令形态：`git -c credential.helper= -c credential.helper='!gh auth git-credential' push https://github.com/pfmiles/dsh-gsd.git HEAD:refs/heads/<branch>`。`origin` **未被改写**，仍是 `git@github.com:pfmiles/dsh-gsd.git`。
+- 推 main 时先失败三次，全部是**网络层**、不是鉴权或分叉：08:47:36 `fatal: … Error in the HTTP2 framing layer`、08:49:13（HTTP/1.1）`Empty reply from server`、08:50:27（`ls-remote`）`Failed to connect to github.com port 443 after 75016 ms`；同期 `curl https://github.com/` → `000`，而 `api.github.com` → `200`、`registry.npmjs.org/dsh-gsd` → `404`。08:52:19 起 `github.com` 恢复（连续三次 `200`、`remote_ip 57.155.223.240`），08:52:27 重推成功：`9e99cd6..a0529ac  HEAD -> main`。
+- **远端在那三次失败期间没有被写入**：`gh api …/commits/main` 与 `git ls-remote` 事后都读到 `a0529ac`，推送呈现为 fast-forward（`9e99cd6` 是它的祖先，81 + 2 个提交）。
+- 未做（本段全部禁区，逐条可核）：`npm publish`（真发布）、`git tag`、`gh release`、`npm unpublish`、`--force`、`gh auth refresh --remove-scopes delete_repo`、**任何 registry 读**（`npm view` / registry 通道安装）。
+
+### 边界：这证不了什么
+
+- 证的是「该提交在两个 ref 上各有一次四格全绿」，**不证明** registry 上有任何产物：`dsh-gsd` 此刻仍是 404（名字仍空），发布要等人带 OTP 执行。
+- 不证明 `npm publish` 真的会成功（登录态 / 2FA / 名字占用窗口都没在这一段被重新验证——判据段 9 的 `npm warn … requires you to be logged in` 仍是最后一次登录态读数）。
+- 不证明 dshmarket PR、Release 或 tag：全部在 Task 3。
+- 两次 run 的绿**不**构成「发布的字节有 CI 背书」——字节不可复现（判据段 9），这里证的是提交级背书。
