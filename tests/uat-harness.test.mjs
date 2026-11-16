@@ -884,3 +884,176 @@ test('② UAT-04 injection 扫描落日志：fixture → advisory + INJECTION-PA
 
   console.log(`[uat-harness] ② injection: severity=${hso.severity} findings=${findings.length} INJECTION-PATTERN=${injected.length} decision=${parsed.decision ?? '(none)'}`)
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ⑥ 的助手（UAT-05：复刻「只有版本串不同」的第二份 tarball）
+//   `.dsh021` **从未也永不发布**：它由已打好的 tarball 解包后改 `version`、再
+//   `npm pack --ignore-scripts` 本地生成。所以这条判据证的是「换版本号这条命令的
+//   机制」，**不是** registry 上的升级历史（T-5-14 的 repudiation 通道）。
+//   `--ignore-scripts` 是硬要求：不带它的 `npm pack` 会跑 `prepack`（`node build.mjs`
+//   + 整套测试），而整套测试里就有本 harness ⇒ 递归且不可收敛。
+// ═════════════════════════════════════════════════════════════════════════════
+const tarMembers = (tgz) => {
+  const r = spawnSync('tar', ['-tzf', tgz], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  assert.equal(r.status, 0, `tar -tzf failed for ${tgz}: ${out(r)}`)
+  return (r.stdout || '')
+    .split('\n')
+    .filter(Boolean)
+    .sort()
+}
+
+// 解包后的树 → Map<相对路径, Buffer>（逐字节比对用；958 个小文件，代价可忽略）。
+const snapshotDir = (dir, prefix = '', acc = new Map()) => {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name
+    const p = join(dir, e.name)
+    if (e.isDirectory()) snapshotDir(p, rel, acc)
+    else acc.set(rel, readFileSync(p))
+  }
+  return acc
+}
+
+// 两份 tarball 的「只有版本串不同」断言。三段：
+//   (a) 成员清单逐行相同；
+//   (b) 除 `package.json` 外每个成员逐字节相同；
+//   (c) `package.json` 在 JSON 语义上去掉 `version` 后深度相等，且两个 version 恰是
+//       期望的那两个。
+// ⚠ 诚实边界：npm 在 `pack` 时会**重排 package.json 的缩进**（把 `repository: { … }`
+// 展开成多行），所以那一个成员不是逐字节相等。判据是 JSON 语义等值，不是字节等值；
+// `05-UAT-EVIDENCE.md` 判据段 5 逐字记了这条，别把它读成「两个 tarball 字节相同」。
+const assertOnlyVersionDiffers = (firstTgz, secondTgz, work, v1, v2) => {
+  const la = tarMembers(firstTgz)
+  const lb = tarMembers(secondTgz)
+  assert.deepEqual(lb, la, `second tarball is not single-version-different: the member list differs (${la.length} vs ${lb.length} members) — the criterion would be measuring two variables instead of one`)
+
+  const a = join(work, 'cmp-a')
+  const b = join(work, 'cmp-b')
+  mkdirSync(a, { recursive: true })
+  mkdirSync(b, { recursive: true })
+  for (const [tgz, dest] of [[firstTgz, a], [secondTgz, b]]) {
+    const r = spawnSync('tar', ['-xzf', tgz, '-C', dest], { encoding: 'utf8' })
+    assert.equal(r.status, 0, `tar -xzf failed for ${tgz}: ${out(r)}`)
+  }
+  const A = snapshotDir(join(a, 'package'))
+  const B = snapshotDir(join(b, 'package'))
+  assert.deepEqual([...B.keys()].sort(), [...A.keys()].sort(), 'second tarball is not single-version-different: the file set differs even though the member list matched')
+  const differing = [...A.keys()].filter((k) => !A.get(k).equals(B.get(k)))
+  assert.deepEqual(
+    differing,
+    ['package.json'],
+    `second tarball is not single-version-different: ${differing.length} member(s) differ beyond package.json (${differing.slice(0, 5).join(', ')}) — the criterion would be measuring more than the version string`,
+  )
+  const ja = JSON.parse(A.get('package.json').toString('utf8'))
+  const jb = JSON.parse(B.get('package.json').toString('utf8'))
+  assert.equal(ja.version, v1, `source tarball version is ${ja.version}, expected ${v1}`)
+  assert.equal(jb.version, v2, `re-fabricated tarball version is ${jb.version}, expected ${v2}`)
+  delete ja.version
+  delete jb.version
+  assert.equal(
+    JSON.stringify(jb),
+    JSON.stringify(ja),
+    'second tarball is not single-version-different: package.json differs beyond the version string (JSON-semantic compare; npm re-indents the file on pack, so formatting alone is expected and allowed)',
+  )
+}
+
+// 从已打好的字节复刻第二份 tarball（只改 `package.json` 的 `version`）。
+const fabricateTarballWithVersion = (srcTgz, work, fromVersion, toVersion) => {
+  const x = join(work, 'repack')
+  mkdirSync(x, { recursive: true })
+  const r = spawnSync('tar', ['-xzf', srcTgz, '-C', x], { encoding: 'utf8' })
+  assert.equal(r.status, 0, `could not unpack ${srcTgz} for the re-fabrication: ${out(r)}`)
+  const pkgFile = join(x, 'package', 'package.json')
+  const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'))
+  assert.equal(pkg.version, fromVersion, `source tarball version is ${pkg.version}, expected ${fromVersion} — refusing to re-fabricate from an unexpected input`)
+  pkg.version = toVersion
+  writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`)
+  const dest = join(work, 'repacked')
+  mkdirSync(dest, { recursive: true })
+  const pk = spawnSync('npm', ['pack', '--ignore-scripts', '--pack-destination', dest], { cwd: join(x, 'package'), encoding: 'utf8' })
+  assert.equal(pk.status, 0, `npm pack --ignore-scripts of the re-fabricated tree exited ${pk.status}: ${out(pk)}`)
+  const made = readdirSync(dest).filter((f) => f.endsWith('.tgz'))
+  assert.equal(made.length, 1, `expected exactly 1 tarball from npm pack, found ${made.length}: ${made.join(', ')}`)
+  return join(dest, made[0])
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ⑥ UAT-05 升级 / 回滚 —— **同一条命令换版本号**
+//   装 .dsh022 → 装 .dsh021 → 装回 .dsh022。每一步都断言三件事：profile 内
+//   `node_modules/dsh-gsd/package.json` 的 `version` 跟着换、`--dump-config` 的
+//   `gsd` / `gsd-hooks-bridge` 两 row 仍各恰 1 行、最后一步之后会话谓词仍然成立。
+//   两个 tarball 只有版本串不同（见 `assertOnlyVersionDiffers`）⇒ 这条判据证的是
+//   「换版本号这条命令的机制」，不是 registry 上的升级历史。
+// ═════════════════════════════════════════════════════════════════════════════
+test('⑥ UAT-05 升级/回滚：同一条 plugin add 换版本号（.dsh022 ↔ .dsh021）', { timeout: 900000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  const { tgz } = resolveTgz()
+  const home = mkdtempSync(join(UAT_TMP, 'dsh-uat-'))
+  const work = mkdtempSync(join(UAT_TMP, 'uat05-tgz-'))
+  const P = 'probe6'
+  const V1 = '1.20.1-1.dsh022'
+  const V2 = '1.20.1-1.dsh021'
+  let ok = false
+  try {
+    const tgz2 = fabricateTarballWithVersion(tgz, work, V1, V2)
+    assertOnlyVersionDiffers(tgz, tgz2, work, V1, V2)
+
+    createProfile('headless', P, home)
+    const installedVersion = () => JSON.parse(readFileSync(join(home, 'profiles', P, 'node_modules', 'dsh-gsd', 'package.json'), 'utf8')).version
+    const dumpCounts = (label) => {
+      const d = runDsh(['--profile', P, '--dump-config'], { home, timeout: 180000 })
+      assert.equal(d.status, 0, `${label}: --dump-config exited ${d.status} after the version swap: ${out(d)}`)
+      const text = d.stdout || ''
+      return { lines: text.split('\n').filter(Boolean).length, gsd: rowCount(text, 'gsd'), bridge: rowCount(text, 'gsd-hooks-bridge') }
+    }
+    const swapTo = (path, expected, label) => {
+      const add = runDsh(['plugin', '--profile', P, 'add', path], { home })
+      assert.equal(add.status, 0, `${label}: dsh plugin add exited ${add.status}: ${out(add)}`)
+      const got = installedVersion()
+      assert.equal(
+        got,
+        expected,
+        `version did not change after swap (${label}) — the same command pointed at a different tarball must land that tarball's version; got ${got}, want ${expected}`,
+      )
+      const counts = dumpCounts(label)
+      assert.equal(counts.gsd, 1, `rows disappeared after swap (${label}): gsd=${counts.gsd}, gsd-hooks-bridge=${counts.bridge}. The plugin must stay composed across a version-only swap`)
+      assert.equal(counts.bridge, 1, `rows disappeared after swap (${label}): gsd=${counts.gsd}, gsd-hooks-bridge=${counts.bridge}. The hooks bridge must stay composed across a version-only swap`)
+      return counts
+    }
+
+    const installed = swapTo(tgz, V1, 'install .dsh022')
+    const downgraded = swapTo(tgz2, V2, 'swap to .dsh021')
+    const rolledBack = swapTo(tgz, V1, 'roll back to .dsh022')
+
+    // 回滚之后会话谓词仍成立（换版本不能把 profile 弄成「装上了但起不来」）。
+    const before = new Set(sessionFiles(home))
+    const run = runDsh(['--profile', P, '--json', '--approval-policy', 'never', 'reply with the word ROLLBACK'], { home, timeout: 600000 })
+    assert.equal(run.status, 0, `session after the version swap exited ${run.status}: ${out(run)}`)
+    const fresh = sessionFiles(home).filter((f) => !before.has(f))
+    assert.equal(fresh.length, 1, `expected exactly 1 new session record after the rollback session, found ${fresh.length}: ${fresh.join(', ')}`)
+    let predicate
+    try {
+      predicate = assertSessionSucceeded(fresh[0])
+    } catch (e) {
+      assert.fail(`session predicate failed after swap — the version swap left the profile installed but unable to complete a turn: ${e.message}`)
+    }
+
+    console.log(
+      `[uat-harness] ⑥ UAT-05: .dsh022→dump ${installed.lines} lines (gsd=${installed.gsd}, bridge=${installed.bridge}) | ` +
+        `.dsh021→dump ${downgraded.lines} lines (gsd=${downgraded.gsd}, bridge=${downgraded.bridge}) | ` +
+        `rollback .dsh022→dump ${rolledBack.lines} lines (gsd=${rolledBack.gsd}, bridge=${rolledBack.bridge}) | ` +
+        `session turnEnd=${predicate.turnEndCount} assistant=${predicate.assistantCount}`,
+    )
+    ok = true
+  } finally {
+    rmSync(work, { recursive: true, force: true })
+    if (ok) {
+      rmSync(home, { recursive: true, force: true })
+    } else {
+      console.error(`[uat-harness] kept failing home for forensics: ${home}`)
+    }
+  }
+})

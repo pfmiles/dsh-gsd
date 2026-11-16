@@ -8,6 +8,10 @@
 // wrapper 调度 + 注册命令行组件级 .env 拦截/放行契约。
 // 01-REVIEW 修复追加：WR-01 ②档 .build-cache 篡改 → exit 2 负向防线（本文件
 // 末条 test）；WR-02 真实构建前置探测（暖缓存/registry）→ 缺失时 t.skip。
+// 05-02 (D-10-5) 追加 ⑨：`gsd-core/bin/lib/ui-frontend-evidence.cjs` 的 `SKIP_DIRS`
+// 补丁经 canonical 覆盖件 + 拷贝步落地，断言**构建后**的存在性 / 与 canonical 的
+// 字节等值 / `SKIP_DIRS` 成员行里 `.gsd-build-tmp` 恰 1 行（不新增 test(，所以
+// BUILD.md:16 的套件计数不受影响）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -143,6 +147,61 @@ test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 7
   } finally {
     rmSync(probeDir, { recursive: true, force: true })
   }
+
+  // ⑨ D-10-5：`SKIP_DIRS` 的**构建期**补丁（canonical 覆盖件 + build.mjs 拷贝步）。
+  //    断言的是**这一次构建后的产物**，不是工作树里随手看过的那份：`gsd-core/` 被
+  //    `.gitignore:5` 忽略、每次 `node build.mjs` 都被上游 staging 重拷一遍，所以
+  //    「只断工作树里的文件」= 今天绿、发布时破（`prepack` 每次发布都重建）。
+  //    三条：存在、与 canonical 逐字节相同（与 ⑥ 的 wrapper 断言同形——存在性证明
+  //    捕获段活着，字节等值证明拷贝步真的把它盖回去了）、`SKIP_DIRS` 的**成员行**里
+  //    `.gsd-build-tmp` 恰 1 行。
+  const UI_EVIDENCE = join(ROOT, 'gsd-core', 'bin', 'lib', 'ui-frontend-evidence.cjs')
+  const UI_EVIDENCE_CANONICAL = join(ROOT, 'build', 'assets', 'ui-frontend-evidence.cjs')
+  assert.ok(
+    existsSync(UI_EVIDENCE),
+    'gsd-core/bin/lib/ui-frontend-evidence.cjs missing after build — the D-10-5 copy step did not run',
+  )
+  assert.ok(
+    existsSync(UI_EVIDENCE_CANONICAL),
+    'build/assets/ui-frontend-evidence.cjs missing — the canonical override (D-10-5) is not tracked, so the copy step has no source',
+  )
+  const uiBuilt = readFileSync(UI_EVIDENCE, 'utf8')
+  assert.equal(
+    readFileSync(UI_EVIDENCE_CANONICAL, 'utf8'),
+    uiBuilt,
+    'built ui-frontend-evidence.cjs drifted from canonical build/assets/ui-frontend-evidence.cjs — the copy was placed after the ⑥ rewrite pass, or the upstream staging copy runs after it (only the built file is evidence: gsd-core/ is gitignored and rebuilt on every publish)',
+  )
+  // 成员行计数**必须限定在 Set 字面量内**：覆盖件的文件头注释解释了补丁，注释里点名
+  // `.gsd-build-tmp`，所以「按全文计数」会把一句散文判成「成员写重」——那是一条错
+  // 诊断的红。范围 = `const SKIP_DIRS = new Set([` 到其闭合 `]);`；范围内的行先去掉
+  // `//` 到行尾，再只留含该 token 且不含 `*` 或 `/` 的（注释与路径都不可能是成员）。
+  const uiLines = uiBuilt.split('\n')
+  const setOpen = uiLines.findIndex((l) => l.includes('const SKIP_DIRS = new Set(['))
+  assert.notEqual(setOpen, -1, 'SKIP_DIRS declaration not found in the built ui-frontend-evidence.cjs — the D-10-5 anchor moved upstream; re-take the canonical copy')
+  let setClose = -1
+  for (let i = setOpen + 1; i < uiLines.length; i++) {
+    if (/^\];/.test(uiLines[i])) {
+      setClose = i
+      break
+    }
+  }
+  assert.notEqual(setClose, -1, 'SKIP_DIRS literal is not closed in the built ui-frontend-evidence.cjs — the member-line count has nothing to count in')
+  const memberLines = uiLines
+    .slice(setOpen, setClose + 1)
+    .map((l) => l.replace(/\/\/.*$/, ''))
+    .filter((l) => l.includes('.gsd-build-tmp') && !/[*/]/.test(l))
+  assert.equal(
+    memberLines.length,
+    1,
+    `SKIP_DIRS Set has ${memberLines.length} .gsd-build-tmp member line(s) (range L${setOpen + 1}-${setClose + 1}), want exactly 1 ` +
+      `— 0 = the patch is lost or the copy step did not run; >1 = the member is duplicated inside the Set. ` +
+      `Mentions in the header comment are prose and do NOT count (that is why this count is scoped to the Set literal)`,
+  )
+  const wholeFileMentions = uiLines.filter((l) => l.includes('.gsd-build-tmp')).length
+  assert.ok(
+    wholeFileMentions >= 1,
+    '.gsd-build-tmp is absent from the built ui-frontend-evidence.cjs entirely — neither the Set member nor the header comment survived the copy',
+  )
 })
 
 // WR-01 负向：②档 .build-cache 的 tgz 被篡改后，构建必须在解包/执行前被
