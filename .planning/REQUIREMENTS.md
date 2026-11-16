@@ -62,6 +62,16 @@
 - [ ] **UAT-05**: 升级/回滚同命令换版本号后抽测通过
 - [ ] **UAT-06**: 启动开销与技能 watch 的量化记录（启动耗时、目录监视行为）
 
+### Phase 5 收口移交 (D-10)
+
+这五项不是新能力，而是前序 phase 明确移交到 Phase 5、但原始 ROADMAP Requirements 行未点名的实物（04-D-02 / 04-D-08-09 / 04-D-10 / 04-VALIDATION 的 G-4）。Phase 5 的 D-10 裁决把它们全部纳入，并回写进 ROADMAP 的 Requirements 行与 Success Criteria 6–10。列在这里是为了让每一份计划里出现的需求 ID 都能在这份文档里找到出处（否则 plan:post 的 gap-analysis 会持续报它们「Missing from REQUIREMENTS.md」）。
+
+- [ ] **D-10-1**: `--test-concurrency=1` 在 `package.json` 的 `test`、`prepack` 与 `.github/workflows/compat-matrix.yml` 的全量测试步三处齐备，并由计数断言守护（消除并发假红这条发布中止风险）
+- [ ] **D-10-2**: G-4 闭合 —— 真实迁移 `web` 后跑步骤 6 静态段的四条来源 row id 断言（`MISSING:` 判红）与 CB-8b/`COEXIST-REAL` 五条合取（`@jiangzhenguo/dsh-codegraph` 的行级证据升级为运行时证据）
+- [ ] **D-10-3**: 真实 `~/.dsh` 迁移完成（04-D-02 的移交）—— 旧源为零、`web` 与 `headless` 的插件 row 各恰 1、包内 72 技能与两项字节数对齐
+- [ ] **D-10-4**: 旧仓 `pfmiles/install-gsd-dsh` 互链已推送（04-D-08/D-09 的移交）—— 远端 main 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致
+- [ ] **D-10-5**: `gsd-core/bin/lib/ui-frontend-evidence.cjs` 的 `SKIP_DIRS` 含 `.gsd-build-tmp`，且经得住两次重建（补丁落 `build/assets/` + `build.mjs` 的拷贝步，不直接改构建产物）
+
 ### 自举开发 (DEV)
 
 - [ ] **DEV-01**: 本仓库的 GSD 流程由验证实例（3091/gsdtest）驱动，主实例不推进 phase
