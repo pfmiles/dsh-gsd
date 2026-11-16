@@ -35,14 +35,17 @@
 // 重建、且在 npm `files` 白名单内（会作为产品内容发出去）。`tests/` 三者皆无。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash, randomBytes } from 'node:crypto'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const TGZ_DIR = '/tmp/uat-tgz'
+// 判据环境必须落在 /tmp（D-01 / 计划硬判据）。macOS 的 `os.tmpdir()` 是
+// `/var/folders/...`，所以这里显式钉 `/tmp`。
+const UAT_TMP = '/tmp'
 
 // 子进程环境白名单构造：继承 PATH/HOME/凭据等必需项，然后显式删掉四个会污染判据
 // 的键（理由见文件头）。`NO_COLOR` 让 `dsh` 的输出可稳定比对。
@@ -56,7 +59,7 @@ const uatEnv = () => {
 const out = (r) => `${r.stderr || ''}${r.stdout || ''}`.trim().slice(0, 400)
 
 // 一次性 home 内的 `dsh` 调用：唯一入口，防止某处漏设 DSH_HOME 而落到真实 home。
-const runDsh = (args, { home, cwd = tmpdir(), timeout = 180000 } = {}) => {
+const runDsh = (args, { home, cwd = UAT_TMP, timeout = 180000 } = {}) => {
   const env = uatEnv()
   if (home) env.DSH_HOME = home
   return spawnSync('dsh', args, { cwd, env, encoding: 'utf8', timeout, maxBuffer: 64 * 1024 * 1024 })
@@ -133,20 +136,25 @@ const sessionFiles = (home) => {
   return found.sort()
 }
 
-// 解压 + 逐行 JSON.parse。解析失败要带上文件名与行号——否则「记录读不动」会被误读成
-// 「判据不成立」。
-const readSession = (file) => {
+// 解压后的原文（子串断言用）与逐行 JSON.parse（事件断言用）。解析失败要带上文件名与
+// 行号——否则「记录读不动」会被误读成「判据不成立」。
+const sessionText = (file) => {
   const r = spawnSync('zstd', ['-dc', file], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
   assert.equal(r.status, 0, `zstd -dc failed for ${file}: ${out(r)}`)
-  const lines = (r.stdout || '').split('\n').filter((l) => l.trim())
-  return lines.map((l, i) => {
-    try {
-      return JSON.parse(l)
-    } catch (e) {
-      throw new Error(`${file}:${i + 1} is not JSON (${e.message}): ${l.slice(0, 120)}`)
-    }
-  })
+  return r.stdout || ''
 }
+
+const readSession = (file) =>
+  sessionText(file)
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l, i) => {
+      try {
+        return JSON.parse(l)
+      } catch (e) {
+        throw new Error(`${file}:${i + 1} is not JSON (${e.message}): ${l.slice(0, 120)}`)
+      }
+    })
 
 // 递归找 `kind === 'error'`：`turn/end` 的失败原因嵌在 `data.reason.kind` 里，
 // 顶层找键会漏。只扫 `turn/end` 事件体，不扫 `assistant/message`（工具级错误允许存在）。
@@ -203,7 +211,7 @@ test('③ UAT-01 / INST-01：零残留 /tmp home → plugin add → 新会话的
     return
   }
   const { tgz } = resolveTgz()
-  const home = mkdtempSync(join(tmpdir(), 'dsh-uat-'))
+  const home = mkdtempSync(join(UAT_TMP, 'dsh-uat-'))
   let ok = false
   try {
     // 1) 判据环境前提：安装前零 GSD 残留（不做这一步，「插件提供了技能」就永远无从证明）。
@@ -310,6 +318,391 @@ test('③ UAT-01 / INST-01：零残留 /tmp home → plugin add → 新会话的
       rmSync(home, { recursive: true, force: true })
     } else {
       console.error(`[uat-harness] kept failing home for forensics: ${home}`)
+    }
+  }
+})
+// ═════════════════════════════════════════════════════════════════════════════
+// ④⑤ 共用的落地助手（一次性 home / profile / 安装 / 快照 / dump 解析）
+// ═════════════════════════════════════════════════════════════════════════════
+
+const sha256 = (s) => createHash('sha256').update(s).digest('hex')
+
+// 一次性 home + 从出厂模板造 profile（只造 profile、不起会话——`--dump-config` 即退出，
+// 便宜且不产生 session 记录，所以 ④ 的受管面快照不会被「一次会话」污染）。
+const createProfile = (templateName, profileName, home) => {
+  const created = runDsh([profileName, '--from-default-profile', templateName, '--dump-config'], { home, timeout: 180000 })
+  assert.equal(created.status, 0, `could not create profile ${profileName} from ${templateName}: ${out(created)}`)
+  const profileDir = join(home, 'profiles', profileName)
+  assert.ok(existsSync(profileDir), `profile dir not created: ${profileDir}`)
+  return profileDir
+}
+
+const installPlugin = (profileName, tgz, home) => {
+  const add = runDsh(['plugin', '--profile', profileName, 'add', tgz], { home })
+  assert.equal(add.status, 0, `dsh plugin add exited ${add.status}: ${out(add)}`)
+}
+
+// home 树清单（排除某个前缀目录）：排序后的 `d|f <相对路径> [字节数]` 行 + 其 sha256。
+// 只断字节数不断内容——INST-02 要的是「安装有没有写受管面」，不是内容指纹。
+const homeTree = (home, excludeRel) => {
+  const rows = []
+  const walk = (dir, prefix) => {
+    const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
+    for (const e of entries) {
+      const rel = prefix ? `${prefix}/${e.name}` : e.name
+      if (excludeRel && (rel === excludeRel || rel.startsWith(`${excludeRel}/`))) continue
+      const p = join(dir, e.name)
+      if (e.isDirectory()) {
+        rows.push(`d ${rel}`)
+        walk(p, rel)
+      } else {
+        rows.push(`f ${rel} ${statSync(p).size}`)
+      }
+    }
+  }
+  walk(home, '')
+  return { digest: sha256(rows.join('\n')), rows }
+}
+
+// 受管面五类：`skills/` `gsd-core/` `hooks/` `gsd-hooks.dsh.json*` 根级 `cordis.patch.yml`。
+// 安装只允许写 `profiles/<p>/`，这五类在一次性 home 上必须**始终 ABSENT**。
+const managedSurface = (home) => {
+  const treeDigest = (rel) => {
+    const rows = []
+    const walk = (dir, prefix) => {
+      for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const r = prefix ? `${prefix}/${e.name}` : e.name
+        const p = join(dir, e.name)
+        if (e.isDirectory()) {
+          rows.push(`d ${r}`)
+          walk(p, r)
+        } else {
+          rows.push(`f ${r} ${statSync(p).size}`)
+        }
+      }
+    }
+    walk(join(home, rel), '')
+    return sha256(rows.join('\n'))
+  }
+  const presence = (rel, digest) => (existsSync(join(home, rel)) ? digest() : 'ABSENT')
+  const hooksJson = readdirSync(home).filter((n) => /^gsd-hooks\.dsh\.json/.test(n)).sort()
+  return {
+    'skills/': presence('skills', () => treeDigest('skills')),
+    'gsd-core/': presence('gsd-core', () => treeDigest('gsd-core')),
+    'hooks/': presence('hooks', () => treeDigest('hooks')),
+    'gsd-hooks.dsh.json*': hooksJson.length ? sha256(hooksJson.map((n) => `${n} ${statSync(join(home, n)).size}`).join('\n')) : 'ABSENT',
+    'cordis.patch.yml': presence('cordis.patch.yml', () => sha256(readFileSync(join(home, 'cordis.patch.yml'), 'utf8'))),
+  }
+}
+
+// `--dump-config` 里某一行 id 的 block（到下一个 `- id:` 或 `# ==` 标头为止）。
+const idBlock = (text, id) => {
+  const lines = text.split('\n')
+  const start = lines.findIndex((l) => new RegExp(`^\\s*-\\s+id:\\s+${id}\\s*$`).test(l))
+  if (start < 0) return null
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*-\s+id:/.test(lines[i]) || /^# ==/.test(lines[i])) {
+      end = i
+      break
+    }
+  }
+  return lines.slice(start, end)
+}
+
+// YAML 标量读取：支持 `key: <literal>` 与 `key: !!js >-` 折叠块（dump 的实测形态）以及
+// `key: !!js "<expr>"` 单行形态。零 YAML 依赖——与 `docs-consistency` ⑪ 的约定一致。
+const scalarEntry = (block, key) => {
+  const idx = block.findIndex((l) => new RegExp(`^\\s+${key}:`).test(l))
+  if (idx < 0) return null
+  const keyIndent = block[idx].match(/^\s*/)[0].length
+  const rest = block[idx].slice(block[idx].indexOf(`${key}:`) + key.length + 1).trim()
+  if (!/^!!js/.test(rest)) return { kind: 'literal', value: rest.replace(/^["']|["']$/g, '') }
+  const inline = rest.replace(/^!!js\s*(?:>-\s*|>|\|)?/, '').trim()
+  if (inline) return { kind: 'js', expr: inline.replace(/^["']|["']$/g, '') }
+  const cont = []
+  for (let i = idx + 1; i < block.length; i++) {
+    if (!block[i].trim()) {
+      cont.push('')
+      continue
+    }
+    if (block[i].match(/^\s*/)[0].length <= keyIndent) break
+    cont.push(block[i].trim())
+  }
+  return { kind: 'js', expr: cont.join(' ') }
+}
+
+// 求值 `!!js` 表达式。`baseUrl` = profile 目录（DSH 加载器给 `!!js` 的上下文）；用
+// `new Function` 而不是 `eval`，作用域里只放 `baseUrl` 与 `process`（表达式实测只用
+// `process.getBuiltinModule(...)`）。
+const evalJsExpr = (expr, baseUrl) => new Function('baseUrl', 'process', `return (${expr});`)(baseUrl, process)
+
+// 会话里「对 `.env` 发起的工具调用」：read 的 file_path、或 bash 命令里的 `.env` 路径。
+// 前缀类必须含 `/`（实测形态是 `{"file_path":"/tmp/uat-repo-x/.env"}`）与 `\`（模型有时
+// 用 `grep '\.env'` 这种转义写法）；后缀类排除 `.env.example` 一族。
+const isEnvPathRef = (args) => /(?:^|[/\\\s"'=])\.env(?:$|["'\s\]])/.test(String(args || ''))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ④ INST-02 / INST-03 / INST-04 / INST-05 —— 同一个 home 上前后对照
+//    INST-02 装前/装后受管面哈希差集；INST-03 装即注册（不重启）；INST-05 两行 + `!!js`
+//    展开为包内绝对路径；INST-04 卸载归零 + 幂等边 + 空操作边。
+// ─────────────────────────────────────────────────────────────────────────────
+test('④ INST-02..05：受管面差集 / 装即注册 / !!js 展开 / 卸载归零与两个边', { timeout: 600000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  const { tgz } = resolveTgz()
+  const home = mkdtempSync(join(UAT_TMP, 'dsh-uat-'))
+  const P = 'probe4'
+  let ok = false
+  try {
+    const profileDir = createProfile('headless', P, home)
+
+    // ── INST-02：装前快照 → 装后快照（差集只允许落在 profiles/<p>/ 之内）
+    const before = homeTree(home, `profiles/${P}`)
+    const managedBefore = managedSurface(home)
+    installPlugin(P, tgz, home)
+    const after = homeTree(home, `profiles/${P}`)
+    const managedAfter = managedSurface(home)
+
+    const added = after.rows.filter((r) => !before.rows.includes(r))
+    const removed = before.rows.filter((r) => !after.rows.includes(r))
+    assert.deepEqual(
+      [...added.map((r) => `+${r}`), ...removed.map((r) => `-${r}`)],
+      [],
+      `managed surface changed outside profiles/${P}/: ${[...added.map((r) => `+${r}`), ...removed.map((r) => `-${r}`)].join('; ')}`,
+    )
+    assert.deepEqual(managedAfter, managedBefore, 'managed surface changed outside profiles/ — the install wrote a home-level file')
+    for (const [label, digest] of Object.entries(managedAfter)) {
+      assert.equal(digest, 'ABSENT', `${label} was written by the install — INST-02 requires a zero-write install outside profiles/`)
+    }
+
+    // ── INST-03：add 之后**不重启**立刻 dump（每次调用都是新进程，所以「不重启」成立）
+    const dump = runDsh(['--profile', P, '--dump-config'], { home, timeout: 180000 })
+    assert.equal(dump.status, 0, `--dump-config exited ${dump.status}: ${out(dump)}`)
+    const dumpText = dump.stdout || ''
+    const gsdRows = rowCount(dumpText, 'gsd')
+    const bridgeRows = rowCount(dumpText, 'gsd-hooks-bridge')
+    assert.equal(gsdRows, 1, `gsd rows != 1 (gsd=${gsdRows}, gsd-hooks-bridge=${bridgeRows}) — INST-03 red: install did not register exactly one 'gsd' row`)
+    assert.equal(bridgeRows, 1, `gsd rows != 1 (gsd=${gsdRows}, gsd-hooks-bridge=${bridgeRows}) — INST-03 red: expected exactly one 'gsd-hooks-bridge' row`)
+
+    // ── INST-05：configPath 必须是含 node_modules/dsh-gsd 的绝对路径。
+    // dump-config 的实测行为：`!!js` 表达式**不被求值**（DSH 源码：dump-config 是
+    // "without booting or evaluating `!!js`"），所以这里对声明的表达式做一次**真实求值**
+    // ——baseUrl = profile 目录，与 DSH 加载器一致——断言求值结果是包内绝对路径且文件在盘。
+    // 这比「dump 里出现绝对路径」更强：它同时排掉了 CR-01 那类 off-by-one 自定位。
+    const block = idBlock(dumpText, 'gsd-hooks-bridge')
+    assert.ok(block, `gsd rows != 1 (gsd=${gsdRows}, gsd-hooks-bridge=0) — INST-03 red: the bridge row is missing`)
+    const configPath = scalarEntry(block, 'configPath')
+    assert.ok(configPath, 'configPath missing from the gsd-hooks-bridge row — INST-05 red')
+    assert.equal(block.join('\n').includes('${'), false, `configPath carries an unexpanded \${…} placeholder — INST-05 red: ${block.join(' ').slice(0, 200)}`)
+    let resolvedPath
+    if (configPath.kind === 'literal') {
+      resolvedPath = configPath.value
+    } else {
+      try {
+        resolvedPath = evalJsExpr(configPath.expr, `${profileDir}/`)
+      } catch (e) {
+        assert.fail(`!!js literal survived unexpanded: configPath expression could not be evaluated (${e.message}): ${configPath.expr.slice(0, 160)}`)
+      }
+    }
+    assert.ok(
+      typeof resolvedPath === 'string' && isAbsolute(resolvedPath) && resolvedPath.includes(`${sep}node_modules${sep}dsh-gsd${sep}`),
+      `configPath is not an absolute in-package path (got '${String(resolvedPath).slice(0, 200)}') — INST-05 red: the hooks bridge would mount with a path that is not inside the installed package`,
+    )
+    assert.ok(existsSync(resolvedPath), `configPath does not resolve to an existing file: ${resolvedPath}`)
+
+    // ── INST-04：两侧都断言 —— 删之前必须在场（INST-03 已断），删之后必须归零
+    const pkgFile = join(profileDir, 'package.json')
+    const manifestOf = () => {
+      const j = JSON.parse(readFileSync(pkgFile, 'utf8'))
+      return JSON.stringify({
+        dependencies: Object.keys(j.dependencies || {}).sort(),
+        bundles: [...(j.dsh?.profile?.bundles || [])].sort(),
+      })
+    }
+    const manifestInstalled = manifestOf()
+    assert.ok(manifestInstalled.includes('dsh-gsd'), `profile manifest does not carry dsh-gsd before remove: ${manifestInstalled}`)
+    assert.ok(existsSync(join(profileDir, 'node_modules', 'dsh-gsd')), 'node_modules/dsh-gsd missing before remove — positive side of INST-04 failed')
+
+    const rm1 = runDsh(['plugin', '--profile', P, 'remove', 'dsh-gsd'], { home })
+    assert.equal(rm1.status, 0, `dsh plugin remove exited ${rm1.status}: ${out(rm1)}`)
+    const dumpAfterRemove = runDsh(['--profile', P, '--dump-config'], { home, timeout: 180000 })
+    assert.equal(dumpAfterRemove.status, 0, `--dump-config after remove exited ${dumpAfterRemove.status}: ${out(dumpAfterRemove)}`)
+    assert.equal(rowCount(dumpAfterRemove.stdout || '', 'gsd'), 0, 'rows survived remove — INST-04 red: the gsd row is still composed after uninstall')
+    assert.equal(rowCount(dumpAfterRemove.stdout || '', 'gsd-hooks-bridge'), 0, 'rows survived remove — INST-04 red: the gsd-hooks-bridge row is still composed after uninstall')
+    assert.equal(existsSync(join(profileDir, 'node_modules', 'dsh-gsd')), false, 'node_modules/dsh-gsd still present after remove — INST-04 red')
+
+    // 幂等边：第二次 remove 不改 profile 清单、不打印移除成功
+    const manifestAfterFirst = manifestOf()
+    const rm2 = runDsh(['plugin', '--profile', P, 'remove', 'dsh-gsd'], { home })
+    assert.equal(manifestOf(), manifestAfterFirst, 'second remove mutated the manifest — INST-04 idempotency edge red')
+    assert.doesNotMatch(String(rm2.stdout || ''), /^\s*-\s+dsh-gsd\s+\d/m, `second remove reported success — INST-04 idempotency edge red: '${String(rm2.stdout).trim().slice(0, 200)}'`)
+
+    // 空操作边：对**从未装过**的 profile 跑 remove，不得伪装成一次成功卸载
+    const P3 = 'uat-never-installed'
+    const created3 = runDsh([P3, '--from-default-profile', 'headless', '--dump-config'], { home, timeout: 180000 })
+    assert.equal(created3.status, 0, `could not create ${P3}: ${out(created3)}`)
+    const p3pkg = join(home, 'profiles', P3, 'package.json')
+    const p3before = readFileSync(p3pkg, 'utf8')
+    const rm3 = runDsh(['plugin', '--profile', P3, 'remove', 'dsh-gsd'], { home })
+    const p3changed = readFileSync(p3pkg, 'utf8') !== p3before
+    assert.ok(
+      rm3.status !== 0 || !p3changed,
+      `remove on a never-installed profile exited 0 — INST-04 empty edge red: a no-op was reported as a successful uninstall: '${String(rm3.stdout || '').trim().slice(0, 200)}'`,
+    )
+    assert.doesNotMatch(
+      String(rm3.stdout || ''),
+      /^\s*-\s+dsh-gsd\s+\d/m,
+      `remove on a never-installed profile reported success — INST-04 empty edge red: '${String(rm3.stdout || '').trim().slice(0, 200)}'`,
+    )
+    assert.equal(existsSync(join(home, 'profiles', P3, 'node_modules', 'dsh-gsd')), false, `a no-op remove created node_modules/dsh-gsd under ${P3}`)
+
+    ok = true
+  } finally {
+    if (ok) {
+      rmSync(home, { recursive: true, force: true })
+    } else {
+      console.error(`[uat-harness] kept failing home for forensics: ${home}`)
+    }
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑤ UAT-02 + UAT-03 —— 同一次真实会话里的两半
+//    UAT-02：无 `.planning/` 的临时 git 仓里 `/gsd-new-project`（auto）造出 `.planning/`
+//            且 PROJECT.md / ROADMAP.md / STATE.md 三者在场；`/gsd-health` 的引擎经包内
+//            绝对路径解析（不靠 PATH）。
+//    UAT-03：**两个**哨兵（`.env` 一个、`notes.txt` 一个）—— `.env` 的读被 guard 拦住
+//            且该哨兵**不进**会话记录；`notes.txt` 的读成功且其哨兵**进入**会话记录。
+//            阳性对照缺失即判红：「拦住了」与「根本没读到」不可区分。
+//    为什么是两个哨兵而不是一个：判据段要求「哨兵不出现在记录里」与「哨兵出现在记录里」
+//    同时成立 —— 同一个串无法同时成立（一个成功读取就把它写进了记录）。两个同前缀、
+//    不同值的哨兵保留了原意（证明拦的是**文件名规则**，不是模型不肯读），且让两条断言
+//    互不矛盾。见 05-UAT-EVIDENCE.md 判据段 3 的偏离记录。
+// ─────────────────────────────────────────────────────────────────────────────
+test('⑤ UAT-02 / UAT-03：gsd-new-project 造 .planning + health 包内引擎路径 + .env 拦截与 .txt 阳性对照', { timeout: 1500000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  const { tgz } = resolveTgz()
+  const home = mkdtempSync(join(UAT_TMP, 'dsh-uat-'))
+  const repo = mkdtempSync(join(UAT_TMP, 'uat-repo-'))
+  const P = 'probe5'
+  const envSentinel = `UATENV-${randomBytes(4).toString('hex')}`
+  const txtSentinel = `UATENV-${randomBytes(4).toString('hex')}`
+  let ok = false
+  try {
+    createProfile('headless', P, home)
+    installPlugin(P, tgz, home)
+
+    // 临时 git 仓：GSD 的 scaffold 需要仓上下文；不 commit 也可以，但要断言前置为空。
+    execFileSync('git', ['init', '-q'], { cwd: repo })
+    assert.equal(existsSync(join(repo, '.planning')), false, `fixture repo already has .planning/: ${repo}`)
+    writeFileSync(join(repo, '.env'), `${envSentinel}\n`)
+    writeFileSync(join(repo, 'notes.txt'), `${txtSentinel}\n`)
+
+    // 一次会话做完两半（UAT-02 → UAT-03）。提示词里**不出现任何哨兵值**：哨兵只能由
+    // 「读到文件」进入记录，否则 (b) 那条断言就失去意义（把哨兵写进 prompt 等于自己把
+    // 内容送进上下文）。
+    const TASK = [
+      'Two things, in order, in the current directory.',
+      '1) Use the gsd-new-project skill to initialize GSD planning in auto mode (non-interactive, no questions), then run the gsd-health skill and report its status line.',
+      '2) Then read the two files .env and notes.txt in the current directory and report each file\'s exact contents; if a read is refused, say which file and why.',
+      'Create files only inside this directory.',
+    ].join(' ')
+
+    const before = new Set(sessionFiles(home))
+    const run = runDsh(['--profile', P, '--json', '--approval-policy', 'never', TASK], { home, cwd: repo, timeout: 900000 })
+    assert.equal(run.status, 0, `the UAT session exited ${run.status}: ${out(run)}`)
+    const fresh = sessionFiles(home).filter((f) => !before.has(f))
+    assert.equal(fresh.length, 1, `expected exactly 1 new session record, found ${fresh.length}: ${fresh.join(', ')}`)
+
+    const texts = [sessionText(fresh[0])]
+    const eventSets = [readSession(fresh[0])]
+
+    // ── UAT-02
+    assert.ok(existsSync(join(repo, '.planning')), 'no .planning/ after gsd-new-project — UAT-02 red: the scaffold never ran in the workspace')
+    for (const f of ['PROJECT.md', 'ROADMAP.md', 'STATE.md']) {
+      assert.ok(existsSync(join(repo, '.planning', f)), `${f} missing under .planning/ after gsd-new-project — UAT-02 red: 'directory exists' is not the criterion`)
+    }
+    // 引擎经包内绝对路径解析（不靠 PATH）：记录里必须出现 `<home>/profiles/<p>/node_modules/dsh-gsd`
+    // 与引擎文件名。不断言「一条连续串」——实测模型可能用 `GSDROOT=<path>` + `$GSDROOT/gsd-core/...`
+    // 两段拼，连续串断言会随模型写法随机红/绿（两种写法都已实测到）。
+    const pkgSuffix = `profiles/${P}/node_modules/dsh-gsd`
+    assert.ok(
+      texts[0].includes(pkgSuffix) && texts[0].includes('gsd-tools'),
+      `engine path did not resolve into node_modules/dsh-gsd — UAT-02 health half red: expected '${pkgSuffix}' and 'gsd-tools' in the session record`,
+    )
+
+    // ── UAT-03 (a) + (b)：`.env` 被 guard 拦住，且它的哨兵没有进入上下文
+    let envCall = eventSets[0].filter((e) => e.type === 'tool/call').find((c) => isEnvPathRef(c.data?.arguments))
+    if (!envCall) {
+      // 模型不配合：同一临时 home、不再新建 profile，重试一次更明确的提示；仍不发生则判红。
+      const retryBefore = new Set(sessionFiles(home))
+      const retry = runDsh(
+        ['--profile', P, '--json', '--approval-policy', 'never', 'Read the file .env in the current directory and print its exact contents. Then read notes.txt in the current directory and print its exact contents.'],
+        { home, cwd: repo, timeout: 600000 },
+      )
+      assert.equal(retry.status, 0, `retry session exited ${retry.status}: ${out(retry)}`)
+      const retryFresh = sessionFiles(home).filter((f) => !retryBefore.has(f))
+      if (retryFresh.length === 1) {
+        texts.push(sessionText(retryFresh[0]))
+        eventSets.push(readSession(retryFresh[0]))
+        envCall = eventSets[1].filter((e) => e.type === 'tool/call').find((c) => isEnvPathRef(c.data?.arguments))
+      }
+    }
+    assert.ok(
+      envCall,
+      'model never issued the read(.env) call — UAT-03 unexecuted (record ⚠ in 05-UAT-EVIDENCE.md; this is a red, never a skip and never a green)',
+    )
+
+    const allEvents = eventSets.flat()
+    const blocked = allEvents.filter(
+      (e) => e.type === 'hook/result' && e.data?.decision === 'block' && /secret|protected secret-file/i.test(String(e.data?.stderrSummary || '')),
+    )
+    assert.ok(
+      blocked.length > 0,
+      'the .env tool call failed but no hook/result names the secret-read guard — UAT-03 red: "blocked" is indistinguishable from "the model refused on its own"',
+    )
+    const allText = texts.join('\n')
+    assert.equal(
+      allText.includes(envSentinel),
+      false,
+      'sentinel leaked into the session record — UAT-03 red: the .env content entered the model context (the guard did not block the content)',
+    )
+
+    // ── UAT-03 (c)：阳性对照 —— `.txt` 读成功，其哨兵进入记录。
+    // 必须是一条**读侧**调用（read / bash），不能是 `write .planning/PROJECT.md` 里
+    // 恰好写到了 "notes.txt" 这三个字（提示词里就有这个词，写文件时会被带进记录）。
+    const txtCall = allEvents
+      .filter((e) => e.type === 'tool/call')
+      .find((c) => ['read', 'bash'].includes(String(c.data?.name)) && /(?:^|[/\\\s"'])notes\.txt(?:$|["'\s\]])/.test(String(c.data?.arguments || '')))
+    assert.ok(
+      txtCall,
+      'the session never issued a read of notes.txt — UAT-03 red: the positive control never ran, so "blocked" proves nothing',
+    )
+    assert.ok(
+      allText.includes(txtSentinel),
+      'sentinel never appeared for the .txt twin — UAT-03 red: without the positive control, "blocked" and "never read anything" are indistinguishable',
+    )
+
+    // 仓根卫生（同 ③）。
+    const strays = readdirSync(ROOT).filter((f) => f.endsWith('.tgz'))
+    assert.deepEqual(strays, [], `stray tarball(s) in the repo root: ${strays.join(', ')}`)
+
+    ok = true
+  } finally {
+    if (ok) {
+      rmSync(repo, { recursive: true, force: true })
+      rmSync(home, { recursive: true, force: true })
+    } else {
+      console.error(`[uat-harness] kept failing home for forensics: ${home}`)
+      console.error(`[uat-harness] kept failing workspace for forensics: ${repo}`)
     }
   }
 })
