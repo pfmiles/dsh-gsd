@@ -33,6 +33,18 @@
 | 手动旁证：同一 tarball 装进 `/tmp/dsh-uat-probe-nUxv` 的 `probe` profile 后读回 | 2026-11-16T06:15:34Z | `plugin add` 输出末两行 `+ dsh-gsd 1.20.1-1.dsh022` / `Done in 471ms using pnpm v12.11.2`；`profiles/probe/cordis.patch.yml` 去注释后正文 = `[]`；`profiles/probe/node_modules/dsh-gsd` 在盘；home 级 `skills/`、`gsd-core/`、`gsd-hooks.dsh.json*` 三者皆 `No such file or directory`；profile patch 里 `GSD-DSH-bridge` 命中 0；`dsh --profile probe --dump-config` = exit 0 / **403 行** / stderr **0 B**，`- id: gsd` 在 L393、`- id: gsd-hooks-bridge` 在 L395（各恰 1 行） |
 | ⚠ **负向观测**：空入参边 —— `dsh plugin --profile uat-absent add <tgz>`（profile 名此前不存在，全新 home `/tmp/dsh-uat-abs-f6LF`） | 2026-11-16T06:15:03Z | **rc=0**，stderr 首行 `dsh: initialized profile uat-absent at /tmp/dsh-uat-abs-f6LF/profiles/uat-absent`，`profiles/uat-absent` 被创建。**这与 `05-RESEARCH.md:91`「`dsh plugin --profile <absent-name> add` fails — it does not create the profile」直接相反**；`dsh plugin --help` 原文亦为「the profile whose plugins are managed (initialized on first use)」。⇒ 「profile 名不存在时非零退出」这条判据在本 DSH 版本上不成立；harness 改为断言真正的不变量「不存在第三种状态」：要么干净失败且不留下 profile，要么明确宣称初始化并**真的**装出 `gsd` row。**该观测不得充当通过形态，也不得被读成「单命令安装失败」** |
 
+### ⑮ 变异实验（一次性证据，不写进套件）
+
+> 目的：证明 `docs-consistency` 的 ⑮ 不是恒绿。做法 = 把 `package.json` 复制到 `/tmp/uat-mut15/`，从 `prepack` 删掉 `--test-concurrency=1`，再用**与 ⑮ 同形**的谓词各跑一遍。**若 ⑮ 在删掉 flag 的副本上仍绿，则 ⑮ 无效。**
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| `node /tmp/uat-mut15/predicate-15.mjs ./package.json`（真树） | 2026-11-16T06:20:03Z | `PREDICATE: PASS (all three sites carry the flag)`；rc=0 |
+| 把 `package.json` 复制到 `/tmp/uat-mut15/` 并删掉 `prepack` 里的 flag → `node /tmp/uat-mut15/predicate-15.mjs /tmp/uat-mut15/package.json` | 2026-11-16T06:20:03Z | 变异后 `prepack` = `node build.mjs && node --test tests/*.test.mjs`；`PREDICATE: FAIL — package.json scripts.prepack 缺 --test-concurrency=1 ⇒ \`npm publish\` 的 prepack 阶段会与 build-smoke 的重建并发，假红直接中止发布（人手输完 OTP 之后）`；rc=1。⇒ ⑮ 有牙 |
+| `grep -c -- '--test-concurrency=1' package.json .github/workflows/compat-matrix.yml` | 2026-11-16T06:20:03Z | `package.json:2` / `.github/workflows/compat-matrix.yml:1` ⇒ 合计**恰 3**（`>= 3` 不算通过：多出来的一处意味着有人新增了第四处而没有同步 ⑮ 的计数口径） |
+| 串行纪律对照：`node --test tests/*.test.mjs`（**无** flag，改动前的形态） | 2026-11-16T06:19:41Z | `ℹ tests 40` / `ℹ pass 39` / `ℹ fail 0` / `ℹ skipped 1`，6.8 s；`gate C: no SKILL.md` 命中 **0** —— **并发假红本轮未复现** |
+| 串行纪律对照：`node --test --test-concurrency=1 tests/*.test.mjs`（带 flag，改动后的形态） | 2026-11-16T06:19:48Z | `ℹ tests 40` / `ℹ pass 39` / `ℹ fail 0` / `ℹ skipped 1`，7.3 s。两次读数同值 ⇒ 本轮**未复现**假红；`05-RESEARCH.md:731` 亦记「No — deliberately not」。**不为凑一条红反复重试**（复现会弄脏构建树）——flag 依机制与「prepack 假红会中止发布」这条阻塞风险立论，不依本轮是否撞见 |
+
 ### 边界：这证不了什么
 
 - 一次成功的会话**不证明**技能 watch 行为（一次性会话在启动时重读技能，watch 只存在于长生命周期进程里），也不证明升级 / 回滚（UAT-05，另一计划）。

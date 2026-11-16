@@ -53,4 +53,4 @@ jobs:
         run: GSD_VERSION=${{ matrix.gsd }} node build.mjs
       - name: 完整测试（含真实构建 smoke）
         if: ${{ (!inputs.dsh || inputs.dsh == matrix.dsh) && (!inputs.gsd || inputs.gsd == matrix.gsd) }}
-        run: node --test tests/*.test.mjs
+        run: node --test --test-concurrency=1 tests/*.test.mjs
