@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: 端到端 UAT 与 1.0 收官
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 5 planned (4 plans), ready to execute
-last_updated: "2026-11-16T06:05:14.031Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-11-16T06:45:31.181Z"
 last_activity: 2026-11-16
-last_activity_desc: Phase 05 execution started
-state_head: 8bb033a28f59bab8c696ee4607a95c1ae5239758
+last_activity_desc: Phase 05 plan 01 complete
+state_head: af6e703f3d35af8cfc593cbcad6fad1d8e469f58
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 15
+  percent: 83
 ---
 
 # STATE: dsh-gsd
@@ -22,13 +22,13 @@ progress:
 ## Current Position
 
 Phase: 05 (端到端 UAT 与 1.0 收官) — EXECUTING
-Plan: 1 of 4
-Current Plan: 1
+Plan: 2 of 4
+Current Plan: 2
 Total Plans in Phase: 4
-Status: Executing Phase 05
-Last activity: 2026-11-16 — Phase 05 execution started
+Status: Ready to execute
+Last activity: 2026-11-16 — Phase 05 plan 01 complete (05-01-SUMMARY.md)
 
-Progress: [████████░░] 14/18 plans ([████████░░] 78%) — 4/5 phases (80%)
+Progress: [████████░░] 15/18 plans ([████████░░] 83%) — 4/5 phases (80%)
 
 ## Current Focus
 
@@ -94,6 +94,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 04 P03 | 10 min | 3 tasks | 4 files |
 | Phase 04 P04 | 5 min | 2 tasks | 2 files |
 | Phase 04 P05 | 13min | 3 tasks | 5 files |
+| Phase 05 P01 | 37 min | 3 tasks | 6 files |
 
 ## Decisions
 
@@ -150,9 +151,14 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 04]: 04-05 GAP-1 走路线①：步骤 1 的 MIG-GATE 块补卸载前面 1 探针（skills 基线 + undecided profile），块退出码 = 裁决（0/1/2）；MIG_DECIDED_PROFILES 是逐 profile 记录，命中集必须完整覆盖，机器级 DIRTY 无豁免 — 路线②把 D-03 的第二触发条件交回人脑，而缺的恰是能提前中止无条件 rm -rf 的信息；演练场 skills 必然非空，所以判据落在 profile 是否仍只靠 home 级技能
 - [Phase 04]: 04-05 GAP-2：步骤 6 拆静态 / COEXIST-DRILL / COEXIST-REAL 三段；真实迁移形态零安装、判 listed ⇔ labeled（期望集来自 profile 自己的 dsh.profile.bundles），增量口径统一为「本次新装 bundle 数」（演练 +3 / 步骤 5 +1），真实迁移不比较增量 — 增量恒等于新装 bundle 数，真实迁移新装数为 0 ⇒ H1>H0 在健康 home 上必假，反向还会以无关理由误绿（DRILL-3 的 27 = 24 + 3）
 - [Phase 04]: 04-05 块首契约改写：带标记块 = 标记行 → 紧接 export DSH_HOME= 与回显；无标记块首行即 export；由门逐块断言（三类标记 # MIG-GATE / # COEXIST-DRILL / # COEXIST-REAL） — 旧句「每个可粘贴块的第一行都是 export」在有标记块之后为假，保留它会让文档自相矛盾
+- [Phase 05]: INST-01 空入参边按实测改写（Rule 1）：`dsh plugin --profile <absent> add` 在 dsh 0.2.2-rc.1 上 exit 0 并初始化 profile（`dsh plugin --help` 原文 "initialized on first use"），与 05-RESEARCH.md:91 相反；判据改为「不存在第三种状态」——要么干净失败且不留 profile，要么明确宣称初始化并真的装出 gsd row。
+- [Phase 05]: INST-05 判据改为对声明的 `!!js` 表达式求值（Rule 1）：`--dump-config` 明确不 evaluate `!!js`（本机实测 dump 里 21 处 `!!js` 原样保留），故按加载器语义以 baseUrl=profile 目录求值，断言结果是含 node_modules/dsh-gsd 的绝对路径且文件在盘。
+- [Phase 05]: UAT-03 用两个同前缀、不同值的哨兵（Rule 1）：一个哨兵无法同时满足「不出现在记录里」（.env 未进上下文）与「出现在记录里」（.txt 读成功），两条断言互斥；两哨兵保留原意且互不矛盾。
+- [Phase 05]: 引擎路径断言 = 「包内路径段 ∧ 引擎名」（Rule 1）：「node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs」连续串是否出现取决于模型命令写法（实测一次 15 次、一次 0 次，后者用 GSDROOT 变量），连续串断言会随机红绿。
+- [Phase 05]: 判据环境显式钉 /tmp（Rule 3）：macOS 的 os.tmpdir() 是 /var/folders/…，与 D-01/计划硬判据要求的 /tmp/dsh-uat-* 不符，故 UAT_TMP=/tmp 显式传入 mkdtemp。
 
 ## Session
 
-**Last session:** 2026-11-15T17:26:23.709Z
-**Stopped at:** Phase 5 context gathered
-**Resume file:** .planning/phases/05-uat-1-0/05-CONTEXT.md
+**Last session:** 2026-11-16T06:43:49.643Z
+**Stopped at:** Completed 05-01-PLAN.md
+**Resume file:** None
