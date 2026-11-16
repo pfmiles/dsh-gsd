@@ -190,3 +190,73 @@ $ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/ua
 - 断言证明的是**这一次构建的产物**与 canonical 逐字节相同且成员行恰 1。它**不证明**上游 `@opengsd/gsd-core` 在下个版本里仍然缺 `.gsd-build-tmp`（它会一直缺，因为我们覆盖整份文件）——也正因为整文件覆盖会**钉住上游内容**，上游换版本时必须重新取一次 canonical 覆盖件并复核文件头的版本串。
 - 不证明 UI 证据采集在真实项目上的行为（`MAX_WALK_ENTRIES` 与 `SKIP_DIRS` 的消费点在 `:181`）；本判据只钉「本仓的构建 scratch 目录不再被当作源码走」。
 - `whole-file=4` **不是**判据（文件头注释点名了该 token），只是给读者的交叉核对；等值判据只有 Set 成员行那一条。
+
+## 判据段 7 — INST-06（回归）
+
+> INST-06 是**回归**而不是新判据：元数据合规（`locale/*.json` 与 `icon.svg`、`files` 九项白名单、README/BUILD 的元数据一致性）早已由 `tests/pack-contents.test.mjs` 与 `tests/docs-consistency.test.mjs` 覆盖。本段记的是**这一次运行的实数与 UTC 时间**，不是一句「已通过」。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| `node --test --test-concurrency=1 tests/pack-contents.test.mjs tests/docs-consistency.test.mjs` | 2026-11-16T07:16:30Z | exit **0**；`ℹ tests **20**` / `ℹ pass **20**` / `ℹ fail **0**` / `ℹ skipped **0**`（`pack-contents` 4 + `docs-consistency` 16） |
+| 同一次跑里 `docs-consistency` 的 ⑯（本计划新增） | 同上 | 绿：`BUILD.md:16` 的「预期 47」与「47/47」两处形态各恰 1 处且互相一致，并等于 `tests/*.test.mjs` 的 `test(` 总数 **47**（`build-smoke=2 / compat-matrix=8 / docs-consistency=16 / pack-contents=4 / rewrite-map=7 / uat-harness=7 / version=3`） |
+| 全量套件（同一棵树，串行；含真实构建 smoke） | 2026-11-16T07:16:30Z → 07:16:38Z | exit **0**；`ℹ tests **47**` / `ℹ pass **40**` / `ℹ fail **0**` / `ℹ skipped **7**` ⇒ **47 == `BUILD.md:16`**；`skipped 7` 是无 live 环境下 7 条 live 用例全 skip 的正确读数（40 + 7 = 47） |
+
+### 这 20 条里 INST-06 自己的那几条
+
+- `pack-contents.test.mjs`：`ALLOWED_TOP_LEVEL` 与 `files` 九项白名单（`index.js` / `cordis.patch.yml` / `locale` / `icon.svg` / `skills` / `gsd-core` / `hooks` / `config` / `scripts`）、`locale/*.json` 的键集与 `icon.svg` 存在性。
+- `docs-consistency.test.mjs`：⑥ 的 published-state 哨兵、⑬ 的六个元数据键全等守卫（`repository`/`homepage`/`bugs`/`keywords`/`author`/`publishConfig`）、⑧ CHANGELOG 首条目与 package.json.version 等值、⑪⑫ dshmarket 条目与裸名 install 串的逐字一致。
+
+### 边界：这证不了什么
+
+- 它是回归：证明这些静态断言**今天仍绿**，不证明发布面的字节（真 tarball 的内容由 `npm pack --dry-run` 与 03 的 pack-contents 判据覆盖）。
+- ⑯ 证明「`BUILD.md:16` 与套件计数一致」，不证明「47 这个数以后不会变」——它只把「静默变旧」变成一条红。
+- 全套 `pass 40` 是在**无 live 环境**下取得的：7 条 live 用例 skip，所以这 40 条不含任何真实 `dsh` 会话。live 的读数在判据段 4/5/8。
+
+## 判据段 8 — UAT-06（三点启动开销 + 技能目录的启动读取）
+
+> 用例 ⑦。**本段只认这一次 live 跑（2026-11-16T07:16:23Z 完成）：**
+>
+> ```
+> $ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/uat-harness.test.mjs
+> ℹ tests 7 / ℹ pass 7 / ℹ fail 0 / ℹ skipped 0
+> ```
+>
+> 测量点 = **`turn/start.time − session.createdAt`**（两个值都由 DSH 以毫秒写进 `session.v4.jsonl.zstd`）。它不含模型往返、不含 Node 进程启动，剩下的正好是 profile 合成 + bundle mount + 首轮准备——插件成本就落在那里。setup 是**成对**的：同一个 `DSH_HOME`、同一个 `--from-default-profile headless` 模板造 `base`（无插件）与 `p5`（有插件），交替各跑 3 轮，只差 `plugin add` 一个变量。
+
+| 轮次 | profile | 墙钟 (ms) | `turn/start − createdAt` (ms) | 会话谓词 |
+|---|---|---|---|---|
+| 1 | `base`（无插件） | 2 673 | **6** | ✔ |
+| 1 | `p5`（有插件） | 3 287 | **279** | ✔ |
+| 2 | `base` | 2 560 | **10** | ✔ |
+| 2 | `p5` | 3 357 | **268** | ✔ |
+| 3 | `base` | 2 600 | **9** | ✔ |
+| 3 | `p5` | 3 834 | **363** | ✔ |
+
+**点 ①基线启动** = median **9 ms**（6 / 10 / 9）。
+**点 ②带插件启动** = median **279 ms**（279 / 268 / 363）。
+**点 ③插件段** ≈ **270 ms**（279 − 9）。
+
+> **墙钟不是开销数字。** 上表把它并排列出来，只作反例：base 2 560–2 673 ms、p5 3 287–3 834 ms，逐轮漂移以百毫秒到秒计，而它由 LLM 往返主导。用墙钟做「插件加了多少开销」的结论等于在量模型延迟。RESEARCH §Q5 的基线（10 / 340 / ≈330 ms）与本轮同量级但不同值——**重跑值可以不同，口径必须相同**。
+>
+> 口径与局限：`n=3`、单机、暖页缓存；差值是中位数之差，不是每轮配对差的中位数。断言只要求「6 轮都满足会话谓词、6 个差值都是正整数、median(p5) > median(base)」——不钉具体毫秒数（钉了就会在换机器时假红）。
+
+### 技能目录的「启动读取」（**不是** watch）
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| 把 `profiles/p5/node_modules/dsh-gsd/skills/gsd-help/SKILL.md` 的 **front-matter `description`** 换成含唯一 token 的描述，再起一次**新进程**的一次性会话 | 2026-11-16T07:16:23Z | 新会话记录里该 token 命中 **2** 次 ⇒ 新进程启动时读到了新描述 |
+| 为什么必须改 front-matter 而不是正文 | — | 技能的**正文不进模型上下文**，只有 `name` + `description` 进；RESEARCH §Q5 用正文 marker 得到 0 命中，就是这个原因（那一次不是「没重读」，是「改错了地方」） |
+
+**它测的是「新进程启动时读到新描述」，不是热重载。** 一次性会话每次都是新进程，所以对 harness 而言「watch 延迟」结构上不适用。
+
+### watch 的处置：`not measured`（T-5-15）
+
+- **为什么测不了**：watcher 的行为只在**长驻**进程（`web` profile）里可观察；本 harness 的每一次会话都是新进程，启动时重读技能目录。数 fsevents 需要 root（`fs_usage`），`lsof` 看不见 fsevents。两者都被排除了。
+- **因此**：`05-UAT.md` 的 `技能 watch` 行结论是 `not measured` 并带这条结构性理由；`README.md` 若要声称 watch 行为，只能声称「未测」。**没有 method 2 的实测就不得写数字**——编一个数字比不写更糟。
+- 两条 no-sudo 方法（供后续真正去测的人）在 `05-RESEARCH.md` §Q5：session-record proxy（启动时读取，即本段已做的那件事）与 long-lived process proxy（在非 3091 端口的 scratch `web` profile 里改 `description`，看新会话何时可见）。
+
+### 边界：这证不了什么
+
+- 三点数字**不证明**任何 UX 断言：270 ms 是否「可接受」是人的判断，不是本段的判据。
+- 不证明 watch；也不证明「技能目录不会被缓存」——只证明**这一次新进程**读到了新描述。
+- 不证明 72 个技能全部可被模型看见/调用（那需要逐个技能的可观察调用，属另一条口径；本段只动了一个 skill 的 `description`）。

@@ -1,14 +1,38 @@
 # 05-UAT.md — Phase 05 端到端 UAT：判据 ↔ 证据 ↔ 结论
 
-> **判据对象**：`tests/uat-harness.test.mjs` 的 7 个用例（① ② ③ ④ ⑤ ⑥ ⑦）。
-> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–7；本表每一行都能在证据册里对着逐字输出复核。
+> **判据对象**：`tests/uat-harness.test.mjs` 的 7 个用例（① ② ③ ④ ⑤ ⑥ ⑦）+ 回归面（`tests/pack-contents.test.mjs` / `tests/docs-consistency.test.mjs`）。
+> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–8；本表每一行都能在证据册里对着逐字输出复核。
 > **判据环境**：一次性 `DSH_HOME`（`mkdtemp('/tmp/dsh-uat-')`），**不是**本机 `~/.dsh`（D-01：真实 home 有 72 个旧 `gsd-*` 技能、`web`/`headless` 的 patch 里各有 2 行 `GSD-DSH-bridge`，在它上面任何「技能可见 / hook 生效」都会由旧源满足而静默失效）。
 > **结论列**：只取 `passed` / `failed` / `⚠ 未执行` / `open item` 四种值；唯一例外是 UAT-06 的 `技能 watch` 行，按 T-5-15 取 `not measured`（结构性不可测，理由写在该行备注里——编一个数字比不写更糟）。
 > **时间**：一律 UTC。
 
 | 需求 | 判据 | 证据（判据段 + 行） | 结论 | 备注 |
 |---|---|---|---|---|
+| UAT-01 | 全新 `DSH_HOME` 完成单命令安装后**真实会话**的判据成立：会话记录里 `assistant/message` 在场且任何 `turn/end` 递归无 `kind:error`；安装不改写 profile patch、无禁用条目 | 判据段 1 的「`plugin add` 落盘」/「第二次 one-shot 新增恰 1 个 session」/「会话判据」三行 + 复验序 1–9；用例 ③ | passed | 判据不是「session 目录存在」——失败轮同样会建目录（T-5-01）。本计划的 live 跑重跑了 ③，见判据段 7 的跑次表 |
+| UAT-02 | 无 `.planning/` 的临时 git 仓里 `gsd-new-project`（auto）造出 `.planning/{PROJECT,ROADMAP,STATE}.md`；`gsd-health` 的引擎经**包内绝对路径**解析 | 判据段 3 的「`.planning/` 产出 5 个文件」行与「引擎经包内路径」行；用例 ⑤ | passed | 断言的是「包内路径段 ∧ 引擎名」，不是一条连续串——连续串是否出现取决于模型的命令写法（实测一次 15 次、一次 0 次） |
+| UAT-03 | 真实会话里读 `.env` 被 secret-read guard 拦住，且其哨兵**不进**会话记录；`notes.txt` 的读成功且其哨兵**进入**记录（阳性对照） | 判据段 3 的「`.env` 的读」/「两个哨兵的泄漏判定」两行；用例 ⑤ | passed | 阳性对照缺失即判红：「拦住了」与「根本没读到」不可区分。两个同前缀不同值的哨兵是必需的（一个串无法同时成立两条断言） |
 | UAT-04 | 两个 hooks 在真实分发路径上各按设计行事：commit 校验**三段对照**（opt-in 拦 / opt-in 放 / 未 opt-in 放）+ injection 扫描**只落日志** | 判据段 4：(a)(b)(c) 三行 + ② findings 行 + 第四条事实行；用例 ①② | passed | 本仓未 opt-in，属上游设计默认；**不改本仓配置**（「commit 校验在本仓默认不生效」是一条被断言的开放项，不是一句散文） |
-| UAT-05 | 同一条 `dsh plugin --profile <p> add <绝对路径 tgz>` 换版本号，profile 内 `node_modules/dsh-gsd/package.json` 的 `version` 随之变化（`.dsh022 → .dsh021 → .dsh022`），每次之后 `--dump-config` 的 `gsd` / `gsd-hooks-bridge` 两 row 仍各恰 1 行且会话谓词仍成立 | 判据段 5：复刻行 + 三段 swap 行 + 会话谓词行；用例 ⑥ | passed | **两个 tarball 只有版本串不同**（`.dsh021` 由已打好的 tarball 解包后改 `version` 再 `npm pack --ignore-scripts` 复刻，**从未也永不发布**）⇒ 本判据证的是「换版本号这条命令的机制」，**不是** registry 上的升级历史。⚠ 那个成员的比对是 **JSON 语义等值**，不是字节等值（npm 在 `pack` 时会重排 `package.json` 的缩进） |
+| UAT-05 | 同一条 `dsh plugin --profile <p> add <绝对路径 tgz>` 换版本号，profile 内 `node_modules/dsh-gsd/package.json` 的 `version` 随之变化（`.dsh022 → .dsh021 → .dsh022`），每次之后 `--dump-config` 的 `gsd` / `gsd-hooks-bridge` 两 row 仍各恰 1 行且会话谓词成立 | 判据段 5：复刻行 + 三段 swap 行 + 会话谓词行；用例 ⑥ | passed | **两个 tarball 只有版本串不同**（`.dsh021` 由已打好的 tarball 解包后改 `version` 再 `npm pack --ignore-scripts` 复刻，**从未也永不发布**）⇒ 本判据证的是「换版本号这条命令的机制」，**不是** registry 上的升级历史。⚠ 那个成员的比对是 **JSON 语义等值**，不是字节等值（npm 在 `pack` 时会重排 `package.json` 的缩进） |
+| UAT-06（启动开销） | 三点、事件时间戳口径：`turn/start.time − session.createdAt`，同一 `DSH_HOME`、同一 `--from-default-profile headless` 模板、交替各 3 轮，只差 `plugin add` | 判据段 8 的六轮实测表 + 中位数行；用例 ⑦ | passed | 基线 **9 ms** / 带插件 **279 ms** / 插件段 **≈270 ms**（`n=3`、单机、暖页缓存）。**墙钟不作开销数字**：它由 LLM 往返主导（本轮 2 560–3 834 ms，逐轮漂移以秒计） |
+| UAT-06（技能 watch） | 长驻进程里 skill watcher 的热重载行为 | 判据段 8 的「watch 的处置」段 | not measured | **结构性不可测**：一次性会话每次都是新进程，启动时重读技能目录 ⇒ watcher 对它不适用；watcher 的行为只在长驻 `web` 进程里可观察，而数 fsevents 需要 root。本计划只量了**启动时读取**（改 front-matter `description` → 新进程会话里命中 2 次），那**不是** watch，不得当 watch 的证据 |
+| INST-01 | 单命令安装、零手工 patch：`plugin add` 落盘 **且** profile 的 `cordis.patch.yml` 仍是空数组 `[]`、无任何 `disabled:` 真值行；空入参边「不存在第三种状态」 | 判据段 1 的「`plugin add` 落盘」行 + 「负向观测：空入参边」行；用例 ③ | passed | 空入参边的判据按实测改写过（`plugin --profile <absent> add` 在本 DSH 版本上 exit 0 并初始化 profile，与 RESEARCH 相反），断言的是真正的不变量 |
+| INST-02 | 安装不写 `~/.dsh` 受管面：装前/装后 home 树（排除 `profiles/<p>/`）零差异，五类受管面全 `ABSENT` | 判据段 2 的「装前快照」/「装后快照」两行；用例 ④ | passed | 只覆盖一次性 home 的 home 级受管面，不覆盖真实 `~/.dsh`（那是迁移计划的判据段） |
+| INST-03 | 装即注册、无需重启：`add` 之后 `--dump-config` 里 `gsd` 与 `gsd-hooks-bridge` 两 row 各恰 1 行 | 判据段 2 的「不重启即 dump」行；用例 ④ | passed | 行级正则 `^\s*-\s+id:\s*<id>\s*$`，不用 `includes('gsd')`（那会把 bridge 行重复计入） |
+| INST-04 | `remove` 后 skills/hooks/bundle 行全部消失（**删前在场**同时断言）+ 幂等边 + 空操作边 | 判据段 2 的「`remove` 归零」/「再 remove 一次」/「从未装过的 profile」三行；用例 ④ | passed | 幂等边只覆盖单进程串行；并发 `plugin add/remove` 无锁语义文档，不在本 phase 判据内 |
+| INST-05 | `dump-config` 见两 row，且 `configPath` 解析为**包内绝对路径**（含 `node_modules/dsh-gsd` 且在盘） | 判据段 2 的「用 DSH 加载器语义求值该 `!!js` 表达式」行；用例 ④ | passed | `--dump-config` **不 evaluate** `!!js`（实测），所以判据改为对声明的表达式按加载器语义求值——比原先的「dump 里出现绝对路径」更强，且原形态在本 DSH 版本上恒红 |
+| INST-06 | 元数据合规（`locale/*.json`、`icon.svg`、`files` 九项白名单）**回归**仍绿 | 判据段 7 的回归跑行（判据段 7 = 本次运行的 `ℹ tests`/`ℹ pass` 实数 + UTC） | passed | EXIST（不是新判据）：`tests/pack-contents.test.mjs` 的 `ALLOWED_TOP_LEVEL` 与 `files` 白名单、`docs-consistency` 的 locale/元数据断言。判据段 7 记的是 **2026-11-16T07:16:30Z 的实数**，不是一句「已通过」 |
 
-> 本表在 05-02 的 **Task 1** 落 UAT-04 行、**Task 2** 追加 UAT-05 行；UAT-01..03 / UAT-06 / INST-01..06 的行由同一计划的 **Task 3** 补齐（本文件在计划内被两次提交，每次只含已经拿到证据的那几行）。
+---
+
+## 三段小字
+
+**(a) 判据环境**：本表所有 `passed` 都来自 `/tmp/dsh-uat-*` 的一次性 `DSH_HOME`（成功即删、失败保留取证）。**本机 `~/.dsh` 从来不是判据环境**（D-01）：它带着 72 个旧 `gsd-*` 技能、`web`/`headless` 各 2 行 `GSD-DSH-bridge`，在它上面「技能可见」「hook 生效」都会由旧源满足而静默失效。
+
+**(b) 本报告不进 npm 包**：`package.json` 的 `files` 白名单是 `index.js` / `cordis.patch.yml` / `locale` / `icon.svg` / `skills` / `gsd-core` / `hooks` / `config` / `scripts` 九项——`docs/` 与 `.planning/` 都不在其中，所以 `05-UAT.md` 与 `05-UAT-EVIDENCE.md` 只随仓走，不随包发。
+
+**(c) 开放项清单**（本 phase 结束时仍未闭合，逐条都是可执行的下一个动作）：
+
+1. **本仓的 commit 校验未 opt-in**（`.planning/config.json` 只有 `hooks.context_warnings`，没有 `hooks.community`）⇒ commit 校验在本仓默认不生效。这是上游设计的 opt-in 语义，不是缺陷；要启用需人类显式裁决，因为启用后此后每次 commit 都要过校验（不可逆的骚扰）。已被用例 ① 的「第四条事实」断言钉住：改坏本仓配置会让它红并提示改写该事实。
+2. **技能 watch 未测**（`not measured`）：见上表该行的结构性理由。两条 no-sudo 方法写在 `05-RESEARCH.md` §Q5；若无人跑，`README.md` 必须写 `not measured` 且不得声称更强的行为（SC-3）。
+3. **registry 通道的升级/回滚复验待 05-03**：本表的 UAT-05 判据用的是本地复刻件（`.dsh021` 从未发布）；真实 registry 上的 `npm install` 升级语义由 05-03 的发布后复验覆盖。
+4. **codegraph 同层合成（CB-8b 的静态段）待 05-04**：四份 `cordis.patch.yml` 的 row-id 集两两不相交这条判据在真实 `~/.dsh` 迁移后才可判，归 05-04 的 D-10-2。

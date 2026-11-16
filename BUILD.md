@@ -13,7 +13,7 @@ node build.mjs
 # 显式版本 + 离线完整 tarball 档（解包前双重完整性校验）
 GSD_VERSION=1.20.1 GSD_TARBALL=$PWD/.gsd-build-tmp/opengsd-gsd-core-1.20.1.tgz node build.mjs
 
-# 每波可重跑测试（含真实构建 smoke）——预期 42（tests 总数；未设 DSH_UAT_LIVE=1 时 39 pass / 3 skip，live 环境 42/42）
+# 每波可重跑测试（含真实构建 smoke）——预期 47（tests 总数；未设 DSH_UAT_LIVE=1 时 40 pass / 7 skip，live 环境 47/47）
 npm test
 
 # 发布前全链（gates 内嵌 build）——预期 exit 0
