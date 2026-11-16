@@ -134,3 +134,59 @@ $ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/ua
 - ② 的 `INJECTION-PATTERN` 证明扫描器**认得**这个 fixture，**不证明**它在真实会话里「拦住了」注入：它是 PostToolUse，内容在它跑之前就已经进了上下文；SC-2 的原话也只要求「落日志」。
 - 三段对照跑在 `mkdtemp` 出来的 scratch cwd 上，**不改**本仓配置。所以它证的是「opt-in 打开后的机制成立」，**不是**「本仓的 commit 会被校验」——后者恰是第四条事实的反面，且是上游设计的默认值。
 - 若某次 (c) 意外 exit 2，属负向观测，必须原样记录并标注**不得**充当通过形态；本次三段均如预期，无负向观测。
+
+## 判据段 5 — UAT-05（升级 / 回滚 = 同一条命令换版本号）
+
+> 用例 ⑥ `⑥ UAT-05 升级/回滚：同一条 plugin add 换版本号（.dsh022 ↔ .dsh021）`。**本段只认这一次 live 跑（2026-11-16T07:09:30Z 完成）：**
+>
+> ```
+> $ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/uat-harness.test.mjs
+> ℹ tests 6 / ℹ pass 6 / ℹ fail 0 / ℹ skipped 0
+> ```
+>
+> `ℹ skipped 0` 是硬要求：⑥ 若被 skip，本段就没有任何 UAT-05 证据（`ℹ fail 0` 只是「没执行」的同义词）。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| 复刻第二份 tarball：`tar -xzf dsh-gsd-1.20.1-1.dsh022.tgz` → `package.json.version = 1.20.1-1.dsh021` → `npm pack --ignore-scripts --pack-destination …` | 2026-11-16T07:09:30Z | 产出 `dsh-gsd-1.20.1-1.dsh021.tgz`（`npm notice total files: 958`）。**`--ignore-scripts` 是硬要求**：不带它的 `npm pack` 会跑 `prepack` = `node build.mjs` + 整套测试，而整套测试里就有本 harness ⇒ 递归且不可收敛 |
+| 「两份只有版本串不同」的比对（`assertOnlyVersionDiffers`） | 2026-11-16T07:09:30Z | 成员清单 **958 / 958 逐行相同**；解包后逐成员比字节，**只有 `package/package.json` 不同**；该文件在 JSON 语义上去掉 `version` 后**深度相等**（`1.20.1-1.dsh022` vs `1.20.1-1.dsh021`） |
+| ⚠ 该比对的诚实边界 | 同上 | `package.json` **不是逐字节相等**：npm 在 `pack` 时会把 `repository: { … }` / `keywords` 之类重排成多行缩进。判据是 **JSON 语义等值**，不是字节等值；别把本行读成「两个 tarball 字节相同」（其余 957 个成员是字节相同的） |
+| 装 `.dsh022` → `plugin add` → version + `--dump-config` | 2026-11-16T07:09:30Z | exit 0；`profiles/probe6/node_modules/dsh-gsd/package.json` 的 `version` = **1.20.1-1.dsh022**；dump **393 行**，`- id: gsd` **1** 行、`- id: gsd-hooks-bridge` **1** 行 |
+| 装 `.dsh021`（同一条 `dsh plugin --profile probe6 add <tgz>`） | 2026-11-16T07:09:30Z | exit 0；`version` = **1.20.1-1.dsh021**（跟着换）；dump **393 行**，两 row 仍各 **1** 行 |
+| 再装回 `.dsh022`（回滚） | 2026-11-16T07:09:30Z | exit 0；`version` 回到 **1.20.1-1.dsh022**；dump **393 行**，两 row 仍各 **1** 行 |
+| 回滚之后的一次性会话（会话谓词） | 2026-11-16T07:09:30Z | exit 0；新增**恰 1** 个会话记录；`assistant/message` **1** 条、`turn/end` **1** 条且无 `kind:error` |
+
+### 这条判据证的是什么，不是什么（T-5-14）
+
+- 证的是**「换版本号这条命令的机制」**：同一条 `dsh plugin --profile <p> add <tarball>` 换一份 tarball 就能把 profile 内的 `version` 换进换出，且 composition 的两个 row 与会话谓词全程成立。
+- **不证** registry 上的升级历史：两份 tarball **只有版本串不同**，`.dsh021` 由已打好的 tarball 解包后改 `version` 再 `npm pack --ignore-scripts` 本地复刻，**从未也永不发布**。registry 通道的升级/回滚复验不在本判据范围内（归 PUB-01 之后的复验）。
+
+### 边界：这证不了什么
+
+- 不证明真实 registry 通道上的 `npm install` 升级语义（那是 registry 通道的判据，05-03 的 `npm publish --dry-run` 与发布后复验覆盖）。
+- 不证明 `.dsh021` 这个版本串在语义上是「更旧」——它只是一个不同的 prerelease 字面量；判据说的是「命令会把 tarball 的版本装进去」，不是「npm 的 semver 排序如何」。
+- 只覆盖单 profile、单进程串行；并发 `plugin add` 无锁语义文档，不在本 phase 判据内。
+
+## 判据段 6 — D-10-5（`SKIP_DIRS` 的构建期补丁）
+
+> 补丁形态：canonical 覆盖件 `build/assets/ui-frontend-evidence.cjs`（入库、可 review）+ `build.mjs` ⑤ 块末尾的一行 `cp`（在 upstream 捕获之后 ⇒ 覆盖上游字节；在 ⑥ 改写 pass 之前 ⇒ 仍吃到路径归一化）+ `tests/build-smoke.test.mjs` ① 里的 ⑨ 组断言。**不递增 `counters.copied`**：`copied 76 trees` 被同一测试断成 76，加一即红（`dsh-gsd-suite/run.cjs` 那次拷贝是同样的先例）。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| 第一次 `node build.mjs`（补丁落地后） | 2026-11-16T07:05:35Z → 07:05:40Z | exit **0**；`gates: all passed (A/B/C)`；`build: fetched @opengsd/gsd-core@1.20.1, **copied 76 trees**, rewrote paths in 286 files, injected notes into 72 skills (72 total)` ⇒ 新拷贝没有把树数推成 77 |
+| 补丁门（`cmp` + `SKIP_DIRS` **成员行**计数 + 再跑一次 build） | 2026-11-16T07:05:40Z 之后 | `skip-dirs-range=**127-141** set-members=**1** whole-file=**4**`；`skip-dirs survives rebuild: PASS (set member exactly 1, whole-file mentions 4)` |
+| 第二轮读数（同一脚本内联的第二次 `node build.mjs`，`>/dev/null`） | 同上 | 该分支只在非零时打 `FAIL: second build failed` 并 exit 1，本轮**未触发**；随后 `cmp -s` 通过 ⇒ 补丁**经得住重建**。成员行仍为 **1**（全文出现次数仍是 4：文件头注释 3 + Set 成员 1） |
+| `node --test --test-reporter=tap tests/build-smoke.test.mjs` | 2026-11-16T07:07:07Z → 07:07:14Z | `ok 1`（真实构建 → 产物断言）/ `ok 2`（WR-01）；`# tests 2 / # pass 2 / # fail 0`。⑨ 组的可区分失败消息若触发会是：`gsd-core/bin/lib/ui-frontend-evidence.cjs missing after build`（拷贝步没跑）、`drifted from canonical …`（拷贝落在改写 pass 之后，或上游拷贝在其后）、`SKIP_DIRS Set has N .gsd-build-tmp member line(s) …`（0 = 补丁丢了；>1 = 成员重复） |
+| 全量套件（同一棵树，串行） | 2026-11-16T07:09:46Z | `ℹ tests 45 / ℹ pass 39 / ℹ fail 0 / ℹ skipped 6`，exit 0（45 = 44 + ⑥） |
+
+### 补丁自身也有 RED 证据（TDD，不写进套件运行结果）
+
+- **RED**：先只提交测试（`790f103`），实现（canonical 覆盖件 + `build.mjs` 拷贝步）不在树上。`node --test --test-reporter=tap tests/build-smoke.test.mjs` → `not ok 1`，`failureType: testCodeFailure`，`code: ERR_ASSERTION`，错误原文 `build/assets/ui-frontend-evidence.cjs missing — the canonical override (D-10-5) is not tracked, so the copy step has no source`；`# pass 1 / # fail 1`。`gsd_run check tdd-red-evidence .build-cache/tdd-red-05-02-task2.json` → **`RED_EVIDENCE_OK`**（`reason: target_test_failed`，TAP 格式，2 tests / 1 pass / 1 fail）。
+- **语义复核**：那一次构建**是成功的**（76 树 / identity / 零 `~/.dsh` / adapter 72×1 / wrapper 字节等值五组都过了才到 ⑨ 组），失败的不是 setup、不是语法、不是无关断言，就是这个任务要实现的那条不变量。
+- **GREEN 前的一次自造错诊断**：⑨ 组最初把 Set 的闭包行正则写成 `/^\];/`（漏了 `)`），于是永远找不到 `]);`，GREEN 首次跑报 `SKIP_DIRS literal is not closed …`。这是判据实现的 bug，不是补丁的问题——改成 `/^\]\);$/` 后 `# pass 2 / # fail 0`。记在这里的理由与判据段 3 那次假红相同：**遇到红先查判据实现，再谈未实现**。
+
+### 边界：这证不了什么
+
+- 断言证明的是**这一次构建的产物**与 canonical 逐字节相同且成员行恰 1。它**不证明**上游 `@opengsd/gsd-core` 在下个版本里仍然缺 `.gsd-build-tmp`（它会一直缺，因为我们覆盖整份文件）——也正因为整文件覆盖会**钉住上游内容**，上游换版本时必须重新取一次 canonical 覆盖件并复核文件头的版本串。
+- 不证明 UI 证据采集在真实项目上的行为（`MAX_WALK_ENTRIES` 与 `SKIP_DIRS` 的消费点在 `:181`）；本判据只钉「本仓的构建 scratch 目录不再被当作源码走」。
+- `whole-file=4` **不是**判据（文件头注释点名了该 token），只是给读者的交叉核对；等值判据只有 Set 成员行那一条。

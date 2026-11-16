@@ -9,5 +9,6 @@
 | 需求 | 判据 | 证据（判据段 + 行） | 结论 | 备注 |
 |---|---|---|---|---|
 | UAT-04 | 两个 hooks 在真实分发路径上各按设计行事：commit 校验**三段对照**（opt-in 拦 / opt-in 放 / 未 opt-in 放）+ injection 扫描**只落日志** | 判据段 4：(a)(b)(c) 三行 + ② findings 行 + 第四条事实行；用例 ①② | passed | 本仓未 opt-in，属上游设计默认；**不改本仓配置**（「commit 校验在本仓默认不生效」是一条被断言的开放项，不是一句散文） |
+| UAT-05 | 同一条 `dsh plugin --profile <p> add <绝对路径 tgz>` 换版本号，profile 内 `node_modules/dsh-gsd/package.json` 的 `version` 随之变化（`.dsh022 → .dsh021 → .dsh022`），每次之后 `--dump-config` 的 `gsd` / `gsd-hooks-bridge` 两 row 仍各恰 1 行且会话谓词仍成立 | 判据段 5：复刻行 + 三段 swap 行 + 会话谓词行；用例 ⑥ | passed | **两个 tarball 只有版本串不同**（`.dsh021` 由已打好的 tarball 解包后改 `version` 再 `npm pack --ignore-scripts` 复刻，**从未也永不发布**）⇒ 本判据证的是「换版本号这条命令的机制」，**不是** registry 上的升级历史。⚠ 那个成员的比对是 **JSON 语义等值**，不是字节等值（npm 在 `pack` 时会重排 `package.json` 的缩进） |
 
-> 本表在 05-02 的 **Task 1** 先落 UAT-04 行；UAT-01..03 / UAT-05..06 / INST-01..06 的行由同一计划的 **Task 3** 补齐（本文件在计划内被两次提交，Task 1 的提交只含已经拿到证据的那一行）。
+> 本表在 05-02 的 **Task 1** 落 UAT-04 行、**Task 2** 追加 UAT-05 行；UAT-01..03 / UAT-06 / INST-01..06 的行由同一计划的 **Task 3** 补齐（本文件在计划内被两次提交，每次只含已经拿到证据的那几行）。

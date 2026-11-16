@@ -305,6 +305,20 @@ async function main() {
   // from our canonical copy. 4-tree capture semantics unchanged.
   await mkdir(join(root, 'hooks', 'dsh-gsd-suite'), { recursive: true })
   await cp(join(root, 'build', 'assets', 'dsh-gsd-suite-run.cjs'), join(root, 'hooks', 'dsh-gsd-suite', 'run.cjs'))
+  // D-10-5：上游 `@opengsd/gsd-core@1.20.1` 的 UI 证据采集把本仓的构建 scratch 目录
+  // （`./.gsd-build-tmp/`，`.gitignore:3`）当成用户源码走一遍——它的 `SKIP_DIRS`
+  // 缺 `.gsd-build-tmp`，于是 `MAX_WALK_ENTRIES` 上限被白白吃掉。上游那份改不动
+  // （每次 build 由 ⑤ 的 `cp(STAGING/gsd-core…)` 重拷，且 gsd-core/ 在 `.gitignore:5`
+  // 里，手改既不 reviewable 也会在下次 `node build.mjs` 时消失——而 prepack 每次发布
+  // 都跑 build）。所以补丁落在 canonical 覆盖件 `build/assets/ui-frontend-evidence.cjs`：
+  // 这一步在 ⑤ 的捕获之后 ⇒ 覆盖上游字节；在 ⑥ 的改写 pass 之前 ⇒ 仍然吃到
+  // `$DSH_HOME` / `${CLAUDE_PLUGIN_ROOT}` 归一化（该文件在 gsd-core/ 这棵被重写的树里）。
+  // 它是**整文件覆盖**、不是路径改写：`rewrites` 那张表做的是 from→to 前缀替换，用它
+  // 打补丁会在上游重排缩进/引号时静默失效。代价是钉住上游内容，告诫写在覆盖件文件头。
+  // **不递增 `counters.copied`**：`copied N trees` 被 build-smoke 断成 76（72 skills +
+  // gsd-core + hooks + scripts + config/gsd-hooks.json），加一即红；上面 hooks 适配器
+  // 那次拷贝是同样的先例。`gsd-core/bin/lib/` 已由 ⑤ 的捕获建好，不需要 mkdir。
+  await cp(join(root, 'build', 'assets', 'ui-frontend-evidence.cjs'), join(root, 'gsd-core', 'bin', 'lib', 'ui-frontend-evidence.cjs'))
 
   // ⑥ rewrite: from-basis = THIS run's staging root（不是任何部署前缀，无 /Users/
   // 字面量依赖）。映射来自 build/lib/rewrite-map.cjs（可单测模块：staging 根

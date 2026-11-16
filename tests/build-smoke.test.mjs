@@ -180,7 +180,9 @@ test('真实构建 → 产物断言（76 树 / identity / 零 ~/.dsh / adapter 7
   assert.notEqual(setOpen, -1, 'SKIP_DIRS declaration not found in the built ui-frontend-evidence.cjs — the D-10-5 anchor moved upstream; re-take the canonical copy')
   let setClose = -1
   for (let i = setOpen + 1; i < uiLines.length; i++) {
-    if (/^\];/.test(uiLines[i])) {
+    // 闭包行是 `]);` —— 正则必须是「`]` `)` `;` 三个字面量」，写成 `/^\];/` 会漏掉
+    // `)`，于是永远找不到闭包（RED→GREEN 首次跑就撞上了这个自造的错诊断）。
+    if (/^\]\);$/.test(uiLines[i])) {
       setClose = i
       break
     }
