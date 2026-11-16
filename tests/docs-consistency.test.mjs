@@ -395,3 +395,81 @@ test('⑭ MIGRATION 入口双语存在 + 文档两半各恰 3 个二级标题（
   assert.match(halves.zh, /[\u4e00-\u9fff]/, 'zh 段没有任何中文字符')
   assert.ok(!/[\u4e00-\u9fff]/.test(halves.en), 'en 段含中文字符——双语未真正分半')
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑮（Phase 5 / D-10-1）：`--test-concurrency=1` 三处**逐处**计数扫描。
+//
+// 为什么不能推断：`tests/build-smoke.test.mjs` 会重写构建树（`skills/` `gsd-core/`
+// `hooks/` `config/`），而 node:test 默认按**文件**并发 ⇒ 其余套件在重建中途读到半写的
+// 树，`gate C: no SKILL.md under skills/gsd-*` 就是那条假红。而
+// `prepack = node build.mjs && node --test …` 且 `npm publish` 会跑 `prepack` ⇒
+// 缺 flag 的形态是「人手输完 OTP 之后被一条莫名其妙的失败中止发布」。所以判据必须是
+// **三处逐处在位**，不是「套件跑绿了所以 flag 在」——后者正是这条竞争本身。
+//
+// 三处：`package.json` 的 `prepack`、`package.json` 的 `test`、
+// `.github/workflows/compat-matrix.yml` 的完整测试步骤。`grep -rn 'node --test'` 全仓
+// 恰好这三处、没有第四处 ⇒ 计数是**恰 3**，不是 `>= 3`：多出来的一处意味着有人新增了
+// 第四处却没有同步本断言的计数口径。
+//
+// workflow 侧的形态约束（本断言不新增 `run:` 步）：`tests/compat-matrix.test.mjs` 的 ⑦
+// 要求每个 `run:` 的上一行是四词 `if:` 门、⑧ 要求 canonical 门行整行锚定 ⇒ 唯一安全的
+// 改法是**第 56 行行尾追加 flag**（不改 `run:` 行数、不加行、不引入 `&&` 链）。
+// ─────────────────────────────────────────────────────────────────────────────
+const CONCURRENCY_FLAG = '--test-concurrency=1'
+const COMPAT_WORKFLOW = '.github/workflows/compat-matrix.yml'
+
+test('⑮ D-10-1：`--test-concurrency=1` 三处齐备（package.json ×2 + workflow ×1，计数恰 3）', () => {
+  // (a) 两处 lifecycle script 都带 flag，且 prepack 的 build 短路形态没被改坏。
+  for (const name of ['prepack', 'test']) {
+    assert.ok(
+      typeof pkg.scripts[name] === 'string' && pkg.scripts[name].includes(CONCURRENCY_FLAG),
+      `package.json scripts.${name} 缺 ${CONCURRENCY_FLAG} ⇒ ${
+        name === 'prepack'
+          ? '`npm publish` 的 prepack 阶段会与 build-smoke 的重建并发，假红直接中止发布（人手输完 OTP 之后）'
+          : '本地判据与 CI 不等价，假红只能在发布时才会暴露'
+      }：'${pkg.scripts[name]}'`,
+    )
+  }
+  assert.ok(
+    typeof pkg.scripts.prepack === 'string' && pkg.scripts.prepack.startsWith('node build.mjs && '),
+    `package.json scripts.prepack 不再以 'node build.mjs && ' 开头 ⇒ build 失败不再短路（gates 会在测试跑完之后才生效）：'${pkg.scripts.prepack}'`,
+  )
+
+  // (b) workflow 的每一条含 `node --test` 的 `run:` 行都必须带 flag（零 YAML 依赖，行级正则）。
+  const workflow = read(COMPAT_WORKFLOW)
+  const runLines = workflow.split('\n').filter((l) => /^\s*run:/.test(l))
+  const workflowTestLines = runLines.filter((l) => l.includes('node --test'))
+  assert.ok(
+    workflowTestLines.length > 0,
+    `${COMPAT_WORKFLOW} 里没有任何含 node --test 的 \`run:\` 行——完整测试步骤被删或改写了`,
+  )
+  for (const l of workflowTestLines) {
+    assert.ok(
+      l.includes(CONCURRENCY_FLAG),
+      `${COMPAT_WORKFLOW} 的完整测试步骤缺 ${CONCURRENCY_FLAG} ⇒ CI 与本地判据不等价，`
+        + `且假红会以「偶发」面目出现在 CI 上：'${l.trim()}'`,
+    )
+  }
+
+  // (c) 计数收口：三处逐一在位，合计恰 3。
+  const pkgSites = Object.entries(pkg.scripts).filter(
+    ([, v]) => typeof v === 'string' && v.includes('node --test'),
+  )
+  assert.equal(
+    pkgSites.length,
+    2,
+    `package.json scripts 里含 node --test 的条目应恰 2 个（prepack / test），实际 ${pkgSites.length} 个：[${pkgSites.map(([k]) => k).join(', ')}]`
+      + '——多出来的一处意味着有人新增了第四处而没有同步本断言的计数口径',
+  )
+  assert.equal(
+    workflowTestLines.length,
+    1,
+    `${COMPAT_WORKFLOW} 里含 node --test 的 \`run:\` 行应恰 1 行，实际 ${workflowTestLines.length} 行`
+      + '——新增了第四处却没人同步本断言；也说明有人新增了 `run:` 步（会撞 compat-matrix 的 ⑦ 门控形态断言）',
+  )
+  assert.equal(
+    pkgSites.length + workflowTestLines.length,
+    3,
+    `node --test 的出现次数应**恰 3**（prepack + test + workflow），实际 ${pkgSites.length + workflowTestLines.length}`,
+  )
+})
