@@ -107,9 +107,22 @@ degrade silently. The plan should carry an explicit "update `BUILD.md:16`" actio
 
 Checked every citation the brief inherited: `package.json:50-51` ✅, `compat-matrix.yml:56` ✅,
 `docs-consistency.test.mjs:102-105` ✅, `build.mjs:298` and `:306-307` ✅,
-`ui-frontend-evidence.cjs:104` ✅. **Nothing moved.** The one thing RESEARCH flagged as
-unlocatable — the token `CB-8` — is indeed absent from both `04-VALIDATION.md` and
-`docs/MIGRATION.md`; cite the criteria as "步骤 6 静态段的四条来源断言" instead.
+`ui-frontend-evidence.cjs:104` ✅. **Nothing moved.**
+
+**Corrected 2026-11-16 — the `CB-8` note in this finding was wrong.** It said the token "is indeed
+absent from both `04-VALIDATION.md` and `docs/MIGRATION.md`". Measured (`grep -c 'CB-8'`):
+
+| File | Count | Where |
+|---|---|---|
+| `.planning/phases/04-migration-coexistence/04-05-PLAN.md` | **5** | the label's only *definition*: `:76`, `:436` (CB-8b's five conjuncts), `:437`, `:772-773` (CB-8a = `COEXIST-DRILL`, CB-8b = `COEXIST-REAL`) |
+| `.planning/phases/04-migration-coexistence/04-VALIDATION.md` | **1** | `:165`, the G-4 escalation row's last column: 「重跑步骤 6 的 CB-8 四条判据」 |
+| `docs/MIGRATION.md` | **0** | carries the criteria, never the label |
+
+So: cite **CB-8b** by name with `04-05-PLAN.md:436` + `:772-773` and quote its five conjuncts; cite the
+**static segment** from `docs/MIGRATION.md:239-257` as the runbook's own prose (it has no label). The
+only accurate negative claim is the narrow one: *the runbook never uses the label*. See
+`05-RESEARCH.md` §Q8's corrected note for how this was caught (a truncated quote plus an unreported
+negative grep — the same failure class as the phase's other false greens).
 
 ---
 

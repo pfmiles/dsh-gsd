@@ -60,12 +60,12 @@ Task IDs bind at `validate-phase`; the falsifiable check is fixed here.
 | TBD | 05-0x | 1 | INST-04 | — | 卸载后 skills/hooks/bundle 行全消失 | shell block | `remove` → 回到 391 行、0 个 gsd 行、`node_modules/dsh-gsd` 不在；**同时断言删除前是在场的** | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 1 | INST-05 | — | 两行且 `!!js` 展开为包内绝对路径 | shell block | `grep -A3 'id: gsd-hooks-bridge'` → `configPath` 是含 `node_modules/dsh-gsd` 的**绝对路径**，不是 `!!js` 字面量 | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 3 | INST-06 | — | 元数据合规（回归） | EXIST | `tests/pack-contents.test.mjs` + `docs-consistency` 的 `ALLOWED_TOP_LEVEL` / locale 断言 | ✅ | ⬜ pending |
-| TBD | 05-0x | 3 | PUB-01 | T-5-06 | npm 首发（人类执行 OTP）+ registry 复验 | shell + HUMAN | 发布前 `npm publish --dry-run` 打印 `tag latest` + `registry.npmjs.org`；发布后 `npm view dsh-gsd dist-tags.latest` === `1.20.1-1.dsh022`，且 registry 通道能重跑 UAT-01 | ❌ W0 | ⬜ pending |
+| TBD | 05-0x | 3 | PUB-01 | T-5-06 | npm 首发（人类执行 OTP）+ registry 复验 | shell + HUMAN | 发布前 `npm publish --dry-run` 打印 `tag latest` + `registry.npmjs.org`；发布后**每条读都钉 `--registry https://registry.npmjs.org/`**（本机默认是只读镜像 `registry.npmmirror.com`，`publishConfig.registry` 只约束**写**）：`npm view dsh-gsd dist-tags.latest --registry …` === `1.20.1-1.dsh022`，registry 通道的安装同样钉 `--registry=`，再重跑 UAT-01 | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 3 | PUB-03 | — | dshmarket PR 本体 | shell + HUMAN | `gh pr create` 只碰 `data/plugins/pfmiles__dsh-gsd.yml`（1 文件 / ≤3 条），随后 4 检通过；合并不等（D-09） | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 1 | D-10-1 | — | `--test-concurrency=1` 三处齐备 | NEW | 断言 `package.json:50`、`package.json:51`、`compat-matrix.yml:56` 三处都带该 flag（**不得**用"套件是绿的"充当断言——那正是竞争本身） | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 4 | D-10-2 | — | G-4 codegraph 并存静态段 | shell block | 四份 `cordis.patch.yml` 的 row-id 集两两不相交，且 **`MISSING:` 必须判红**；codegraph v1.2.2 / row id `dsh-codegraph` 已在场 | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 4 | D-10-3 | T-5-07 | 真实 `~/.dsh` 迁移 | shell block | `--uninstall` → `plugin add`；`web`/`headless` 的 `grep -c GSD-DSH-bridge` = 0 且两行仍在。⚠ 迁移前重数（实测 **2**，CONTEXT 记 1） | ❌ W0 | ⬜ pending |
-| TBD | 05-0x | 4 | D-10-4 | T-5-08 | 旧仓互链推送落地 | HUMAN + 远程核 | 权威判据在远端：`gh api repos/pfmiles/install-gsd-dsh/commits/main` sha 前进且文件正文与 `docs/oldrepo-link/README.md` 一致（SSH 不可用，须走 `gh auth git-credential`） | ❌ W0 | ⬜ pending |
+| TBD | 05-0x | 4 | D-10-4 | T-5-08 | 旧仓互链推送落地 | HUMAN + 远程核 | 权威判据在远端：`gh api repos/pfmiles/install-gsd-dsh/commits/main` sha 前进于 `41fcc7a`，且远端 README 插入段的正文与 **`docs/oldrepo-link/snippet.en.md`** 逐字节一致（**不是** `oldrepo-link/README.md`，那是备料说明）；SSH 不可用，须走 `gh auth git-credential` | ❌ W0 | ⬜ pending |
 | TBD | 05-0x | 2 | D-10-5 | — | `SKIP_DIRS` 含 `.gsd-build-tmp` 且**经得住重建** | NEW | 断言**构建后**的 `gsd-core/bin/lib/ui-frontend-evidence.cjs`，再跑 `node build.mjs` 重断言（只断工作树文件=发布时必破） | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*

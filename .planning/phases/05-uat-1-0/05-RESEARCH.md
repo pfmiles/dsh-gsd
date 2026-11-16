@@ -736,7 +736,7 @@ Also mirror the flag into `package.json:50` and `:51`. **All three, or none** �
 
 ## Q8 — G-4 / codegraph coexistence (the "CB-8" criteria)
 
-**Confidence: MEDIUM-HIGH.** The *mechanism* is quoted verbatim from the runbook; the *label* "CB-8" could not be located — see the honesty note.
+**Confidence: HIGH after correction (2026-11-16).** The *mechanism* is quoted verbatim from the runbook, and the *label* is now located: `04-05-PLAN.md:436` defines **CB-8b** (five conjuncts), `:772-773` name CB-8a/CB-8b, `04-VALIDATION.md:165` uses the label once, `docs/MIGRATION.md` uses it zero times. The original "could not be located" wording came from a truncated quote plus an unreported negative grep — see the corrected note in this section.
 
 ### Is `@jiangzhenguo/dsh-codegraph` installed and resolvable right now?
 
@@ -789,13 +789,24 @@ So the four criteria are, in substance: **each of the four patch files contribut
 3. **A bundle contributes ids via a nested patch**, not a top-level `- id:` line — the runbook's extractor is a line regex (`/^\s*-\s+id:\s*(\S+)\s*$/`), so an indented/nested row could be invisible to it, i.e. a false clean.
 4. **The plugin's own `cordis.patch.yml` changes shape** in the published tarball vs the working tree (build rewrites). The four-source read must use the *installed* `node_modules/...` copies (the runbook already insists on this), never the repo's own file.
 
-### ⚠️ Honesty note on the label
+### ⚠️ Where the label "CB-8" actually lives (corrected 2026-11-16 — the original note was wrong)
 
-`grep -rn 'CB-8\|CB8'` over `04-VALIDATION.md` and `docs/MIGRATION.md` returns **no match**. The only trace of G-4 is `04-VALIDATION.md:165`:
+**Measured counts** (`grep -c 'CB-8'`):
 
-> `| **G-4** | MIG-04（codegraph 动态面） | 静态段绿（`coexist-static ok: gsd gsd-hooks-bridge dsh-codegraph deja dsh-market`）；动态段只装了 deja / dshmarket …`
+| File | Count | What it is |
+|---|---|---|
+| `.planning/phases/04-migration-coexistence/04-VALIDATION.md` | **1** | line **165**, the G-4 escalation row, whose last column reads `真实迁移 web profile 后重跑步骤 6 的 CB-8 四条判据（已同时写入文档与证据册）` |
+| `.planning/phases/04-migration-coexistence/04-05-PLAN.md` | **5** | the only place the label is *defined*: `:76` names the two forms, `:436` writes **CB-8b** (real-migration form, five conjuncts), `:772-773` name **CB-8a** = `COEXIST-DRILL` (drill form) and **CB-8b** = `COEXIST-REAL` |
+| `docs/MIGRATION.md` | **0** | the user-facing runbook never uses the label; it carries the criteria themselves |
 
-⇒ **The token "CB-8" is not in either document.** The criteria above are reconstructed from `MIGRATION.md:239-257` plus the G-4 row. The planner should either (a) cite them as "步骤 6 静态段的四条来源断言" rather than "CB-8", or (b) have the phase re-derive the exact four bullets from `04-VALIDATION.md`'s escalation text before writing SC. Do **not** let a plan inherit "CB-8" as if it were a verified quote.
+⇒ **This section's original claim — "the token is in neither document, `grep` returns no match" — was false**, and it was false in the self-refuting way this project keeps catching: the note quoted `04-VALIDATION.md:165` and truncated it with `…` immediately before the column that ends in `CB-8`. Two lessons, both already learned once elsewhere in this repo: never truncate the line you are using as evidence, and never report a negative grep without pasting its command and its count.
+
+**What the label denotes (verified against `04-05-PLAN.md`):**
+- **CB-8a / `COEXIST-DRILL`** — drill form: three bundles really installed, `H1 = H0 + 3`, per-bundle labels present, four row ids exactly once each, `uniq -d` empty.
+- **CB-8b / `COEXIST-REAL`** — real-migration form, **zero install**, five conjuncts (`04-05-PLAN.md:436`): ① dump stderr 0 bytes; ② `dsh-gsd` present in `dsh.profile.bundles` (else `required-absent:dsh-gsd`); ③ `listed ⇔ labeled` for `dsh-gsd` / `dsh-deja` / `dshmarket`; ④ expected row ids present exactly once; ⑤ `uniq -d` empty on those ids.
+- The **four-source row-id disjointness** is the runbook's *static* segment (`docs/MIGRATION.md:239-257`), which is a different thing from CB-8b — do not conflate them.
+
+⇒ A plan may and should cite `CB-8b` by name now that its definition is located, quoting `04-05-PLAN.md:436` + `:772-773` as the provenance. The warning that survives is narrower: **do not cite `CB-8` as if `docs/MIGRATION.md` contained it** — that file has zero occurrences.
 
 ⚠️ **Baseline drift worth re-measuring before the drill:** `grep -c 'GSD-DSH-bridge' ~/.dsh/profiles/web/cordis.patch.yml` returned **2**, while `05-CONTEXT` records web as having **1** bridge line. Either the file grew a second (e.g. a comment) or the inherited baseline is stale. Re-count at migration time; do not plan against "1".
 
@@ -891,9 +902,9 @@ Two alternatives, with their costs:
 | Item | Check | Where | Falsifiable by |
 |---|---|---|---|
 | **`--test-concurrency=1`** | All **three** sites carry the flag: `package.json:50`, `package.json:51`, `.github/workflows/compat-matrix.yml:56` | **NEW** test assertion in `docs-consistency` (cheap: read both files, regex for the flag) | Grep the three sites; if any lacks it, the new test reds. Do **not** assert via "suite is green" — that is the race itself |
-| **G-4 codegraph (CB-8)** | MIGRATION step-6 static segment: four `cordis.patch.yml` row-id sets pairwise disjoint | SHELL (runbook block, `MIGRATION.md:245-257`) | `coexist-static ok: …` line; and **`MISSING:` must fail the check** (see Q8 caveat 2). Row id verified present today: `dsh-codegraph` (codegraph v1.2.2) |
+| **G-4 codegraph (CB-8b + static segment)** | Two distinct things, both required: (a) the runbook **static segment** — four `cordis.patch.yml` row-id sets pairwise disjoint (`MIGRATION.md:239-257`); (b) **CB-8b = `COEXIST-REAL`**, zero-install, five conjuncts defined at `04-05-PLAN.md:436` (`dsh-gsd` present in `dsh.profile.bundles`; `listed ⇔ labeled`; expected ids exactly once; `uniq -d` empty; dump stderr 0 bytes) | SHELL (runbook block + CB-8b block) | `coexist-static ok: …` **and** zero `MISSING:` (see Q8 caveat 2 — `MISSING:` still exits 0); CB-8b block exit code is its own verdict. Row id verified present today: `dsh-codegraph` (codegraph v1.2.2). Never collapse the two segments into one |
 | **Real `~/.dsh` migration** | `--uninstall` then `plugin add`; bridge block gone; `dump-config` clean | SHELL, **last wave** | Row-id duplication after migration = the exact failure; assert `grep -c GSD-DSH-bridge` = 0 in `web`/`headless` patches **and** the two rows still present. ⚠ baseline drift: measured **2** today, not 1 (Q8) |
-| **Old-repo cross-link push** | `docs/oldrepo-link/` content lands in `pfmiles/install-gsd-dsh` | **HUMAN** (push) + SHELL verify | Authoritative check is remote, not local: `gh api repos/pfmiles/install-gsd-dsh/commits/main` sha advances and the file body matches `docs/oldrepo-link/README.md`. SSH is broken ⇒ must use the `gh auth git-credential` helper form |
+| **Old-repo cross-link push** | `docs/oldrepo-link/` content lands in `pfmiles/install-gsd-dsh` | **HUMAN** (push) + SHELL verify | Authoritative check is remote, not local: `gh api repos/pfmiles/install-gsd-dsh/commits/main` sha advances and the inserted blockquote is byte-identical to `docs/oldrepo-link/snippet.en.md` (**not** `oldrepo-link/README.md`, which is prep notes). SSH is broken ⇒ must use the `gh auth git-credential` helper form |
 | **`SKIP_DIRS` `.gsd-build-tmp`** | `.gsd-build-tmp` present in `gsd-core/bin/lib/ui-frontend-evidence.cjs` **after a rebuild** | **NEW** test assertion | Assert on the **built** file, then run `node build.mjs` and re-assert — that is what proves the patch survives. Asserting only on the working-tree file would pass today and break at publish (Q9) |
 
 ### Sampling Rate
@@ -935,27 +946,30 @@ Two alternatives, with their costs:
 
 ## Open Questions
 
-1. **Does the concurrency race actually red on this machine?**
+> **Status (checked 2026-11-16 against the four plans): all five were landed.** Each entry now carries
+> `(RESOLVED — <where>)` naming the plan/task that adopted the recommendation. Kept as history: the
+> value is the reasoning that produced the answer, not an open item.
+
+1. **Does the concurrency race actually red on this machine?** — **(RESOLVED — 05-01 Task 3)**
    - What we know: the mechanism is structural (build-smoke rewrites the tree), the brief names the exact failure string, and `prepack` makes it publish-blocking.
    - What's unclear: whether it reproduces today — deliberately not run (Q7).
    - Recommendation: fix all three sites first, then treat the first post-fix full run as confirmation. Skip the pre-fix demonstration.
 
-2. **What is "CB-8", precisely?**
-   - What we know: MIGRATION step 6's static segment asserts four patch files' row ids are pairwise disjoint; G-4 is recorded at `04-VALIDATION.md:165`.
-   - What's unclear: the literal token appears in **neither** document.
-   - Recommendation: cite the criteria as "步骤 6 静态段四条来源断言"; have the plan refuse to inherit an unquoted "CB-8".
+2. **What is "CB-8", precisely?** — **(RESOLVED — corrected 2026-11-16; see the rewritten honesty note in §Q8)**
+   - What we know **now**: the token **is** present — `04-VALIDATION.md:165` (1 occurrence) and `04-05-PLAN.md` (5 occurrences, which *define* it: CB-8a = `COEXIST-DRILL`, CB-8b = `COEXIST-REAL` with five conjuncts at `:436`). `docs/MIGRATION.md` has **0**.
+   - The original entry here said "the literal token appears in neither document" — that was **false**, produced by a truncated quote and an unreported negative grep. Corrected rather than deleted, because the failure mode is instructive.
 
-3. **Skill watch — does anything actually watch?**
+3. **Skill watch — does anything actually watch?** — **(RESOLVED — 05-02 Task 3: `not measured` + structural reason; 05-03 writes that into README)**
    - What we know: one-shot sessions re-read at boot, so the UAT harness cannot observe watching (Q5).
    - What's unclear: whether the `web` profile hot-reloads a changed `SKILL.md` description.
    - Recommendation: run Q5's method 2 once in a scratch home on a non-3091 port; if not run, the README says "not measured".
 
-4. **Is npm's prerelease guard version-specific?**
+4. **Is npm's prerelease guard version-specific?** — **(RESOLVED — 05-03 Task 1: `publishConfig.tag: "latest"` satisfies both regimes, so the answer stops mattering)**
    - What we know: npm **12.2.1** hard-fails a prerelease publish without an explicit tag (`publish.js:131-138`).
    - What's unclear: whether the human's publish environment has the same npm major. The guard did not exist in older npms, where it silently went to `latest`.
    - Recommendation: set `publishConfig.tag = "latest"` — it satisfies both regimes, so the answer stops mattering.
 
-5. **Is the real `web` bridge block one line or two?**
+5. **Is the real `web` bridge block one line or two?** — **(RESOLVED — 05-04 Task 1/Task 2: the plan requires a re-count and an explicit correction line in the evidence book; both `web` and `headless` measured 2)**
    - What we know: `grep -c GSD-DSH-bridge` returned **2**; `05-CONTEXT` says 1.
    - Recommendation: re-count at migration time; never plan against a stale count.
 
