@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: 端到端 UAT 与 1.0 收官
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-11-16T06:45:31.181Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-11-16T07:21:57.687Z"
 last_activity: 2026-11-16
-last_activity_desc: Phase 05 plan 01 complete
-state_head: af6e703f3d35af8cfc593cbcad6fad1d8e469f58
+last_activity_desc: Phase 05 plan 02 complete
+state_head: b3406eb14220b9308ed133322acb8411f50f92f2
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 16
+  percent: 80
 ---
 
 # STATE: dsh-gsd
@@ -22,13 +22,13 @@ progress:
 ## Current Position
 
 Phase: 05 (端到端 UAT 与 1.0 收官) — EXECUTING
-Plan: 2 of 4
-Current Plan: 2
+Plan: 3 of 4
+Current Plan: 3
 Total Plans in Phase: 4
 Status: Ready to execute
-Last activity: 2026-11-16 — Phase 05 plan 01 complete (05-01-SUMMARY.md)
+Last activity: 2026-11-16 — Phase 05 plan 02 complete (05-02-SUMMARY.md)
 
-Progress: [████████░░] 15/18 plans ([████████░░] 83%) — 4/5 phases (80%)
+Progress: [████████░░] 16/18 plans ([████████░░] 80%) — 4/5 phases (80%)
 
 ## Current Focus
 
@@ -95,6 +95,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 04 P04 | 5 min | 2 tasks | 2 files |
 | Phase 04 P05 | 13min | 3 tasks | 5 files |
 | Phase 05 P01 | 37 min | 3 tasks | 6 files |
+| Phase 05 P02 | 26 min | 3 tasks | 9 files |
 
 ## Decisions
 
@@ -156,9 +157,13 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 05]: UAT-03 用两个同前缀、不同值的哨兵（Rule 1）：一个哨兵无法同时满足「不出现在记录里」（.env 未进上下文）与「出现在记录里」（.txt 读成功），两条断言互斥；两哨兵保留原意且互不矛盾。
 - [Phase 05]: 引擎路径断言 = 「包内路径段 ∧ 引擎名」（Rule 1）：「node_modules/dsh-gsd/gsd-core/bin/gsd-tools.cjs」连续串是否出现取决于模型命令写法（实测一次 15 次、一次 0 次，后者用 GSDROOT 变量），连续串断言会随机红绿。
 - [Phase 05]: 判据环境显式钉 /tmp（Rule 3）：macOS 的 os.tmpdir() 是 /var/folders/…，与 D-01/计划硬判据要求的 /tmp/dsh-uat-* 不符，故 UAT_TMP=/tmp 显式传入 mkdtemp。
+- [Phase 05]: UAT-04 的 commit 三段对照跑在 mkdtemp 的 scratch cwd 上，绝不改本仓配置（`gsd-validate-commit.sh` 用 `require('./.planning/config.json')` 读当前目录；本仓一旦 opt-in，此后每次 commit 都要过校验）；「本仓未 opt-in」写成一条断言而不是注释。 — 一个恒拦的 hook 也会「通过」两向对照，所以必须有 (b) 规范消息放行与 (c) 未 opt-in 放行两段；而「本仓未 opt-in」若不落成断言，改坏配置时没有任何东西会红。
+- [Phase 05]: injection 半边只断言 exit 0 + `INJECTION-PATTERN` finding + 无 `decision`，并复用 05-01 的 wrapper 分发路径。 — 该 hook 是 PostToolUse advisory，只有 `security.injection_blocking=true` 时才拦 HIGH；断言「被拦」会按设计制造一条红，断言「无输出」则连扫描器有没有跑都证明不了。
+- [Phase 05]: UAT-05 的「两份 tarball 只有版本串不同」是 **JSON 语义**陈述，不是字节陈述：npm 在 `pack` 时重排 `package.json` 的缩进，三段证明 = 成员清单逐行相同 + 除该文件外逐成员字节相同 + 该文件去掉 version 后深度相等。 — 照字面写成字节等值会是一条恒红的判据；限定已逐字写进 05-UAT-EVIDENCE 判据段 5 与 05-UAT.md 的 UAT-05 行。
+- [Phase 05]: D-10-5 走 canonical 覆盖件 + post-staging `cp`（在 ⑥ 改写 pass 之前、**不**递增 `counters.copied`），并把 `SKIP_DIRS` 成员行计数限定在 Set 字面量内（文件头注释点名同一 token 属散文，不计入）。 — 直接改 `gsd-core/bin/lib/ui-frontend-evidence.cjs` 会在下次 `node build.mjs` 时消失（而 prepack 每次发布都 build）；加一 `counters.copied` 会打红 `copied 76 trees`；按全文计数会把注释判成「成员写重」。
 
 ## Session
 
-**Last session:** 2026-11-16T06:43:49.643Z
-**Stopped at:** Completed 05-01-PLAN.md
+**Last session:** 2026-11-16T07:21:57.583Z
+**Stopped at:** Completed 05-02-PLAN.md
 **Resume file:** None

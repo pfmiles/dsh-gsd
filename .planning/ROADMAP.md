@@ -132,13 +132,13 @@ Plans:
   9. （D-10-4）旧仓 `pfmiles/install-gsd-dsh` 互链已推送：远端 main 的 sha 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致
   10. （D-10-5）`gsd-core/bin/lib/ui-frontend-evidence.cjs` 在**构建后**的 `SKIP_DIRS` 含 `.gsd-build-tmp`，连跑两次 `node build.mjs` 仍成立
 
-**Plans**: 1/4 plans executed（原列 2 项；按 D-10 的「五件全纳入」扩到 4，收口段单独成最后一波 —— D-11 要求它必须在所有 `.planning/` 产物提交之后）
+**Plans**: 2/4 plans executed（原列 2 项；按 D-10 的「五件全纳入」扩到 4，收口段单独成最后一波 —— D-11 要求它必须在所有 `.planning/` 产物提交之后）
 
 **Wave 1**
 - [x] 05-01: 判据 harness 与安装/会话面 —— tracer（干净 `/tmp` home → 装插件 → 会话谓词）+ INST-02..05 + UAT-02/03 + `--test-concurrency=1` 三处与 ⑮（D-01 / D-02 / D-10-1）
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 05-02: 残余判据、构建补丁与报告 —— hooks 两向（UAT-04）+ 升级回滚（UAT-05）+ 三点开销与 watch 处置（UAT-06）+ `SKIP_DIRS` 构建期补丁（D-10-5）+ `05-UAT.md`
+- [x] 05-02: 残余判据、构建补丁与报告 —— hooks 两向（UAT-04）+ 升级回滚（UAT-05）+ 三点开销与 watch 处置（UAT-06）+ `SKIP_DIRS` 构建期补丁（D-10-5）+ `05-UAT.md`
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 05-03: 发布态树与不可逆对外动作 —— 四处 manifest 改动 + README/CHANGELOG + dry-run + `checkpoint:decision`（D-04）+ 人类 `npm publish` + registry 复验 + Release + dshmarket PR（PUB-01 / PUB-03）

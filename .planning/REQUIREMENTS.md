@@ -58,8 +58,8 @@
 - [ ] **UAT-01**: 干净机器（无 ~/.dsh 或全新 DSH_HOME）完成 INST-01 并重启
 - [x] **UAT-02**: `/gsd-health` 成功；`/gsd-new-project --auto` 在测试仓库 scaffold `.planning/`
 - [x] **UAT-03**: 真实会话 read `.env` 被拦（HOOK-02 复验）
-- [ ] **UAT-04**: hooks 回归抽测（commit 校验、prompt-injection 扫描）
-- [ ] **UAT-05**: 升级/回滚同命令换版本号后抽测通过
+- [x] **UAT-04**: hooks 回归抽测（commit 校验、prompt-injection 扫描）
+- [x] **UAT-05**: 升级/回滚同命令换版本号后抽测通过
 - [ ] **UAT-06**: 启动开销与技能 watch 的量化记录（启动耗时、目录监视行为）
 
 ### Phase 5 收口移交 (D-10)
@@ -70,7 +70,7 @@
 - [ ] **D-10-2**: G-4 闭合 —— 真实迁移 `web` 后跑步骤 6 静态段的四条来源 row id 断言（`MISSING:` 判红）与 CB-8b/`COEXIST-REAL` 五条合取（`@jiangzhenguo/dsh-codegraph` 的行级证据升级为运行时证据）
 - [ ] **D-10-3**: 真实 `~/.dsh` 迁移完成（04-D-02 的移交）—— 旧源为零、`web` 与 `headless` 的插件 row 各恰 1、包内 72 技能与两项字节数对齐
 - [ ] **D-10-4**: 旧仓 `pfmiles/install-gsd-dsh` 互链已推送（04-D-08/D-09 的移交）—— 远端 main 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致
-- [ ] **D-10-5**: `gsd-core/bin/lib/ui-frontend-evidence.cjs` 的 `SKIP_DIRS` 含 `.gsd-build-tmp`，且经得住两次重建（补丁落 `build/assets/` + `build.mjs` 的拷贝步，不直接改构建产物）
+- [x] **D-10-5**: `gsd-core/bin/lib/ui-frontend-evidence.cjs` 的 `SKIP_DIRS` 含 `.gsd-build-tmp`，且经得住两次重建（补丁落 `build/assets/` + `build.mjs` 的拷贝步，不直接改构建产物）
 
 ### 自举开发 (DEV)
 
