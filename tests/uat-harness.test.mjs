@@ -1057,3 +1057,132 @@ test('⑥ UAT-05 升级/回滚：同一条 plugin add 换版本号（.dsh022 ↔
     }
   }
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ⑦ UAT-06 —— 三点启动开销（事件时间戳，不是墙钟）+ 技能 front-matter 的启动读取
+//
+//   **测量点：`turn/start.time − session.createdAt`**，两个值都由 DSH 自己以毫秒写进
+//   `session.v4.jsonl.zstd`，所以数字不依赖秒表、不依赖 shell 启动、**也不含模型往返**。
+//   墙钟被一并记录，但它只作「LLM 主导、不可用作开销」的反例：同一台机器上它逐轮漂移
+//   以秒计（RESEARCH §Q5 实测 2 386–5 113 ms），拿它当开销等于在量模型延迟。
+//
+//   Setup 是**成对**的：同一个 `DSH_HOME`、同一个 `--from-default-profile headless`
+//   模板造两个 profile（`base` 无插件 / `p5` 有插件），交替各跑 3 轮。这样只差
+//   `plugin add` 一个变量。
+//
+//   **技能 watch 不在这里，也测不了**：一次性会话每次都是新进程，启动时重读技能目录，
+//   所以「watch 延迟」对一次性 harness 结构上不适用；watcher 的行为只在长驻 `web`
+//   进程里可观察，而数 fsevents 需要 root。本用例能测的只是**启动时读取**——见第 2 段。
+// ═════════════════════════════════════════════════════════════════════════════
+test('⑦ UAT-06 三点启动开销（事件时间戳）+ 技能 front-matter 的启动读取（不是 watch）', { timeout: 1500000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  const { tgz } = resolveTgz()
+  const home = mkdtempSync(join(UAT_TMP, 'dsh-uat-'))
+  const P_BASE = 'base'
+  const P_PLUGIN = 'p5'
+  let ok = false
+  try {
+    createProfile('headless', P_BASE, home)
+    createProfile('headless', P_PLUGIN, home)
+    installPlugin(P_PLUGIN, tgz, home)
+
+    // 一轮 = 一次性会话 → 会话谓词 → 从**这一次新建**的记录里取两个时间戳。
+    const trial = (profile, label) => {
+      const before = new Set(sessionFiles(home))
+      const t0 = Date.now()
+      const r = runDsh(['--profile', profile, '--json', '--approval-policy', 'never', 'reply with the word UAT'], { home, timeout: 600000 })
+      const wall = Date.now() - t0
+      assert.equal(r.status, 0, `${label}: one-shot exited ${r.status}: ${out(r)}`)
+      const fresh = sessionFiles(home).filter((f) => !before.has(f))
+      assert.equal(fresh.length, 1, `${label}: expected exactly 1 new session record, found ${fresh.length}: ${fresh.join(', ')}`)
+      try {
+        assertSessionSucceeded(fresh[0])
+      } catch (e) {
+        assert.fail(`session predicate failed on a trial (${label}) — a boot-cost number from a turn that did not finish is not a measurement: ${e.message}`)
+      }
+      const events = readSession(fresh[0])
+      const head = events.find((e) => e && e.type === 'session')
+      assert.ok(head && Number.isFinite(head.createdAt), `${label}: the session header carries no numeric createdAt — the measurement point is gone`)
+      const start = events.find((e) => e && e.type === 'turn/start')
+      assert.ok(start && Number.isFinite(start.time), `${label}: no turn/start event carrying a numeric time`)
+      const delta = start.time - head.createdAt
+      assert.ok(
+        Number.isInteger(delta) && delta > 0,
+        `non-positive delta (${delta} ms) in ${label} — turn/start must come after session.createdAt; if it does not, this is reading the wrong event`,
+      )
+      return { delta, wall }
+    }
+
+    // 交替 3 轮（base, p5）× 3。
+    const baseTrials = []
+    const pluginTrials = []
+    for (let i = 0; i < 3; i++) {
+      baseTrials.push(trial(P_BASE, `base trial ${i + 1}`))
+      pluginTrials.push(trial(P_PLUGIN, `p5 trial ${i + 1}`))
+    }
+    const median = (xs) => {
+      const s = [...xs].sort((a, b) => a - b)
+      const m = s.length >> 1
+      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2)
+    }
+    const baseMedian = median(baseTrials.map((x) => x.delta))
+    const pluginMedian = median(pluginTrials.map((x) => x.delta))
+    const segment = pluginMedian - baseMedian
+    assert.ok(
+      pluginMedian > baseMedian,
+      `plugin adds no measurable boot cost — median(p5)=${pluginMedian} ms is not greater than median(base)=${baseMedian} ms ` +
+        `(base=${baseTrials.map((x) => x.delta).join('/')}, p5=${pluginTrials.map((x) => x.delta).join('/')}). ` +
+        `This contradicts the RESEARCH §Q5 baseline (10 ms vs 340 ms); re-measure before weakening the claim`,
+    )
+
+    // ── 技能目录的「启动读取」判据（**不是** watch）
+    //   必须改 front-matter 的 `description`：正文不会进模型上下文，改正文测不出任何
+    //    东西（RESEARCH §Q5 用正文 marker 得到 0 命中的那次实测修正）。
+    const SKILL = join(home, 'profiles', P_PLUGIN, 'node_modules', 'dsh-gsd', 'skills', 'gsd-help', 'SKILL.md')
+    assert.ok(existsSync(SKILL), `${SKILL} missing — the installed package must carry skills/gsd-help/SKILL.md for the boot-read probe`)
+    const token = `UATBOOTREAD-${randomBytes(4).toString('hex')}`
+    const skillLines = readFileSync(SKILL, 'utf8').split('\n')
+    const fmStart = skillLines.findIndex((l) => l.trim() === '---')
+    const fmEnd = skillLines.findIndex((l, i) => i > fmStart && l.trim() === '---')
+    assert.ok(fmStart >= 0 && fmEnd > fmStart, `${SKILL} has no YAML front matter — a body edit would prove nothing, so the probe has nowhere to land`)
+    const descIdx = skillLines.findIndex((l, i) => i > fmStart && i < fmEnd && /^description:/.test(l))
+    assert.ok(descIdx >= 0, `${SKILL}'s front matter has no description: line — this probe must mutate the DESCRIPTION, not the body: the body never reaches the model context`)
+    const originalDesc = skillLines[descIdx]
+    skillLines[descIdx] = `description: ${token} phase-05 UAT boot-read probe (front-matter description replaced inside a throwaway profile)`
+    writeFileSync(SKILL, skillLines.join('\n'))
+
+    const bootBefore = new Set(sessionFiles(home))
+    const bootRun = runDsh(['--profile', P_PLUGIN, '--json', '--approval-policy', 'never', 'reply with the word SKILLREAD'], { home, timeout: 600000 })
+    assert.equal(bootRun.status, 0, `the boot-read probe session exited ${bootRun.status}: ${out(bootRun)}`)
+    const bootFresh = sessionFiles(home).filter((f) => !bootBefore.has(f))
+    assert.equal(bootFresh.length, 1, `expected exactly 1 new session record for the boot-read probe, found ${bootFresh.length}: ${bootFresh.join(', ')}`)
+    const bootText = sessionText(bootFresh[0])
+    const hits = bootText.split(token).length - 1
+    // home 反正要删，但恢复现场能让失败时可读。
+    skillLines[descIdx] = originalDesc
+    writeFileSync(SKILL, skillLines.join('\n'))
+    assert.ok(
+      hits >= 1,
+      `front-matter description token never reached the session (${hits} hits) — this probe measures the BOOT-TIME read, not the watcher: ` +
+        `absence means either the body was edited instead of the description, or the skill came from a different profile/home`,
+    )
+
+    console.log(
+      `[uat-harness] ⑦ UAT-06: base deltas=${baseTrials.map((x) => x.delta).join('/')} ms (median ${baseMedian}) | ` +
+        `p5 deltas=${pluginTrials.map((x) => x.delta).join('/')} ms (median ${pluginMedian}) | plugin segment ≈ ${segment} ms | ` +
+        `wall (NOT an overhead figure — LLM-dominated) base=${baseTrials.map((x) => x.wall).join('/')} ms p5=${pluginTrials.map((x) => x.wall).join('/')} ms | ` +
+        `boot-read token hits=${hits}`,
+    )
+    ok = true
+  } finally {
+    if (ok) {
+      rmSync(home, { recursive: true, force: true })
+    } else {
+      console.error(`[uat-harness] kept failing home for forensics: ${home}`)
+    }
+  }
+})

@@ -8,10 +8,13 @@
 // ⑧⑨⑩：CHANGELOG 首条目/小节闭集、徽章与致谢、INST-06 插件管理器元数据。
 // ⑪⑫（G-2）：dshmarket 条目 schema 与裸名 install 串逐字一致性；⑬（R-1）：
 // manifest 六个元数据键的全等守卫。catalog 条目亦走行级正则，不引入 YAML 依赖。
+// ⑮（D-10-1）：`--test-concurrency=1` 的三处逐点计数扫描。⑯（05-02）：`BUILD.md:16`
+// 的活体套件计数自校验——读「预期 N」与「N/N」两种形态并断言与 `tests/*.test.mjs` 的
+// `test(` 总数相等（该断言**包含它自己**，见文件末尾注释）。
 // 版本号解析只消费 build/lib/check-pins.mjs 导出（单一真值，02-PATTERNS key_link）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -471,5 +474,52 @@ test('⑮ D-10-1：`--test-concurrency=1` 三处齐备（package.json ×2 + work
     pkgSites.length + workflowTestLines.length,
     3,
     `node --test 的出现次数应**恰 3**（prepack + test + workflow），实际 ${pkgSites.length + workflowTestLines.length}`,
+  )
+})
+
+// ⑯（05-02 Task 3）：`BUILD.md:16` 是仓内**唯一**的活体套件计数，而过去没有任何断言守
+// 它——任何新增 `test(` 都会让它静默变旧（`05-PATTERNS` F-04 点名的退化通道）。本条把
+// 它变成自校验：从 `BUILD.md` 读「预期 N」与「N/N」两种形态（各自先断言**全文恰 1 处**，
+// 否则多处匹配会让「取哪一个」变成猜测），再与 `tests/*.test.mjs` 里顶层的 `test(` 行数
+// 之和比较。
+// ⚠ 它自己也是一个 `test(`，所以计数**包含它本身**。这是良定义的：扫的是文件文本，不是
+// 运行期注册数——落地顺序因此是「先写本条 → 实跑取真实计数 → 把同一个数写回 BUILD.md」。
+test('⑯ BUILD.md 的活体套件计数自校验：预期 N 等于 tests/*.test.mjs 的 test( 总数', () => {
+  // (a) 形态唯一：`预期 <digits>` 与 `<n>/<n>` 各恰 1 处。
+  const declaredHits = [...buildMd.matchAll(/预期\s+(\d+)/g)].map((m) => m[1])
+  assert.equal(
+    declaredHits.length,
+    1,
+    `BUILD.md 里「预期 <数字>」的形态应恰 1 处，实际 ${declaredHits.length} 处：[${declaredHits.join(', ')}]`
+      + '——多处匹配会让「哪个才是套件计数」变成猜测，本断言随即失效',
+  )
+  const declared = Number(declaredHits[0])
+  const selfPairs = [...buildMd.matchAll(/(\d+)\s*\/\s*(\d+)/g)]
+    .filter((m) => m[1] === m[2])
+    .map((m) => m[1])
+  assert.equal(
+    selfPairs.length,
+    1,
+    `BUILD.md 里「N/N」自配对形态应恰 1 处，实际 ${selfPairs.length} 处：[${selfPairs.join(', ')}]`
+      + '——它必须与「预期 N」同源，多处会让读者不知道该信哪一个',
+  )
+  assert.equal(
+    Number(selfPairs[0]),
+    declared,
+    `BUILD.md 的两处活体计数互相矛盾：「预期 ${declared}」vs「${selfPairs[0]}/${selfPairs[0]}」`,
+  )
+
+  // (b) 实跑口径：顶层 `test(` 行数之和（glob 是 `tests/*.test.mjs`，只扫顶层文件）。
+  const testFiles = readdirSync(join(ROOT, 'tests'))
+    .filter((f) => f.endsWith('.test.mjs'))
+    .sort()
+  const perFile = testFiles.map((f) => ({ f, n: (read(`tests/${f}`).match(/^test\(/gm) || []).length }))
+  const actual = perFile.reduce((a, b) => a + b.n, 0)
+  assert.equal(
+    actual,
+    declared,
+    `BUILD.md:16 的活体计数已过期：它写 ${declared}，而 tests/*.test.mjs 的实际 test( 总数是 ${actual} `
+      + `（${perFile.map((x) => `${x.f}=${x.n}`).join(' / ')}）。`
+      + '改 BUILD.md:16 或把新增用例数算进去，别让唯一活体计数静默变旧',
   )
 })
