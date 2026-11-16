@@ -289,6 +289,20 @@ D-04 的申报依据是「`git diff 9e99cd6..HEAD` 对 `files` 白名单（含 `
 | 同一组路径再加 `package.json` `README.md` | 同上 | 恰好两个文件：`README.md`（36 行增 / 2 删）与 `package.json`（4 增 / 4 删），合计 `2 files changed, 38 insertions(+), 6 deletions(-)` ⇒ 白名单面上变的只有这两个文件，且都属于「发布态本身」而不是代码 |
 | 重建「发布的字节有 CI 背书」 | 待 Task 2 | 推 main → 该提交上跑出一次 `completed/success` 的 run，把背书从「同一份旧字节」换成「同一个提交」。**在 Task 2 的推送发生之前这句话不成立**，本段不预先声称它成立 |
 
+### 一个更大的差异：`npm publish` 的字节不是「可复现的字节」
+
+本段第一张表记了一次 dry-run 的 `shasum`。提交本任务之后，在**同一棵树**上再跑一次同样的 dry-run（2026-11-16T07:37:57Z → 07:38:12Z，exit **0**，`with tag latest` 与 `https://registry.npmjs.org/` 两个 token 与第一次逐字相同），`shasum` 从 `4d3edd7c…` 变成了 `35d93379…`。**这不是本次改动引起的**：两次之间树里只多了一个 `.planning/` 下的证据文件，而 `.planning/` 不在 `files` 白名单里。实测定位如下：
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| 同一棵**已构建**的树上 `npm pack --ignore-scripts` 连跑两次 | 2026-11-16T07:39:5xZ | 两个 tarball 的 sha256 **完全相同**（`bcbe1454dfd0c5bd0a2c2b0bb4b8fb867a85a80a83e0b5b60e39b2d9eb1ed82b`，4 582 656 B）⇒ 打包本身是确定的 |
+| `node build.mjs` 重建一次后再 `npm pack --ignore-scripts` | 同上 | sha256 **变了**（`fa94f7d75fe2e7c007580e4cfd50a4af1ed9e45b0be70901b9c6c8969a432f83`，4 582 668 B）⇒ **重建即改字节** |
+| 解包两份 tarball 逐成员比对 | 同上 | 成员清单 **958 / 958 逐行相同**；内容恰 **59** 个成员不同，且**这 59 个就是全部含 `GSD_ARGS_END_` 的文件**（50 个在 `gsd-core/workflows/`，其余分布在 `gsd-core/workflows/*/steps|modes|detail` 与 `skills/gsd-quick-batch`）；其余 899 个成员逐字节相同 |
+| 差异的形状 | 同上 | 只有 heredoc 的结束标记变：`IFS= read -rd '' GSD_ARGS <<'GSD_ARGS_END_c3432f38…'` → `…GSD_ARGS_END_c590e68a…` |
+| 根因（在构建产物内，本计划未改动） | — | `gsd-core/bin/lib/args-terminator.cjs:37-40` 的 `generateArgsNonce()` = `randomBytes(16).toString('hex')`，文件头注释即「A fresh nonce」；构建日志的 `build: staging with the official installer` 一步把每个文件的重定向标记「盖章」成这个 nonce。这是**上游的设计**（避免标记与正文冲突），不是缺陷 |
+
+**对判据的后果（Task 2/3 的口径必须据此改写）：** `npm publish` 会先跑 `prepack` = `node build.mjs && …`，所以**发布出去的字节是发布那一刻 build 生成的**，它在构造上**不可能**等于任何此前被 dry-run 或 CI 验过的 tarball 的字节。因此「发布的字节 = 某个被验过的字节指纹」这句话在本包上永远为假，无论 CI 跑多少次；能成立且更强的是：**同一提交 + 同一套构建门 + 同一套串行测试 + 该提交上 CI 绿** —— 这三样 dry-run 各自证过（`gates: all passed` / `tests 47` / `Publishing to … with tag latest`）。推论：Task 2 的 `PUBLISHED_SHA` 是「**发布所用提交**」的标识，不是「发布所用字节」的标识；Task 3 的 registry 复验能核到的是「同一版本号 + 同一管线产物可用」，核不到字节指纹（发布后把 tarball 下载下来单独记账是另一件事，本计划未安排）。
+
 ### 边界：这证不了什么
 
 - **不上传任何字节**：dry-run 证明的是「npm 会怎么发」，不是「已经发了」。registry 上此刻仍然没有 `dsh-gsd`（本段不做抢注复查，那是 Task 2 放行前的动作）。
