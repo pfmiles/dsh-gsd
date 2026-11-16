@@ -104,3 +104,33 @@
 - `.planning/` 的「三者在场」证明 scaffold 真的动了工作区，**不证明**生成的规划内容质量（那属另一条验收口径），也不证明 `--auto` 在别的仓状态下同样收敛。
 - `.env` 拦截证明的是**这一次会话里 guard 生效**，不证明 `security.injection_blocking=true` 时的阻断语义，也不证明 hook 在崩溃路径上的 fail-open 行为（SC-2 的另一半归另一计划）。
 - 一次成功的 `gsd-health` 证明引擎能从包内解析，**不证明** 72 个技能全部可被模型看见/调用（技能面归 05-02 的 ①②）。
+
+## 判据段 4 — UAT-04（hooks 回归）
+
+> 用例 ① = commit 校验的三段对照；用例 ② = injection 扫描只落日志。两条都**不起** `dsh` 会话：两个 hook 都由 `config/gsd-hooks.json` 经 `hooks/dsh-gsd-suite/run.cjs` 调度（`bash` / 30 s 与 `read|web_fetch|web_search` / 5 s 两条），harness 把合成 payload 喂给**同一个 wrapper**，所以判定走的是真实分发入口，只是绕过了 `dsh` 的注册面（见「这证不了什么」）。
+
+**本段只认这一次跑（2026-11-16T06:59:40Z 完成，耗时 108.4 s）的命令原文与读数：**
+
+```
+$ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/uat-harness.test.mjs
+ℹ tests 5 / ℹ pass 5 / ℹ fail 0 / ℹ skipped 0
+```
+
+（`$K` 一次性从 `~/.dsh/.credentials.yaml` 取出、只经进程环境传入、不打印不落盘。`ℹ skipped 0` 是硬要求：无 `DSH_UAT_LIVE` 时**全部**用例 skip，那时 `ℹ fail 0` 什么也不证明——三段对照一次都没跑。）
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| (a) `hooks.community: true` 的 scratch cwd + 非规范消息 `git commit -m "Update the release notes."` | 2026-11-16T06:59:40Z | **exit 2**；stdout = `{"decision": "block", "code": "CONVENTIONAL_COMMITS_VIOLATION", "valid_types": ["feat","fix","docs","style","refactor","perf","test","build","ci","chore"], "reason": …}`；stderr **空**（不含 `validator disabled`） |
+| (b) 同一 opt-in cwd + 规范消息 `git commit -m "feat(05-02): wire the UAT hook regression"` | 2026-11-16T06:59:40Z | **exit 0**；stdout **空**（无 block 判定）⇒ 排掉「恒拦的 hook 也能通过两向对照」这条假绿 |
+| (c) 负向对照：`hooks.context_warnings`（与本仓同形，**无** `community`）+ 同一条非规范消息 | 2026-11-16T06:59:40Z | **exit 0**；stdout 空 ⇒ (a) 的红确实来自 opt-in 打开后的判定，不是 git 自己出错 |
+| 三段共同断言 | 2026-11-16T06:59:40Z | stderr **不含** `/validator disabled/i`。该句是三条 fail-open 通道的共同收尾（opt-in 读失败 / `tool_input.command` 抽取失败 / 分类器跑不动），含它 = 判定不可用，三段的红都归因不了 |
+| ② `PostToolUse` 合成 payload（`tool_name=read`、`tool_input.file_path` = `tests/fixtures/injection-sample.md`、`tool_response` = 该文件正文）经同一 wrapper → `gsd-read-injection-scanner.js` | 2026-11-16T06:59:40Z | **exit 0**；stdout 可 `JSON.parse`；`severity=**HIGH**`；`findings=**3**`，其中 `ruleId=INJECTION-PATTERN` **3** 条；**无** `decision` 键 ⇒ advisory，未 block |
+| 第四条事实：本仓 `.planning/config.json`（由用例 ① 断言，不是注释） | 2026-11-16T06:59:40Z | `hooks` 只有 `context_warnings`，**没有** `community` ⇒ commit 校验在本仓**默认不生效**（上游设计：`gsd-validate-commit.sh:118` `if [ "$ENABLED" != "1" ]; then exit 0; fi`）。改坏本仓配置会让这条断言红，并提示「第四条事实需改写」 |
+| 全量套件（同一棵树，串行；含真实构建 smoke） | 2026-11-16T06:59:56Z | `ℹ tests 44 / ℹ pass 39 / ℹ fail 0 / ℹ skipped 5`，exit 0。44 = 05-01 结束时的 42 + 本任务的 ①②；`skipped 5` 是无 live 环境下 5 条 live 用例全 skip 的正确读数 |
+
+### 边界：这证不了什么
+
+- 本段证的是两个 hook **在 wrapper 这一层**的判定与分发。它**不证明** `dsh` 会话里 hooks 的注册面（`config/gsd-hooks.json` 的两条 matcher 有没有被 bridge 挂上）——那由 05-01 的会话记录（`hook/result` 事件，判据段 3）与 05-04 迁移后的 `--dump-config` 间接支撑。
+- ② 的 `INJECTION-PATTERN` 证明扫描器**认得**这个 fixture，**不证明**它在真实会话里「拦住了」注入：它是 PostToolUse，内容在它跑之前就已经进了上下文；SC-2 的原话也只要求「落日志」。
+- 三段对照跑在 `mkdtemp` 出来的 scratch cwd 上，**不改**本仓配置。所以它证的是「opt-in 打开后的机制成立」，**不是**「本仓的 commit 会被校验」——后者恰是第四条事实的反面，且是上游设计的默认值。
+- 若某次 (c) 意外 exit 2，属负向观测，必须原样记录并标注**不得**充当通过形态；本次三段均如预期，无负向观测。

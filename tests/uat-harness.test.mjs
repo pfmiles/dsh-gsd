@@ -30,6 +30,16 @@
 //     `assistant/message` 在场  ∧  任何 `turn/end` 记录内部（**递归**）没有 `kind === 'error'`。
 // 实现在 `JSON.parse` 之后对事件对象做判断，不是对压缩流做行级正则。
 //
+// ── 本文件的用例 ──────────────────────────────────────────────────────────
+//   ① UAT-04 commit 校验三段对照（opt-in 拦 / opt-in 放 / 未 opt-in 放）
+//   ② UAT-04 injection 扫描只落日志（advisory + INJECTION-PATTERN，绝不 block）
+//   ③ UAT-01 / INST-01        ④ INST-02..05        ⑤ UAT-02 / UAT-03
+//   ⑥ UAT-05 升级/回滚（同一命令换版本号）
+//   ⑦ UAT-06 三点启动开销 + 技能 front-matter 的启动读取（不是 watch）
+// ①② 不需要起 `dsh` 会话，但它们**同样**受 `missingPrereqs()` 门控：它们的证据只
+// 认一次 live 跑，否则「无 live 环境 ⇒ 全 skip ⇒ ℹ fail 0」会被读成 UAT-04 通过
+// （三段对照一次都没跑）。这是 T-5-12 那条 repudiation 通道的形状。
+//
 // ── 为什么不在 scripts/ ────────────────────────────────────────────────────
 // 仓根 `scripts/` 被 `.gitignore:8` 忽略、被 `build.mjs` 每轮 `rm -rf` 后从 staging
 // 重建、且在 npm `files` 白名单内（会作为产品内容发出去）。`tests/` 三者皆无。
@@ -37,7 +47,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -705,4 +715,172 @@ test('⑤ UAT-02 / UAT-03：gsd-new-project 造 .planning + health 包内引擎�
       console.error(`[uat-harness] kept failing workspace for forensics: ${repo}`)
     }
   }
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ①② 的共用件（UAT-04：hooks 回归）
+//   两个 hook 都由 `config/gsd-hooks.json` 经 `hooks/dsh-gsd-suite/run.cjs` 调度
+//   （`bash`/30 s 与 `read|web_fetch|web_search`/5 s 两条），所以**不必起 dsh 进程**
+//   就能拿到与真实会话同一条分发路径上的判定。`tests/build-smoke.test.mjs:118-146`
+//   已用这个形态测过 `.env` guard。
+//   ⚠ `hooks/` 是构建产物（`.gitignore:5`），不在 git 里；缺了它只能报「先 build」。
+// ═════════════════════════════════════════════════════════════════════════════
+const HOOK_WRAPPER = join(ROOT, 'hooks', 'dsh-gsd-suite', 'run.cjs')
+const COMMIT_HOOK = join(ROOT, 'hooks', 'gsd-validate-commit.sh')
+const INJECTION_HOOK = join(ROOT, 'hooks', 'gsd-read-injection-scanner.js')
+const INJECTION_FIXTURE = join(ROOT, 'tests', 'fixtures', 'injection-sample.md')
+
+// `gsd-validate-commit.sh` 的三条 fail-open 通道都以这一句收尾（opt-in 读失败 /
+// command 抽取失败 / 分类器跑不动）。判据段 4 的三段都要求 stderr **不含**它：
+// 不含 = 判定来自真实规则；含 = 判定不可用（脚本自己说了它被禁用）。
+const FAIL_OPEN_LINE = /validator disabled/i
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ① UAT-04 的 commit 半边 —— 三段对照，缺一段就不成立
+//   (a) opt-in + 非规范 → exit 2 且判定 JSON 是 block/CONVENTIONAL_COMMITS_VIOLATION
+//   (b) opt-in +  规范 → exit 0 且**不**产出 block 判定
+//       （没有这一向，一个恒拦的 hook 也会「通过」两向对照）
+//   (c) 未 opt-in + 非规范 → exit 0
+//       （负向对照：证明 (a) 的红来自 opt-in 打开后的真实判定，不是巧合）
+//   三段的 cwd 由 spawnSync 的 `cwd` 区分：`gsd-validate-commit.sh` 用
+//   `require('./.planning/config.json')` 读**当前工作目录**的配置，所以绝不能改本仓
+//   配置（本仓一旦 opt-in，此后每次 commit 都要过校验，属不可逆的骚扰）。
+// ═════════════════════════════════════════════════════════════════════════════
+test('① UAT-04 commit 校验三段对照：opt-in 拦 / opt-in 放 / 未 opt-in 放', { timeout: 180000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  for (const [p, why] of [
+    [HOOK_WRAPPER, 'the stdio adapter every guard is dispatched through'],
+    [COMMIT_HOOK, 'the commit validator under test'],
+  ]) {
+    assert.ok(existsSync(p), `${p} missing (${why}) — hooks/ is gitignored, run \`node build.mjs\` before the live harness`)
+  }
+
+  const base = mkdtempSync(join(UAT_TMP, 'uat-hook-'))
+  try {
+    const ON = join(base, 'on')
+    const OFF = join(base, 'off')
+    for (const d of [ON, OFF]) mkdirSync(join(d, '.planning'), { recursive: true })
+    // opt-in 的键是 `hooks.community`（不是 `hooks.commit_types`——那只是额外类型）。
+    writeFileSync(join(ON, '.planning', 'config.json'), `${JSON.stringify({ hooks: { community: true } }, null, 2)}\n`)
+    // 与本仓现状同形：只有 context_warnings，没有 community ⇒ 校验器静默 exit 0。
+    writeFileSync(join(OFF, '.planning', 'config.json'), `${JSON.stringify({ hooks: { context_warnings: true } }, null, 2)}\n`)
+
+    const BAD = 'git commit -m "Update the release notes."'
+    const GOOD = 'git commit -m "feat(05-02): wire the UAT hook regression"'
+    const run = (cwd, command) =>
+      spawnSync('node', [HOOK_WRAPPER, 'sh', COMMIT_HOOK], {
+        cwd,
+        encoding: 'utf8',
+        input: JSON.stringify({ tool_name: 'bash', tool_input: { command } }),
+      })
+    const emitsBlock = (stdout) => /"decision"\s*:\s*"block"/.test(String(stdout || ''))
+
+    // (a) opt-in + 非规范 → 必须拦
+    const a = run(ON, BAD)
+    assert.doesNotMatch(a.stderr || '', FAIL_OPEN_LINE, `validator disabled line on stderr in (a) — the opt-in config could not be read, so this verdict is unusable: ${out(a)}`)
+    assert.equal(a.status, 2, `opt-in commit was not blocked (exit ${a.status}) — a non-conforming message under hooks.community:true must exit 2: ${out(a)}`)
+    let verdict
+    try {
+      verdict = JSON.parse(a.stdout)
+    } catch (e) {
+      assert.fail(`(a) blocked but stdout is not a judgement JSON (${e.message}): ${String(a.stdout).slice(0, 200)}`)
+    }
+    assert.equal(verdict.decision, 'block', `(a) judgement decision != block: ${String(a.stdout).slice(0, 200)}`)
+    assert.equal(
+      verdict.code,
+      'CONVENTIONAL_COMMITS_VIOLATION',
+      `(a) blocked for the wrong reason (code=${verdict.code}) — the fixture message must trip the TYPE/FORMAT rule, not the 72-char length rule: ${String(a.stdout).slice(0, 200)}`,
+    )
+
+    // (b) opt-in + 规范 → 必须放行，且不得产出 block 判定
+    const b = run(ON, GOOD)
+    assert.doesNotMatch(b.stderr || '', FAIL_OPEN_LINE, `validator disabled line on stderr in (b) — the opt-in config could not be read, so this verdict is unusable: ${out(b)}`)
+    assert.equal(b.status, 0, `conforming commit was blocked (exit ${b.status}) — an always-blocking validator would also "pass" the two-way comparison: ${out(b)}`)
+    assert.equal(emitsBlock(b.stdout), false, `(b) allowed but still emitted a block decision: ${String(b.stdout).slice(0, 200)}`)
+
+    // (c) 未 opt-in + 非规范 → 必须放行（负向对照）
+    const c = run(OFF, BAD)
+    assert.doesNotMatch(c.stderr || '', FAIL_OPEN_LINE, `validator disabled line on stderr in (c) — the negative control is supposed to be the hook's deliberate silent pass, not a config read failure: ${out(c)}`)
+    assert.equal(c.status, 0, `non-conforming commit passed without opt-in — the negative control did not hold, so (a)'s red is not attributable to the opt-in: ${out(c)}`)
+    assert.equal(emitsBlock(c.stdout), false, `(c) not opted in but emitted a block decision: ${String(c.stdout).slice(0, 200)}`)
+
+    // ── 第四条事实：本仓**未** opt-in，所以 commit 校验在本仓默认不生效。
+    // 这是一条**断言**而不是注释：把本仓配置改坏会让它红，并给出可行动的消息。
+    const repoCfgFile = join(ROOT, '.planning', 'config.json')
+    const repoCfg = existsSync(repoCfgFile) ? JSON.parse(readFileSync(repoCfgFile, 'utf8')) : null
+    assert.notEqual(
+      repoCfg?.hooks?.community,
+      true,
+      'repo config unexpectedly opts in — if this repo has opted in, rewrite the fourth UAT-04 fact in 05-UAT.md and 05-UAT-EVIDENCE.md 判据段 4 instead of letting this assertion go red',
+    )
+
+    console.log(
+      `[uat-harness] ① commit 三段对照: opt-in+nonconforming=exit ${a.status}/block:${verdict.code} | ` +
+        `opt-in+conforming=exit ${b.status}/no-block | no-opt-in+nonconforming=exit ${c.status}/no-block | ` +
+        `repo hooks.community=${repoCfg?.hooks?.community === true ? 'true' : 'absent'}`,
+    )
+  } finally {
+    rmSync(base, { recursive: true, force: true })
+  }
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ② UAT-04 的 injection 半边 —— 落在**日志**而不是 block
+//   `gsd-read-injection-scanner.js` 是 **PostToolUse** 的 advisory 扫描器：只有
+//   `security.injection_blocking=true` 时才拦 HIGH。断言「被拦住」会按设计失败；
+//   断言「无输出」则连扫描器有没有跑都证明不了。SC-2 的原话也只要求「落日志」。
+//   payload 装成 `PostToolUse`：`tool_name=read` + `tool_input.file_path` 指 fixture
+//   + `tool_response` 就是正文（与 05-RESEARCH §Q6 记录的 /tmp/hook-payload-posttool.log
+//   同形）。cwd 取仓根，这样扫描器读到的是**本仓**的 `.planning/config.json`。
+// ═════════════════════════════════════════════════════════════════════════════
+test('② UAT-04 injection 扫描落日志：fixture → advisory + INJECTION-PATTERN，不 block', { timeout: 180000 }, (t) => {
+  const missing = missingPrereqs()
+  if (missing.length) {
+    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    return
+  }
+  for (const [p, why] of [
+    [HOOK_WRAPPER, 'the stdio adapter every guard is dispatched through'],
+    [INJECTION_HOOK, 'the injection scanner under test'],
+    [INJECTION_FIXTURE, 'the committed injection fixture (UAT-04 payload)'],
+  ]) {
+    assert.ok(existsSync(p), `${p} missing (${why}) — run \`node build.mjs\` and keep tests/fixtures/injection-sample.md tracked`)
+  }
+
+  const body = readFileSync(INJECTION_FIXTURE, 'utf8')
+  const r = spawnSync('node', [HOOK_WRAPPER, 'node', INJECTION_HOOK], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    input: JSON.stringify({ tool_name: 'read', tool_input: { file_path: INJECTION_FIXTURE }, tool_response: body }),
+  })
+  assert.equal(
+    r.status,
+    0,
+    `scanner exited non-zero (${r.status}) — this hook is PostToolUse/advisory; a non-zero exit means it was turned into a block: ${out(r)}`,
+  )
+  let parsed
+  try {
+    parsed = JSON.parse(r.stdout)
+  } catch (e) {
+    assert.fail(`scanner exited 0 but stdout is not JSON (${e.message}) — "no output" cannot distinguish "scanned and clean" from "never ran": ${String(r.stdout).slice(0, 200)}`)
+  }
+  const hso = parsed.hookSpecificOutput || {}
+  const findings = Array.isArray(hso.findings) ? hso.findings : []
+  const injected = findings.filter((f) => f && f.ruleId === 'INJECTION-PATTERN')
+  assert.ok(['LOW', 'HIGH'].includes(hso.severity), `scanner produced no severity (got ${JSON.stringify(hso.severity)}) — the advisory never rendered: ${String(r.stdout).slice(0, 200)}`)
+  assert.ok(
+    injected.length > 0,
+    `no INJECTION-PATTERN finding — the scanner did not recognise tests/fixtures/injection-sample.md (severity=${hso.severity}, findings=${findings.length}, ruleIds=${findings.map((f) => f && f.ruleId).join('|') || 'none'})`,
+  )
+  assert.notEqual(
+    parsed.decision,
+    'block',
+    `scanner emitted a block decision — this repo does not set security.injection_blocking, and asserting a block would manufacture a red by design (severity=${hso.severity}, findings=${findings.length})`,
+  )
+
+  console.log(`[uat-harness] ② injection: severity=${hso.severity} findings=${findings.length} INJECTION-PATTERN=${injected.length} decision=${parsed.decision ?? '(none)'}`)
 })
