@@ -63,7 +63,22 @@ dsh plugin --profile web add dsh-gsd@1.20.1-1.dsh022   # 回滚：回到 GSD 1.2
 
 ## 当前状态
 
-P0 spike 已全链路验证（2026-11-10，含守卫 hooks 阳性拦截）；首个正式版本随 Phase 5 在干净机器 8 项 UAT 通过后发布，届时一并开放 npm 首发、GitHub Release 与 dshmarket 收录（见 [ROADMAP](./.planning/ROADMAP.md)）。
+首个正式版本 **`1.20.1-1.dsh022`** 已就绪：8 项 UAT 已在干净机器（一次性 `/tmp` 新 `DSH_HOME`，零 GSD 残留）全部通过；npm 首发、GitHub Release 与 dshmarket 收录随后落地。本版本的变更见 [`CHANGELOG.md`](./CHANGELOG.md) 的对应条目。
+
+## 启动开销
+
+插件给每次会话启动加了多少开销？三点测量，口径固定为**事件时间戳之差**：会话记录里 `session.createdAt` 到首个 `turn/start.time` 的差（两个值都由 DSH 以毫秒写进 `session.v4.jsonl.zstd`）。
+
+| 点 | 含义 | 实测 |
+| -- | ---- | ---- |
+| ① 基线启动 | 无插件 profile | **9 ms** |
+| ② 带插件启动 | 同一 home、同一模板 + 插件 | **279 ms** |
+| ③ 插件段 | ① → ② 的差 | **≈270 ms** |
+
+测量条件：同一 `DSH_HOME`、同一 `--from-default-profile headless` 模板成对造 profile（只差一次插件安装）、两 profile 交替各 3 轮（`n=3`）、单机、暖页缓存。差值是**中位数之差**，不是每轮配对差的中位数。
+
+> **墙钟不可用作开销。** 同一轮从进程启动到答案返回的墙钟在 2 560–3 834 ms 之间漂移，而它由 LLM 往返主导 —— 用它算「插件成本」等于在量模型延迟。
+> **技能目录的 watch（长驻进程热重载）是 `not measured`。** 一次性会话每次都是新进程、启动时重读技能目录，watcher 对它结构性不适用；而数 fsevents 需要 root。本段只给启动开销，不给 watch 数字。
 
 ## 自举构建（顺带一提）
 
@@ -137,7 +152,22 @@ Version = `<gsd-ver>-<rev>.dsh<line>`; upgrade and rollback are always the **sam
 
 ## Status
 
-The P0 spike is fully verified end-to-end (2026-11-10), including positive guard-hook interception. The first public release ships with Phase 5, after the clean-machine UAT (8 items) passes — npm first publish, GitHub Release, and the dshmarket listing land then (see [ROADMAP](./.planning/ROADMAP.md)).
+The first public release, **`1.20.1-1.dsh022`**, is ready: all 8 UAT items pass on a clean machine (a throwaway `/tmp` `DSH_HOME` with zero GSD residue); the npm first publish, the GitHub Release and the dshmarket listing follow. What changed in this release is in the matching [`CHANGELOG.md`](./CHANGELOG.md) entry.
+
+## Startup overhead
+
+What does the plugin add to session startup? Three points, measured on a fixed clock: the difference between `session.createdAt` and the first `turn/start.time` in the session record (both written by DSH in milliseconds into `session.v4.jsonl.zstd`).
+
+| Point | Meaning | Measured |
+| ----- | ------- | -------- |
+| ① baseline | profile without the plugin | **9 ms** |
+| ② with plugin | same home, same template + plugin | **279 ms** |
+| ③ plugin segment | ① → ② delta | **≈270 ms** |
+
+Setup: one `DSH_HOME`, paired profiles built from the same `--from-default-profile headless` template (differing only by one plugin install), alternated over 3 rounds each (`n=3`), single machine, warm page cache. The delta is a **difference of medians**, not the median of per-round paired differences.
+
+> **Wall clock is not a cost measure.** Time from process start to answer on the same setup drifts between 2 560 and 3 834 ms, dominated by LLM round-trips — using it as "plugin cost" measures model latency.
+> **Skill-directory watch (hot reload in long-lived processes) is `not measured`.** One-shot sessions are a fresh process every time and re-read the skill directory at startup, so a watcher structurally does not apply; counting fsevents needs root. This section reports startup cost only — no watch numbers.
 
 ## Bootstrapped (a fun aside)
 

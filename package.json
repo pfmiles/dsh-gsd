@@ -1,7 +1,6 @@
 {
   "name": "dsh-gsd",
   "version": "1.20.1-1.dsh022",
-  "private": true,
   "description": "GSD — spec-driven coding workflow (72 skills, engine, hooks guards) as a DeepSeek Harness plugin bundle. Install: dsh plugin --profile <name> add dsh-gsd",
   "type": "module",
   "main": "index.js",
@@ -51,6 +50,7 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs"
   },
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "tag": "latest"
   }
 }

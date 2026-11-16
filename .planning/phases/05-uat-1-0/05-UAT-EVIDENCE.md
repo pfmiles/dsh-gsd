@@ -260,3 +260,39 @@ $ DEEPSEEK_API_KEY="$K" DSH_UAT_LIVE=1 node --test --test-concurrency=1 tests/ua
 - 三点数字**不证明**任何 UX 断言：270 ms 是否「可接受」是人的判断，不是本段的判据。
 - 不证明 watch；也不证明「技能目录不会被缓存」——只证明**这一次新进程**读到了新描述。
 - 不证明 72 个技能全部可被模型看见/调用（那需要逐个技能的可观察调用，属另一条口径；本段只动了一个 skill 的 `description`）。
+
+## 判据段 9 — 发布前 dry-run（计划编号 8；因 05-02 已占用「判据段 8」而顺延）
+
+> 本段只认这一次跑：`npm publish --dry-run`（仓根，**不带** `--tag`、**不带** `--force`；2026-11-16T07:33:58Z → 07:34:14Z，exit **0**）。它真的跑完 `prepack` = `node build.mjs && node --test --test-concurrency=1 tests/*.test.mjs`，因此一条命令同时给出「构建门绿」「全套串行绿」「npm 自己的 prerelease tag guard 与 registry 目标」三组读数。**它不上传任何字节**：这是本计划唯一一个「用 npm 自己的机器验一遍发布态、但不烧版本号」的动作。
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| `npm publish --dry-run`（prepack 真的执行了） | 2026-11-16T07:33:58Z → 07:34:14Z，exit **0** | 头两行 `npm notice run dsh-gsd@1.20.1-1.dsh022 prepack` / `npm notice run node build.mjs && node --test --test-concurrency=1 tests/*.test.mjs`；构建门 `gates: all passed (A/B/C)`；套件 `ℹ tests 47` / `ℹ pass 40` / `ℹ fail 0` / `ℹ skipped 7`（`skipped 7` = 无 live 环境下 7 条 live 用例全 skip，与 `BUILD.md:16` 的「预期 47」等值） |
+| 同一命令的打包面读数 | 同上 | `npm notice filename: dsh-gsd-1.20.1-1.dsh022.tgz`；`npm notice package size: 4.6 MB`；`npm notice unpacked size: 16.0 MB`；`npm notice shasum: 4d3edd7c527729571d9e780148348584986f0980`；`npm notice total files: 958` |
+| **tag 与 registry 的目标行（本任务的门）** | 同上 | `npm notice Publishing to https://registry.npmjs.org/ with tag latest and default access (dry-run)` —— 两个 token 同时在场：`with tag latest`（`publishConfig.tag` 生效，npm 12 的 prerelease tag guard 未被触发）与 `https://registry.npmjs.org/`（`publishConfig.registry` 生效，没有落到本机默认的只读镜像 `registry.npmmirror.com`） |
+| 同一次跑里的登录态读数 | 同上 | `npm warn publish This command requires you to be logged in to https://registry.npmjs.org/ (dry-run)` ⇒ 本机未登录（与本 phase 侦察的 `npm whoami` = ENEEDAUTH 一致）⇒ 真发布必须由人类带 OTP 执行（D-07），agent 不尝试 login/publish |
+| 两条失败为什么可区分（本段是判据而不是「跑通了」） | — | 缺 `publishConfig.tag` 时本机 npm 12.2.1 在**写网络之前**就抛 `You must specify a tag using --tag when publishing a prerelease version`（`npm/lib/commands/publish.js:131-138`：`isDefaultTag` 且 `isPreRelease` 即 throw）⇒ 命令到不了打包之后，也就不会打印上面那一行；`publishConfig.registry` 被动过时 exit 仍是 0，只有这一行的 URL 会变。所以「tag 缺」与「registry 错」不会混成同一条红 |
+| `node --test --test-concurrency=1 tests/docs-consistency.test.mjs`（④⑥⑬ 三处改动所在文件） | 2026-11-16T07:36:14Z → 07:36:22Z，exit **0** | `ℹ tests 16` / `ℹ pass 16` / `ℹ fail 0` ⇒ ⑥ 的发布态哨兵（`'private' in pkg` 为假）、⑬ 的两键 `publishConfig`（`registry` 仍在 ⇒ npmjs 钉法**没有被放宽**，只是多了一个 `tag`）与文件头注释改写三处同树且绿 |
+| 全套串行（同树，独立于 prepack 再跑一次） | 同上，exit **0** | `ℹ tests 47` / `ℹ pass 40` / `ℹ fail 0` / `ℹ skipped 7` ⇒ 与 `BUILD.md:16` 的「预期 47」等值。本任务**不新增用例**（47 不变），所以 ⑯ 的活体计数自校验无需改 `BUILD.md` |
+| manifest 的四项不变量（`files`/`engines`/`dsh.bundle`/`peerDependencies`/`version`） | 2026-11-16T07:33Z 前后 | 逐字未变：`files` 九项白名单、`engines = {node:'>=24', dsh:'>=0.2.2-rc.1 <0.3.0-0'}`、`dsh.bundle.patch = './cordis.patch.yml'`、`peerDependencies['@deepseek-ai/dsh-skill-filesystem'] = '0.2.2-rc.1'`、`version = '1.20.1-1.dsh022'`。`git diff HEAD -- package.json` 恰两处：删 `"private": true,` 一行、`publishConfig` 里加 `"tag": "latest"` 一行（`--numstat` = `2 2`） |
+
+### 一条必须如实记的差异：D-04 的「`files` 白名单零 diff」依据已部分失效
+
+D-04 的申报依据是「`git diff 9e99cd6..HEAD` 对 `files` 白名单（含 `package.json` 本身）零 diff ⇒ 要发布的字节正是 CI run `43238375397` 验过的字节」。**这一步之后该依据部分失效**：`package.json` 与 `README.md` 都在 npm **无条件收录项**里（`tests/pack-contents.test.mjs:49,56` 的 `NPM_ALWAYS_INCLUDED`），而它们本任务必然变了（发布态 + 双语开销段）⇒ 即将发布的 tarball 与 CI 验过的那份**不是同一份字节**。
+
+处置不是把判据放宽，而是换一条可证的路：
+
+| 操作 | 时间 (UTC) | 输出要点 |
+| ---- | ---------- | -------- |
+| `git diff 9e99cd6..HEAD --stat -- index.js cordis.patch.yml locale icon.svg skills gsd-core hooks config scripts` | 2026-11-16T07:36:23Z | **空输出**（此时 HEAD = `c82d844`，本任务尚未提交）⇒ 已提交历史里代码树零 diff |
+| `git diff 9e99cd6 --stat -- <同一组路径>`（含工作树） | 同上 | **空输出** ⇒ 连「正在被 dry-run 打包的这棵树」，代码面也零 diff |
+| 同一组路径再加 `package.json` `README.md` | 同上 | 恰好两个文件：`README.md`（36 行增 / 2 删）与 `package.json`（4 增 / 4 删），合计 `2 files changed, 38 insertions(+), 6 deletions(-)` ⇒ 白名单面上变的只有这两个文件，且都属于「发布态本身」而不是代码 |
+| 重建「发布的字节有 CI 背书」 | 待 Task 2 | 推 main → 该提交上跑出一次 `completed/success` 的 run，把背书从「同一份旧字节」换成「同一个提交」。**在 Task 2 的推送发生之前这句话不成立**，本段不预先声称它成立 |
+
+### 边界：这证不了什么
+
+- **不上传任何字节**：dry-run 证明的是「npm 会怎么发」，不是「已经发了」。registry 上此刻仍然没有 `dsh-gsd`（本段不做抢注复查，那是 Task 2 放行前的动作）。
+- 不证明发布后 `dist-tags.latest` 的读数，也不证明 registry 通道能装出来 —— 那要等人类 `npm publish` 之后才可观测（D-05 只在 `published` 回执之后可达）。
+- `total files: 958` 与 `shasum` 只描述**这一次** dry-run 的 tarball；任何一次后续改动（含 Task 2/3 的补丁）都会改变 shasum，届时必须重跑本段。
+- 不证明 `prepack` 里那条 `--test-concurrency=1` 的**必要性**（并发假红本轮未复现，见判据段 1 的对照）；它证的是 flag 在位且链跑完。
+- 判据段编号：计划写的是「判据段 8」，但 05-02 的偏离 3 已经把判据段 8 用于 UAT-06，故本段落在 9；段名前缀 `## 判据段 ` 与复验序的引用格式不变。

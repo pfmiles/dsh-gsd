@@ -4,7 +4,7 @@
 // ② VER-01 engines.dsh 窗口串双语声明且与 pins.json lines.022.dshRange 等值；
 // ③ README/BUILD 全部 dsh-gsd@ 示例 parseVersion 合法；④ 迁移前旧编码零出现；
 // ⑤ refuse-by-design：range/tag 安装规格零出现；⑥ Pitfall 7 哨兵（version 已迁新方案
-// 且 private 未发布前仍 true）；⑦ allow-version 风险声明双语存在。
+// 且 private 已移除——发布态哨兵，`private` 键必须整键删除）；⑦ allow-version 风险声明双语存在。
 // ⑧⑨⑩：CHANGELOG 首条目/小节闭集、徽章与致谢、INST-06 插件管理器元数据。
 // ⑪⑫（G-2）：dshmarket 条目 schema 与裸名 install 串逐字一致性；⑬（R-1）：
 // manifest 六个元数据键的全等守卫。catalog 条目亦走行级正则，不引入 YAML 依赖。
@@ -102,9 +102,13 @@ test('⑤ refuse-by-design 哨兵：无 range/tag 安装规格（捕获组一律
   }
 })
 
-test('⑥ Pitfall 7 哨兵：version 已迁新方案且 private 未发布前保持 true', () => {
+test('⑥ Pitfall 7 哨兵：发布态——version 已迁新方案且 private 键已移除', () => {
   assert.equal(pkg.version, '1.20.1-1.dsh022')
-  assert.equal(pkg.private, true, 'npm publish 前置：private: true 移除属 Phase 5 任务')
+  assert.ok(
+    !('private' in pkg),
+    'package.json 仍有 private 键 ⇒ 发布态未成立（harness 已把这条翻成发布态哨兵；'
+      + '要的是整键删除，不是 `"private": false` —— 后者也能发布，但会留下一个多余的产物标记）',
+  )
 })
 
 test('⑦ allow-version 风险声明双语存在（P2-01 docs 半）', () => {
@@ -332,8 +336,12 @@ test('⑬ R-1 manifest 元数据守卫（repository/homepage/bugs/keywords/autho
   assert.equal(pkg.author, 'pf_miles', 'package.json author 漂移')
   assert.deepEqual(
     pkg.publishConfig,
-    { registry: 'https://registry.npmjs.org/' },
-    'package.json publishConfig 丢失或漂移 ⇒ 发布会落到本机默认只读镜像（registry.npmmirror.com）而非 npmjs',
+    { registry: 'https://registry.npmjs.org/', tag: 'latest' },
+    'package.json publishConfig 丢失或漂移：registry 丢了 ⇒ 发布会落到本机默认只读镜像'
+      + '（registry.npmmirror.com）而非 npmjs；tag 丢了 ⇒ 本机 npm 12 对 prerelease 版本'
+      + '（本包 `1.20.1-1.dsh022` 就是）在写网络之前硬拒'
+      + '（"You must specify a tag using --tag when publishing a prerelease version"）。'
+      + '⚠ publishConfig 只治理**发布写入**，`npm view` / registry 通道安装 / `npm deprecate` 都得显式 --registry。',
   )
 })
 
