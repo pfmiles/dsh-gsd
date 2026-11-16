@@ -287,7 +287,7 @@ D-04 的申报依据是「`git diff 9e99cd6..HEAD` 对 `files` 白名单（含 `
 | `git diff 9e99cd6..HEAD --stat -- index.js cordis.patch.yml locale icon.svg skills gsd-core hooks config scripts` | 2026-11-16T07:36:23Z | **空输出**（此时 HEAD = `c82d844`，本任务尚未提交）⇒ 已提交历史里代码树零 diff |
 | `git diff 9e99cd6 --stat -- <同一组路径>`（含工作树） | 同上 | **空输出** ⇒ 连「正在被 dry-run 打包的这棵树」，代码面也零 diff |
 | 同一组路径再加 `package.json` `README.md` | 同上 | 恰好两个文件：`README.md`（36 行增 / 2 删）与 `package.json`（4 增 / 4 删），合计 `2 files changed, 38 insertions(+), 6 deletions(-)` ⇒ 白名单面上变的只有这两个文件，且都属于「发布态本身」而不是代码 |
-| 重建「发布的字节有 CI 背书」 | 待 Task 2 | 推 main → 该提交上跑出一次 `completed/success` 的 run，把背书从「同一份旧字节」换成「同一个提交」。**在 Task 2 的推送发生之前这句话不成立**，本段不预先声称它成立 |
+| 重建「发布所用提交有 CI 背书」 | 待 Task 2 | 推 main → 该提交上跑出一次 `completed/success` 的 run，把背书从「同一份旧字节」换成「同一个提交」。**在 Task 2 的推送发生之前这句话不成立**，本段不预先声称它成立。注意背书的对象是**提交**而不是字节：见下一小节 |
 
 ### 一个更大的差异：`npm publish` 的字节不是「可复现的字节」
 
@@ -302,6 +302,24 @@ D-04 的申报依据是「`git diff 9e99cd6..HEAD` 对 `files` 白名单（含 `
 | 根因（在构建产物内，本计划未改动） | — | `gsd-core/bin/lib/args-terminator.cjs:37-40` 的 `generateArgsNonce()` = `randomBytes(16).toString('hex')`，文件头注释即「A fresh nonce」；构建日志的 `build: staging with the official installer` 一步把每个文件的重定向标记「盖章」成这个 nonce。这是**上游的设计**（避免标记与正文冲突），不是缺陷 |
 
 **对判据的后果（Task 2/3 的口径必须据此改写）：** `npm publish` 会先跑 `prepack` = `node build.mjs && …`，所以**发布出去的字节是发布那一刻 build 生成的**，它在构造上**不可能**等于任何此前被 dry-run 或 CI 验过的 tarball 的字节。因此「发布的字节 = 某个被验过的字节指纹」这句话在本包上永远为假，无论 CI 跑多少次；能成立且更强的是：**同一提交 + 同一套构建门 + 同一套串行测试 + 该提交上 CI 绿** —— 这三样 dry-run 各自证过（`gates: all passed` / `tests 47` / `Publishing to … with tag latest`）。推论：Task 2 的 `PUBLISHED_SHA` 是「**发布所用提交**」的标识，不是「发布所用字节」的标识；Task 3 的 registry 复验能核到的是「同一版本号 + 同一管线产物可用」，核不到字节指纹（发布后把 tarball 下载下来单独记账是另一件事，本计划未安排）。
+
+### D-04 的字节口径订正（本轮 Step 0，发生在**任何推送之前**）
+
+D-04 的原文与 `05-03-PLAN.md` 的多处表述把判据说成「发布的字节 = CI run `43238375397` 验过的字节」。上一小节已经实测出**这是构造性不可成立**的：`npm publish` 的 `prepack` 必然重建，`gsd-core/bin/lib/args-terminator.cjs` 的 `generateArgsNonce()` 每次给 59 个成员盖新的随机 heredoc nonce ⇒ 发布出去的 tarball 不可能等于任何一份此前被验过的 tarball。
+
+因此本轮在推任何东西之前先把口径改掉，改成的**唯一可证的**表述是：
+
+> **同一 commit + 同一构建门（`gates: all passed (A/B/C)`）+ 同一串行套件（`node --test --test-concurrency=1`）+ 该 commit 的 CI 绿。**
+
+`PUBLISHED_SHA` 因此是「**发布所用提交**」的标识，不是「发布所用字节」的指纹。改动的落点（逐条可 `git show`）：
+
+| 文件 | 改动 |
+| ---- | ---- |
+| `05-03-PLAN.md` | must_haves 的 Release tag 那条、key_links、prohibitions、objective、Task 1 action 7、Task 2 context 选项 A 的 (d)、Task 2 action 5、Task 3 `<done>` 与 success_criteria 共 9 处：把「已发布字节所属提交 / 发布的字节有 CI 背书」改成「`PUBLISHED_SHA`（发布所用提交）/ 发布所用提交有 CI 背书」，并逐处点名「字节不可复现」 |
+| `05-UAT-EVIDENCE.md` | 本小节 + 上一张表里「重建『发布的字节有 CI 背书』」一行改为「发布所用提交」 |
+| `05-CONTEXT.md` | D-04 条目下追加**订正注**（不重写裁决本身：`publish-as-is` 的裁决不变，改的是它的依据口径） |
+
+D-04 的裁决（`1.20.1-1.dsh022` 原样发布）**不因这条订正而改变**——变的只是它凭什么成立：不是「同一份字节」，而是「同一个提交 + 同一套门 + 该提交的 CI 绿」。
 
 ### 边界：这证不了什么
 

@@ -54,6 +54,7 @@
 
 - **D-04 — 发布 `1.20.1-1.dsh022` 原样；「1.0」是 milestone 收官的叙述** — **Reversibility:** one-way — 版本号一旦上 registry 即烧掉，不可复用、不可撤回；同一版本号不能重发不同字节。
   - **不抬 rev、不另起 1.0.0**。依据：`git diff 9e99cd6..HEAD` 对 `files` 白名单（含 `package.json` 本身）**零 diff**，变更全在 `docs/` 与 `tests/`（均不进包）⇒ 要发布的字节正是 CI run `43238375397` 验证过的字节。抬 rev 反而让新号脱保。
+  - **⚠ 依据订正（2026-11-16，实测见 `05-UAT-EVIDENCE.md` 判据段 9 的「D-04 的字节口径订正」）**：上一条「要发布的字节正是 CI run 验证过的字节」**在构造上不成立** —— `npm publish` 的 `prepack` 必然重建，而 `build` 每次给 59 个成员的 heredoc 标记盖新的随机 nonce（`gsd-core/bin/lib/args-terminator.cjs` 的 `generateArgsNonce()` = `randomBytes(16)`，属上游设计）⇒ 发布出去的 tarball 不可能等于任何此前被验过的 tarball。**裁决本身不变**（仍按 `.dsh022` 原样发布、仍不抬 rev）；变的只是它凭什么成立：能证且更强的是「**同一 commit + 同一构建门（`gates: all passed (A/B/C)`）+ 同一串行套件（`node --test --test-concurrency=1`）+ 该 commit 的 CI 绿**」。推论：`PUBLISHED_SHA` 是「发布所用提交」的标识，不是字节指纹。
   - 发布时需移除 `private: true`（见 Discretion）。
   - `dist-tags.latest` 必须指向该版本（承 03-D-06 硬移交，否则 catalog 卡片裸名命令 404）。
 
