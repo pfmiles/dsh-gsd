@@ -1,14 +1,14 @@
 # 05-UAT.md — Phase 05 端到端 UAT：判据 ↔ 证据 ↔ 结论
 
 > **判据对象**：`tests/uat-harness.test.mjs` 的 7 个用例（① ② ③ ④ ⑤ ⑥ ⑦）+ 回归面（`tests/pack-contents.test.mjs` / `tests/docs-consistency.test.mjs`）。
-> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–8；本表每一行都能在证据册里对着逐字输出复核。
+> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–11；本表每一行都能在证据册里对着逐字输出复核（判据段 9 = 发布前 dry-run、10 = D-04 裁决与两次 CI、11 = 发布后 registry/Release/dshmarket）。
 > **判据环境**：一次性 `DSH_HOME`（`mkdtemp('/tmp/dsh-uat-')`），**不是**本机 `~/.dsh`（D-01：真实 home 有 72 个旧 `gsd-*` 技能、`web`/`headless` 的 patch 里各有 2 行 `GSD-DSH-bridge`，在它上面任何「技能可见 / hook 生效」都会由旧源满足而静默失效）。
 > **结论列**：只取 `passed` / `failed` / `⚠ 未执行` / `open item` 四种值；唯一例外是 UAT-06 的 `技能 watch` 行，按 T-5-15 取 `not measured`（结构性不可测，理由写在该行备注里——编一个数字比不写更糟）。
 > **时间**：一律 UTC。
 
 | 需求 | 判据 | 证据（判据段 + 行） | 结论 | 备注 |
 |---|---|---|---|---|
-| UAT-01 | 全新 `DSH_HOME` 完成单命令安装后**真实会话**的判据成立：会话记录里 `assistant/message` 在场且任何 `turn/end` 递归无 `kind:error`；安装不改写 profile patch、无禁用条目 | 判据段 1 的「`plugin add` 落盘」/「第二次 one-shot 新增恰 1 个 session」/「会话判据」三行 + 复验序 1–9；用例 ③ | passed | 判据不是「session 目录存在」——失败轮同样会建目录（T-5-01）。本计划的 live 跑重跑了 ③，见判据段 7 的跑次表 |
+| UAT-01 | 全新 `DSH_HOME` 完成单命令安装后**真实会话**的判据成立：会话记录里 `assistant/message` 在场且任何 `turn/end` 递归无 `kind:error`；安装不改写 profile patch、无禁用条目 | 判据段 1 的「`plugin add` 落盘」/「第二次 one-shot 新增恰 1 个 session」/「会话判据」三行 + 复验序 1–9；用例 ③；**判据段 11 的「registry 通道的 UAT-01 会话判据」** | passed | 判据不是「session 目录存在」——失败轮同样会建目录（T-5-01）。本 phase 跑过**两条安装面**：tarball 通道（判据段 1，本地 tgz）与 **registry 通道**（判据段 11，`add dsh-gsd@1.20.1-1.dsh022 --registry=https://registry.npmjs.org/`，全新 `/tmp` home），两次谓词都成立。registry 那一轮的事件里含 `hook/invoked`、`hook/result` ⇒ 插件自己的 hooks 真在该轮跑过 |
 | UAT-02 | 无 `.planning/` 的临时 git 仓里 `gsd-new-project`（auto）造出 `.planning/{PROJECT,ROADMAP,STATE}.md`；`gsd-health` 的引擎经**包内绝对路径**解析 | 判据段 3 的「`.planning/` 产出 5 个文件」行与「引擎经包内路径」行；用例 ⑤ | passed | 断言的是「包内路径段 ∧ 引擎名」，不是一条连续串——连续串是否出现取决于模型的命令写法（实测一次 15 次、一次 0 次） |
 | UAT-03 | 真实会话里读 `.env` 被 secret-read guard 拦住，且其哨兵**不进**会话记录；`notes.txt` 的读成功且其哨兵**进入**记录（阳性对照） | 判据段 3 的「`.env` 的读」/「两个哨兵的泄漏判定」两行；用例 ⑤ | passed | 阳性对照缺失即判红：「拦住了」与「根本没读到」不可区分。两个同前缀不同值的哨兵是必需的（一个串无法同时成立两条断言） |
 | UAT-04 | 两个 hooks 在真实分发路径上各按设计行事：commit 校验**三段对照**（opt-in 拦 / opt-in 放 / 未 opt-in 放）+ injection 扫描**只落日志** | 判据段 4：(a)(b)(c) 三行 + ② findings 行 + 第四条事实行；用例 ①② | passed | 本仓未 opt-in，属上游设计默认；**不改本仓配置**（「commit 校验在本仓默认不生效」是一条被断言的开放项，不是一句散文） |
@@ -21,6 +21,8 @@
 | INST-04 | `remove` 后 skills/hooks/bundle 行全部消失（**删前在场**同时断言）+ 幂等边 + 空操作边 | 判据段 2 的「`remove` 归零」/「再 remove 一次」/「从未装过的 profile」三行；用例 ④ | passed | 幂等边只覆盖单进程串行；并发 `plugin add/remove` 无锁语义文档，不在本 phase 判据内 |
 | INST-05 | `dump-config` 见两 row，且 `configPath` 解析为**包内绝对路径**（含 `node_modules/dsh-gsd` 且在盘） | 判据段 2 的「用 DSH 加载器语义求值该 `!!js` 表达式」行；用例 ④ | passed | `--dump-config` **不 evaluate** `!!js`（实测），所以判据改为对声明的表达式按加载器语义求值——比原先的「dump 里出现绝对路径」更强，且原形态在本 DSH 版本上恒红 |
 | INST-06 | 元数据合规（`locale/*.json`、`icon.svg`、`files` 九项白名单）**回归**仍绿 | 判据段 7 的回归跑行（判据段 7 = 本次运行的 `ℹ tests`/`ℹ pass` 实数 + UTC） | passed | EXIST（不是新判据）：`tests/pack-contents.test.mjs` 的 `ALLOWED_TOP_LEVEL` 与 `files` 白名单、`docs-consistency` 的 locale/元数据断言。判据段 7 记的是 **2026-11-16T07:16:30Z 的实数**，不是一句「已通过」 |
+| PUB-01 | npm 首发成功；在**权威 registry** 上 `dist-tags.latest` 等于发布版本、该版本 `dist.tarball` 可解析；用 **registry 通道**（安装命令带 `--registry=`）在一个新的 `/tmp` home 上装成并通过 UAT-01 的会话谓词 | 判据段 11 的「发布回执与传播窗口」/「registry 复验」/「registry 通道的 UAT-01 会话判据」/「装出来的字节就是发布出去的字节」四段；判据段 9（发布前 dry-run 前置） | passed | `latest = 1.20.1-1.dsh022`（11:57Z，每条读都带 `--registry https://registry.npmjs.org/`；本机默认是只读镜像 `registry.npmmirror.com`）；装出的 **958** 个文件与 registry 上那份 tarball（`shasum 69cc8c8a…`）逐字节相同；会话谓词 PASS（`assistant/message` 1、`turn/end` 1、无 `kind:error`，含 `hook/invoked`）。**D-05 未触发**：publish 回执后约 7 分钟的 404 属传播窗口，不是红 |
+| PUB-03 | dshmarket 条目 PR 已开、`diff` 恰 1 个文件、与 `docs/dshmarket/pfmiles__dsh-gsd.yml` 逐字节相同（`cmp` 为证、`zh` 与单引号都在）、四检状态逐条记录；**合并状态**单列一行 `open item`（D-09） | 判据段 11 的「dshmarket PR」两张表（含「选用的路径与理由」与四检表） | open item | [PR #18793](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/18793)：`changedFiles 1`、`+6/−0`、`data/plugins/pfmiles__dsh-gsd.yml`（added），目标仓两份 `README*` 未触碰。四检：① 1 条 ✅ ② `dsh.bundle.patch=./cordis.patch.yml` ✅ ③ 仓龄 15 天（2026-11-10T09:50:51Z）✅ ④ 的 `awesome-lint` 与各回归步已 `success`，但最后一步 `Build (locale parity, date derivation, templates)` 在收官时（12:31Z）仍 `in_progress` ⇒ **本行取 `open item` 而不是 `passed`**：PR 已开 + 单文件 + 逐字节一致已确认，四检里的 ④ 尚未有终态。**合并不等**（D-09，见开放项 5） |
 
 ---
 
@@ -34,5 +36,7 @@
 
 1. **本仓的 commit 校验未 opt-in**（`.planning/config.json` 只有 `hooks.context_warnings`，没有 `hooks.community`）⇒ commit 校验在本仓默认不生效。这是上游设计的 opt-in 语义，不是缺陷；要启用需人类显式裁决，因为启用后此后每次 commit 都要过校验（不可逆的骚扰）。已被用例 ① 的「第四条事实」断言钉住：改坏本仓配置会让它红并提示改写该事实。
 2. **技能 watch 未测**（`not measured`）：见上表该行的结构性理由。两条 no-sudo 方法写在 `05-RESEARCH.md` §Q5；若无人跑，`README.md` 必须写 `not measured` 且不得声称更强的行为（SC-3）。
-3. **registry 通道的升级/回滚复验待 05-03**：本表的 UAT-05 判据用的是本地复刻件（`.dsh021` 从未发布）；真实 registry 上的 `npm install` 升级语义由 05-03 的发布后复验覆盖。
+3. **registry 通道上的升级/回滚语义仍未测**（UAT-05 的机制段已过）：UAT-05 用的两个 tarball 是本地复刻件（`.dsh021` 从未发布），证的是「换版本号这条命令的机制」。05-03 的 PUB-01 只补了 **registry 通道的首次安装 + 会话谓词**（判据段 11），**没有**在真实 registry 上跑一次「`.dsh022 → 上一个已发布版本 → .dsh022`」的换号复验 —— 因为 registry 上只有一个公开版本可用，无法构成升级/回滚的两端。
 4. **codegraph 同层合成（CB-8b 的静态段）待 05-04**：四份 `cordis.patch.yml` 的 row-id 集两两不相交这条判据在真实 `~/.dsh` 迁移后才可判，归 05-04 的 D-10-2。
+5. **dshmarket PR 的合并状态**（#18793）：D-09 的完成判据是「PR 已开 + 四检通过」，**不含合并** —— 合并与否交给对方 maintainer，本 phase 不等待。四检里 ① ② ③ 已由直读确认，④ 的 `PR check`（run 45612678334）在收官时仍在跑最后一步 `Build`；若它最终为红，那是提交内容的问题（届时按目标仓 `contributing.md` 修），不是本 phase 的判据缺口。
+6. **`dsh-gsd@0.0.0-stage` 占位版本未 deprecate**：npm 的 staged publishing 在真版本被接受前先落了它（`description: "Temporary package placeholder for staged publishing"`、2 文件 / 329 B、`_npmUser pf_miles1`、创建于 2026-11-25T11:10:24.523Z）。它不占 `latest`、不影响卡片命令，但会出现在版本列表里。建议按 D-05 同精神处置（**不 unpublish**，只标注）：`npm deprecate dsh-gsd@0.0.0-stage "<reason>" --registry https://registry.npmjs.org/`。**需 OTP，本 phase 未执行**，与 D-08 的 scope 收窄一起交回给人。

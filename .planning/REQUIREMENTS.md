@@ -55,7 +55,7 @@
 
 ### 端到端验收 (UAT)
 
-- [ ] **UAT-01**: 干净机器（无 ~/.dsh 或全新 DSH_HOME）完成 INST-01 并重启
+- [x] **UAT-01**: 干净机器（无 ~/.dsh 或全新 DSH_HOME）完成 INST-01 并重启
 - [x] **UAT-02**: `/gsd-health` 成功；`/gsd-new-project --auto` 在测试仓库 scaffold `.planning/`
 - [x] **UAT-03**: 真实会话 read `.env` 被拦（HOOK-02 复验）
 - [x] **UAT-04**: hooks 回归抽测（commit 校验、prompt-injection 扫描）

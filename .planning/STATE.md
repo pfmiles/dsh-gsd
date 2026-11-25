@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: 端到端 UAT 与 1.0 收官
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-11-16T07:21:57.687Z"
-last_activity: 2026-11-16
-last_activity_desc: Phase 05 plan 02 complete
-state_head: b3406eb14220b9308ed133322acb8411f50f92f2
+stopped_at: "Completed 05-03-PLAN.md (npm 首发已发生；Release 已建；dshmarket PR #18793 已开)"
+last_updated: "2026-11-25T12:30:22.771Z"
+last_activity: 2026-11-25
+last_activity_desc: Phase 05 plan 03 complete
+state_head: 5f9b130e54ec2748d98b1e97a7eaef84c7c8033d
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # STATE: dsh-gsd
@@ -22,13 +22,13 @@ progress:
 ## Current Position
 
 Phase: 05 (端到端 UAT 与 1.0 收官) — EXECUTING
-Plan: 3 of 4
-Current Plan: 3
+Plan: 4 of 4
+Current Plan: 4
 Total Plans in Phase: 4
 Status: Ready to execute
-Last activity: 2026-11-16 — Phase 05 plan 02 complete (05-02-SUMMARY.md)
+Last activity: 2026-11-25 — Phase 05 plan 03 complete (05-03-SUMMARY.md: npm 首发已发生、Release 已建、dshmarket PR #18793 已开)
 
-Progress: [█████████░] 16/18 plans (89%) — 4/5 phases (80%)
+Progress: [█████████░] 17/18 plans (94%) — 4/5 phases (80%)
 
 ## Current Focus
 
@@ -96,6 +96,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 04 P05 | 13min | 3 tasks | 5 files |
 | Phase 05 P01 | 37 min | 3 tasks | 6 files |
 | Phase 05 P02 | 26 min | 3 tasks | 9 files |
+| Phase 05 P03 | 69 min (3 dispatches) | 3 tasks | 3 files |
 
 ## Decisions
 
@@ -161,9 +162,13 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 05]: injection 半边只断言 exit 0 + `INJECTION-PATTERN` finding + 无 `decision`，并复用 05-01 的 wrapper 分发路径。 — 该 hook 是 PostToolUse advisory，只有 `security.injection_blocking=true` 时才拦 HIGH；断言「被拦」会按设计制造一条红，断言「无输出」则连扫描器有没有跑都证明不了。
 - [Phase 05]: UAT-05 的「两份 tarball 只有版本串不同」是 **JSON 语义**陈述，不是字节陈述：npm 在 `pack` 时重排 `package.json` 的缩进，三段证明 = 成员清单逐行相同 + 除该文件外逐成员字节相同 + 该文件去掉 version 后深度相等。 — 照字面写成字节等值会是一条恒红的判据；限定已逐字写进 05-UAT-EVIDENCE 判据段 5 与 05-UAT.md 的 UAT-05 行。
 - [Phase 05]: D-10-5 走 canonical 覆盖件 + post-staging `cp`（在 ⑥ 改写 pass 之前、**不**递增 `counters.copied`），并把 `SKIP_DIRS` 成员行计数限定在 Set 字面量内（文件头注释点名同一 token 属散文，不计入）。 — 直接改 `gsd-core/bin/lib/ui-frontend-evidence.cjs` 会在下次 `node build.mjs` 时消失（而 prepack 每次发布都 build）；加一 `counters.copied` 会打红 `copied 76 trees`；按全文计数会把注释判成「成员写重」。
+- [Phase 05]: 放行与发布两段制被实际执行：第一次 registry 读 11:57:59Z 晚于 published 回执 11:18:35Z；publish 回执后约 7 分钟内版本不可读（11:10–11:11Z 只有 0.0.0-stage、该版本 404），窗口内的 404 不是红，D-05 未触发
+- [Phase 05]: registry 通道「装上了」不靠 pnpm 计数器（它打 downloaded 0），靠「装出的 958 个文件与 registry 上那份 tarball 逐文件 sha256 相同」（判据段 11）
+- [Phase 05]: dshmarket 走 gh api 退化路径（首选 clone 两次被网络层拒：Empty reply / HTTP2 framing layer），逐字节一致由「从 fork 下载回来再 cmp」证明；四检 ①②③ 已确认，④ 由目标仓 PR check 决定（D-09 合并不等）
+- [Phase 05]: D-08 的 delete_repo scope 收窄未执行（需交互式浏览器 re-auth），gh auth status 原样清单记入判据段 11；npm deprecate dsh-gsd@0.0.0-stage 也未执行（需 OTP），两项均交回给人
 
 ## Session
 
-**Last session:** 2026-11-16T07:21:57.583Z
-**Stopped at:** Completed 05-02-PLAN.md
+**Last session:** 2026-11-25T12:30:22.691Z
+**Stopped at:** Completed 05-03-PLAN.md (npm 首发已发生；Release 已建；dshmarket PR #18793 已开)
 **Resume file:** None

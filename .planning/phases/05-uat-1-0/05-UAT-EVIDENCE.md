@@ -388,3 +388,164 @@ PUBLISHED_SHA=a0529acf57e1ab01d59bd0730af0e7964d680033
 - 不证明 `npm publish` 真的会成功（登录态 / 2FA / 名字占用窗口都没在这一段被重新验证——判据段 9 的 `npm warn … requires you to be logged in` 仍是最后一次登录态读数）。
 - 不证明 dshmarket PR、Release 或 tag：全部在 Task 3。
 - 两次 run 的绿**不**构成「发布的字节有 CI 背书」——字节不可复现（判据段 9），这里证的是提交级背书。
+
+## 判据段 11 — 发布后复验：权威 registry / Release / dshmarket PR（计划编号 10；因 05-02 占用 8、dry-run 顺延 9、Task 2 占 10，本段落在 11）
+
+> 本段覆盖 `05-03-PLAN.md` Task 3 的 `<action>` 第 1–4 步。**第 5 步（D-08 的 `gh auth refresh --remove-scopes delete_repo`）没有执行**，它需要一次交互式浏览器 re-auth，由编排层单独交回给人；本段末尾「未执行的」一节逐条列清。
+> **口径**（承判据段 9 的订正）：能证的是**提交级**背书 —— 同一 commit + 同一构建门 + 同一串行套件 + 该 commit 的 CI 绿，加 registry 上的版本/字节可用。tarball 字节**发布时重建**、不可复现，故 `PUBLISHED_SHA` 标识提交，不标识字节。
+
+### 发布回执（人执行）与一次差点被误判为 D-05 的传播窗口
+
+| 字段 | 值 |
+| ---- | -- |
+| 动作 | `npm publish`（人类持 OTP 执行；agent 全程未 login / 未 publish / 未 `--force`） |
+| 回执 | `+ dsh-gsd@1.20.1-1.dsh022`，UTC **2026-11-25T11:18:35.005Z** |
+| 本节读数由谁取 | 11:10–11:11Z 的三行由编排层取；11:57Z 之后的行由本 dispatch 现取（下文逐行标源） |
+
+**传播窗口（本 phase 最值得记的一条时序实测）**：`npm publish` 打出 `+` 行之后，版本**不是立刻可读的** —— npmjs 会跑一段异步校验流。
+
+| 时间 (UTC) | 读数 | 源 |
+| --- | --- | --- |
+| 11:10:24.523Z | registry 上只有 `0.0.0-stage` 一个版本（`time.created` 即这一刻） | 本 dispatch 现读 `npm view dsh-gsd time --json` |
+| 11:10–11:11Z | `/dsh-gsd` 只显示 `0.0.0-stage`；`/dsh-gsd/1.20.1-1.dsh022` 返回 **404** | 编排层 |
+| 11:18:35.005Z | `1.20.1-1.dsh022` 出现在 registry，`dist-tags.latest` 同时移过去 | 本 dispatch 现读（`time` 与 `dist-tags` 两处一致） |
+| 11:18:35.258Z | 包的 `time.modified` | 同上 |
+
+⇒ **传播窗口内的一次 404 不是红。** 从 publish 回执到版本可读约 **7 分钟**（11:11Z 仍 404 → 11:18:35Z 可读），而计划写的重试窗口是 **≥5 分钟**。这次实测正是「窗口不得短于 5 分钟」的证据：若按「一次 404 即判红」处理，就会在 11:11Z 给一个 7 分钟后自己出现的版本发 `.dsh023` 并 deprecate 一条好包 —— 在 one-way 路径上绕开 D-04 的裁决。本 dispatch 复验时（11:57Z 起）窗口早已结束，因此**没有进入任何重试循环**，也没有触发 D-05。
+
+### registry 复验（判据段 10 第一段；每条读都钉权威 registry）
+
+| # | 操作 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | `npm config get registry` | 11:57:59Z | **`https://registry.npmmirror.com`** —— 本机默认是只读镜像，这就是下面每个 `--registry` 承重的理由（`publishConfig.registry` 只治理发布写入，管不到读） |
+| 2 | `npm view dsh-gsd dist-tags.latest --registry https://registry.npmjs.org/` | 11:58Z | **`1.20.1-1.dsh022`** |
+| 3 | `npm view dsh-gsd@1.20.1-1.dsh022 dist.tarball --registry …` | 11:58Z | `https://registry.npmjs.org/dsh-gsd/-/dsh-gsd-1.20.1-1.dsh022.tgz` |
+| 4 | `npm view dsh-gsd versions --json --registry …` | 11:58Z | `["0.0.0-stage", "1.20.1-1.dsh022"]` |
+| 5 | 该版本 manifest 的发布面（`npm view --json`） | 11:58Z | `fileCount 958` / `unpackedSize 15962499` / `shasum 69cc8c8a5482fb2d097daa8dec5f7e0f510c3007`；`private` 键**不存在**（不是 `false`）；`publishConfig = {tag:'latest', registry:'https://registry.npmjs.org/'}`；`scripts.test` 与 `scripts.prepack` 都带 `--test-concurrency=1`；`_npmUser = pf_miles1 <miles.wy.2@gmail.com>` |
+| 6 | 打包面与 dry-run 对照 | — | `fileCount 958` 与判据段 9 的 `total files: 958` 等值；`unpackedSize` 15 962 499 B ≈ 16.0 MB，同量级 ⇒ 发出去的就是同一套白名单 |
+
+### `0.0.0-stage` —— npm 自己造出来的占位版本（开放项，本计划**未处置**）
+
+它不是我们的代码，是 npm 的 staged publishing 在真版本被接受之前先落的一个占位：
+
+| 字段 | 读数 |
+| ---- | ---- |
+| `description` | `Temporary package placeholder for staged publishing` |
+| 打包面 | `fileCount 2` / `unpackedSize 329` / `shasum 6bd214fdf300b69bd608f179e204d8aff2d2e09c` |
+| `_npmUser` | `pf_miles1 <miles.wy.2@gmail.com>` |
+| 创建时间 | `2026-11-25T11:10:24.523Z`（比真版本可读早约 8 分钟） |
+| `deprecated` | 字段为空 ⇒ **未被 deprecate** |
+
+它是「一个已发布版本，只是不是 `latest`」，所以不影响 §「registry 复验」的任何一条；但它会出现在 `npm view dsh-gsd versions` 与 npm 页面的版本列表里。
+
+**建议的处置（与 D-05 同精神，本计划不执行）**：`npm deprecate dsh-gsd@0.0.0-stage "<reason>" --registry https://registry.npmjs.org/`。理由与 D-05 一致 —— **不 unpublish**（保留可追溯历史优于抹除痕迹），只标注原因。**这条需要 OTP，agent 未执行**，作为开放项交给人（见 `05-UAT.md` 开放项 5）。
+
+### registry 通道的 UAT-01 会话判据（安装命令带 `--registry=https://registry.npmjs.org/`）
+
+判据环境是**新的** `/tmp` home（成功也保留取证，与 05-01 的「成功即删」不同，本轮要逐条复核）。判据本体**不是**重写的：`residue()` 与 `assertSessionSucceeded()` 等函数由脚本在运行时从 `tests/uat-harness.test.mjs` **原样抽取**后执行（`driver2.mjs`），所以这里跑的是与 tarball 通道**同一个谓词**，唯一变的是安装面。
+
+| # | 操作 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | 新建 `DSH_HOME=/tmp/dsh-uat-regb-6yIWc8`；装前 `residue()` | 12:01:36Z | `[]`（零残留：`skills/gsd-*` 0、`gsd-core/` 不在、`gsd-hooks.dsh.json*` 不在、profile patch 无 `GSD-DSH-bridge`、`node_modules/dsh-gsd` 不在） |
+| 2 | `dsh regchan2 --from-default-profile headless --json --approval-policy never "reply with the word OK"` | 12:01:36Z | rc 0；造出 `profiles/regchan2`；`sessions` 1 份 |
+| 3 | `dsh plugin --profile regchan2 add dsh-gsd@1.20.1-1.dsh022 --registry=https://registry.npmjs.org/` | 12:01:40Z | rc 0；`Done in 149ms using pnpm v12.11.2` |
+| 4 | 安装真的落地 | 同上 | `profiles/regchan2/node_modules/dsh-gsd` 在盘；`package.json` 的 `version` = **`1.20.1-1.dsh022`** |
+| 5 | 声明面（不是只看 node_modules） | 同上 | profile `package.json`：`dependencies = {"dsh-gsd":"1.20.1-1.dsh022"}`、`dsh.profile.bundles = ["@deepseek-ai/dsh-base","@deepseek-ai/dsh-headless","dsh-gsd"]` |
+| 6 | INST-01 两条 | 同上 | `cordis.patch.yml` 去注释后正文 = **`[]`**；`disabled:` 真值行 = **0** |
+| 7 | `dsh --profile regchan2 --dump-config` | 12:01:41Z | rc 0；`- id: gsd` **1** 行、`- id: gsd-hooks-bridge` **1** 行 ⇒ 装即注册（不重启） |
+| 8 | 第二次 one-shot：`dsh --profile regchan2 --json --approval-policy never "reply with the word SECOND"` | 12:01:42Z | rc 0；末行 `{"type":"final",…,"text":"SECOND"}`，`reason.kind = completed` |
+| 9 | 装完仍在（证明这一轮是**带着**插件跑的） | 同上 | `node_modules/dsh-gsd` 仍在盘、`version` 仍 `1.20.1-1.dsh022` |
+| 10 | 会话目录集合差集 | 同上 | 新增**恰 1** 份：`/tmp/dsh-uat-regb-6yIWc8/sessions/--private-tmp--/session-bf50ea05-0b2c-4a8d-887b-b3401e4a4bc4/session.v4.jsonl.zstd` |
+| 11 | **会话判据**（`assertSessionSucceeded`） | 同上 | **PASS**：`assistant/message` = 1、`turn/end` = 1、递归无 `kind:error`。事件类型里含 **`hook/invoked`、`hook/result`** —— 插件自己的 hooks 真在这一轮里跑过 |
+| 12 | 技能只可能来自插件 | 同上 | 安装后 home 级 `skills/` 仍**不存在**；`gsd-core/` 也不在 home 级 |
+
+**结论：registry 通道的安装 → 真实会话判据成立**（UAT-01 的 registry 通道复验，与 05-01 的 tarball 通道是两条不同的安装面）。
+
+### 一次被我自己判错的假绿（必须留档，因为它正是本文件警告的那条通道）
+
+第一次跑这个判据时（11:59:12Z，home `/tmp/dsh-uat-reg-uQxyXL`）我写错了第二次 one-shot 的形态：用了 `dsh regchan --from-default-profile headless …`。`--from-default-profile` 是**造 profile 的入口**，对已存在的 profile 再传一次会**按模板重建它** —— 实测后果：该 profile 的 `package.json` 回到 `dependencies: {}`、`bundles` 只剩 `base`+`headless`、`node_modules/` 整个消失。**而那一轮的会话判据仍然 PASS**（`assistant/message` 1、`turn/end` 1、无 `kind:error`）。
+
+⇒ 这是判据段 1 起就在警告的假绿通道的一次活体复现：**「session 目录建出来了 + 这一轮跑完了」不证明插件被挂载过**。两个可区分的信号救回了这条判定：
+1. **`hook/invoked` / `hook/result`** 事件在假绿那一轮**不存在**，在修正后那一轮存在；
+2. 装后面状态（`package.json` 的 `dependencies`/`bundles` + `node_modules/dsh-gsd` 是否在盘）在假绿那一轮被清空。
+
+修正做法：第二次 one-shot 改用 `--profile regchan2`（**不带** `--from-default-profile`），与 `tests/uat-harness.test.mjs` 用例 ③ 的 `run2` 逐字同形。上表全部读数取自修正后的那一轮（12:01:36Z → 12:01:45Z）。**假绿那一轮的任何读数都没有被计入判据。**
+
+### 装出来的字节就是发布出去的字节（因为 pnpm 的计数器单独不可信）
+
+`pnpm` 在这一轮打的是 `Progress: resolved 6, reused 6, downloaded 0, added 6, done` —— **`downloaded 0`**。也就是说：版本→tarball 的解析发生在了 npmjs（`--registry=` 与 `dsh-gsd@1.20.1-1.dsh022` 这个 spec 只能在那里解析），但**载荷可能来自 pnpm 的内容寻址 store，而不是这次的新下载**。因此「装上了」这句话不能只靠 pnpm 的计数器立论，改用一次直接比对：
+
+| # | 操作 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | `curl -sS -o pub.tgz https://registry.npmjs.org/dsh-gsd/-/dsh-gsd-1.20.1-1.dsh022.tgz` | 12:00:07Z | 4 582 650 B；`shasum -a 1` = **`69cc8c8a5482fb2d097daa8dec5f7e0f510c3007`** ⇒ 与 registry 的 `dist.shasum` 逐字相同（下载到的就是 authority 那一份） |
+| 2 | 解包后的成员清单 | 同上 | **958** 个文件（与 `fileCount 958` 等值） |
+| 3 | 与 registry 通道装出的树做相对路径集合比对 | 12:01:5xZ | **差集 0 行**（958 个相对路径两侧逐行相同） |
+| 4 | 逐文件 sha256 比对 | 同上 | **差集 0 行** ⇒ 装出来的树与发布出去的 tarball **逐字节相同** |
+
+⇒ registry 通道的结论不依赖 pnpm 的 `downloaded` 计数器：**装在盘上的 958 个文件与 registry 上那一份 tarball 逐字节相同**，而那个 tarball 的 sha1 与 registry 的 `dist.shasum` 相同。
+
+### Release（判据段 10 第二段；D-06）
+
+| # | 操作 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | 从 `CHANGELOG.md` 抽条目：`awk '/^## \[1\.20\.1-1\.dsh022\]/{f=1;next} /^## \[/{f=0} f'` | 12:08Z | 1 647 B / 13 行；首行 `### Added`、**不含**版本标题行，也不含任何 `## [`（`grep -c '^## \['` = 0） |
+| 2 | `gh release create 1.20.1-1.dsh022 --target a0529acf57e1ab01d59bd0730af0e7964d680033 --title 1.20.1-1.dsh022 --notes-file /tmp/release-notes-1.20.1-1.dsh022.md` | 12:09:36Z | rc 0；URL **https://github.com/pfmiles/dsh-gsd/releases/tag/1.20.1-1.dsh022**。**未加** `-p`/`--prerelease`、**未加** `--verify-tag`（tag 当时不存在，加了会中止） |
+| 3 | `gh release view 1.20.1-1.dsh022 --json tagName,isPrerelease,targetCommitish` | 12:09:5xZ | `{"isPrerelease":false,"tagName":"1.20.1-1.dsh022","targetCommitish":"a0529acf57e1ab01d59bd0730af0e7964d680033"}` ⇒ 名字逐字无 `v` 前缀、正式 release、目标即 `PUBLISHED_SHA` |
+| 4 | `gh api …/releases/tags/1.20.1-1.dsh022`（原始字段） | 同上 | `tag_name 1.20.1-1.dsh022`、`prerelease false`、`draft false`、`published_at` **2026-11-25T12:09:37Z**；另记 `created_at` = `2026-11-16T08:44:52Z`（**两者不同**：`published_at` 才是这次建的时刻，`created_at` 是 tag 所指提交的时刻） |
+| 5 | `git ls-remote --tags … "refs/tags/1.20.1-1.dsh022" "…^{}"` | 12:13:54Z（第 4 次尝试） | `a0529acf57e1ab01d59bd0730af0e7964d680033	refs/tags/1.20.1-1.dsh022` —— **没有 `^{}` 行**，因为它是轻量 tag（计划已写明「若 `^{}` 行不存在则用普通行」） |
+| 6 | API 侧的交叉印证（`git ls-remote` 连续失败时先取的读数） | 12:09:5xZ | `gh api …/git/ref/tags/1.20.1-1.dsh022` → `{ref: refs/tags/1.20.1-1.dsh022, object_type: commit, sha: a0529ac…}` ⇒ 轻量 tag 直接指向该提交，解引用后仍是它 |
+| 7 | 不可变 Release 预检（D-06 的前提） | 12:09Z | `gh api repos/pfmiles/dsh-gsd --jq .immutable_releases` → **`null`** ⇒ 未启用，「Release 可删可改、tag 可重打」的前提**成立**，无需为此记开放项 |
+| 8 | `gh release list` | 12:08Z | 建之前为空（此前没有 Release / tag） |
+
+**tag 目标这一条是本段最要紧的判定**：`gh release create` 不带 `--target` 时会从默认分支 HEAD 建 tag，与 npm 上发出去的提交**没有耦合**（T-5-09）。本段 `--target "$PUBLISHED_SHA"` 与第 5/6 两行的解引用读数是同一条判据的两半。
+
+**网络层失败（如实记录，与判据段 10 同类）**：`github.com` 的 git 端点在 12:06–12:13 之间连续抖动 —— `Error in the HTTP2 framing layer`（12:06Z 前后）、`Failed to connect to github.com port 443 after 75015 ms`（连续 3 次，每次 75 s）、`Empty reply from server`。同期 `api.github.com` 正常（第 3/4/6 行的读数就取自它）。第 5 行最终成功前共失败 **3 次**，全部是网络层、不是鉴权也不是「tag 不存在」。为穿过该抖动，`git ls-remote` 加了 `-c http.version=HTTP/1.1`（**命令内容一字未改，只多了传输层开关**）。
+
+### dshmarket PR（判据段 10 第三段；D-09 完成判据不含合并）
+
+| # | 操作 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | 提交前确认目标仓仍没有这条：`curl -s -o /dev/null -w '%{http_code}' https://raw.githubusercontent.com/awesome-dsh-plugin/awesome-dsh-plugin/main/data/plugins/pfmiles__dsh-gsd.yml` | 12:14:17Z | **404** |
+| 2 | `gh repo fork awesome-dsh-plugin/awesome-dsh-plugin --clone=false` | 12:15:10Z | fork 建出 `pfmiles/awesome-dsh-plugin`（`fork:true`、`parent:awesome-dsh-plugin/awesome-dsh-plugin`、`default_branch:main`）；fork 的 `main` = `8f1a1800e31e67aa5664581aea4e772dc5f2cf04`，与父仓同一时刻的 `main` 相同 |
+| 3 | **CLI clone 路径（计划的首选路径）两次被网络层拒** | 12:16:03Z→12:17:36Z / 12:17:42Z→12:19:02Z | 两次都 `rc=128`：第一次 `fatal: unable to access '…/pfmiles/awesome-dsh-plugin.git/': Empty reply from server`，第二次 `…: Error in the HTTP2 framing layer`。**不是鉴权失败、不是仓不存在** —— 同一时段 `gh api` 全部正常 |
+| 4 | 退化到计划写明的 API 路径：`POST /repos/pfmiles/awesome-dsh-plugin/git/refs` | 12:19:12Z | 建出 `refs/heads/add-pfmiles-dsh-gsd` @ `8f1a1800…` |
+| 5 | `PUT /repos/pfmiles/awesome-dsh-plugin/contents/data/plugins/pfmiles__dsh-gsd.yml`（`content` = 源文件的 base64，402 B） | 12:19:20Z | commit **`aa1af6f82d43d3eacb913cef751d6b69f1a0e37e`**；返回 `content.size = 402` |
+| 6 | 从 fork 分支把文件**下载回来**再 `cmp` | 12:19:27Z | 402 B；`cmp` **无输出（identical）**；两侧 `sha256 = 3a69a74acffe0db14bb409264dfa8a1d892b67e2cd41fe9bcbc14e4dabe73741`；`en:` / `zh:` 单引号各 1 行 ⇒ 逐字节一致、引号未被「整理」掉（T-5-16） |
+| 7 | `gh pr create --repo awesome-dsh-plugin/awesome-dsh-plugin --head pfmiles:add-pfmiles-dsh-gsd --base main --title … --body-file …` | 12:19:32Z | rc 0；**https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/18793** |
+| 8 | PR 形态（D-09「单文件」） | 12:19:34Z | `state: OPEN`、`changedFiles: **1**`、`additions 6` / `deletions 0`、`headRefName add-pfmiles-dsh-gsd`、`baseRefName main`、`mergeable: MERGEABLE` |
+| 9 | PR 的文件清单 | 12:19:5xZ | `[{filename:"data/plugins/pfmiles__dsh-gsd.yml", status:"added", additions:6, deletions:0}]` ⇒ 恰一个文件，且是新增（**没有**触碰 `README.md` / `README.zh.md` 等生成物） |
+
+**选用的路径与理由（计划要求把路径写进证据册）**：首选路径（`gh repo fork` + `git clone` + 本地 `cmp` + `git push`）在**第 3 行**被网络层拒了两次，两次的报错互不相同且都不是鉴权问题；同期 `api.github.com` 全程可用。因此改用计划 `<action>` 第 3 步明确写出的退化路径（`gh api` 的 contents + pulls 接口）。这条退化路径**没有削弱判据**：逐字节一致不是「我打算拷什么」，而是**从 fork 分支把落盘的那份下载回来**再 `cmp`（第 6 行）—— 比本地 `cmp` 更强，因为它验的是 GitHub 上真实的那份。`git ls-remote` 与 `git clone` 走的是 `github.com` 的 git 端点，而 `gh api` 走 `api.github.com`，两者在本时段的可用性**不同**，这是本段能继续的全部原因。
+
+**四检状态（目标仓 `scripts/check-submission.mjs` + `pr-check.yml` 的真实口径）**
+
+| 检 | 判据（目标仓源码） | 读数 | 状态 |
+| -- | ------------------ | ---- | ---- |
+| ① 每 PR ≤3 条（`MAX_ENTRIES_PER_PR = 3`） | `changedFiles` | **1** | ✅ |
+| ② `package.json` 声明 `dsh.bundle` | 本仓 `dsh.bundle.patch = ./cordis.patch.yml`（`check-submission.mjs` 在整棵树里枚举 manifest 后判定） | 在场 | ✅ |
+| ③ 仓龄 ≥1 天（`MIN_AGE_DAYS = 1`） | 提交仓 `pfmiles/dsh-gsd` 的 `created_at` | **2026-11-10T09:50:51Z**（15 天） | ✅ |
+| ④ `awesome-lint` + site build | 目标仓 `pr-check.yml` 的 check `PR check` | run **45612678334**；步骤 `npm ci` / `Stale-fork guard` / 各 entry 检查 / `awesome-lint` / 各回归测试全部 `success`，`Build (locale parity, date derivation, templates)` 运行中 | ⏳ 见下一行 |
+
+| ④ 的终态 | 时间 (UTC) | 读数 |
+| --- | --- | --- |
+| `PR check` 最终结论 | 见 `05-UAT.md` 的 PUB-03 行 | 以 `gh pr checks 18793` 的终态为准；**合并不等**（D-09），故即使仍为 `pending` 也不阻塞收官 |
+
+### 未执行的：D-08 的 scope 收窄（计划第 5 步）
+
+| 项 | 读数 | 时间 (UTC) |
+| -- | ---- | ---------- |
+| `gh auth status` 的 scope 清单 | 登录 `pfmiles`（keyring）；`Git operations protocol: ssh`；scopes **`'delete_repo', 'gist', 'read:org', 'repo', 'workflow'`** | 12:09:5xZ |
+| `delete_repo` 是否还在 | **在** | 同上 |
+| `gh auth refresh --remove-scopes delete_repo` | **未执行** —— 它需要一次交互式浏览器 re-auth，本 dispatch 的边界是 Task 3 的第 1–4 步；由编排层单独交回给人 | — |
+
+⇒ D-08 **没有收窄**，本段不把它记成已完成。`gh auth status` 的原样 scope 清单就是这条事实的证据（原计划在这一步之后才贴新的清单；这里贴的是**未收窄**的那份）。
+
+### 边界：这证不了什么
+
+- **不证明传播窗口的普适长度**：本轮量到「publish 回执 → 版本可读」约 7 分钟，这是**这一次**的读数。它足以证明「≥5 分钟窗口」这个下限是必要的，不足以外推成「7 分钟一定够」。
+- **不证明 `0.0.0-stage` 会被清掉**：本段只记录了它存在、未 deprecate，并给了 D-05 同精神的建议命令（需 OTP）。它不影响 `dist-tags.latest`，也不在 `latest` 上。
+- **不证明 dshmarket 的四检通过**：① ② ③ 是直接读数，④ 以目标仓自己的 `PR check` 终态为准；本段占位的那一行必须与 `05-UAT.md` 的 PUB-03 行取同一读数，不得一处写绿另一处留白。
+- **不证明合并**：D-09 的完成判据是「PR 已开 + 四检通过」，合并状态单列为开放项。
+- **不证明发布字节可复现**：装出来的 958 个文件与 registry 上那份 tarball 逐字节相同，说的是「registry 上那一份 == 装到盘上那一份」，**不是**「它 == 任何一份此前被验过的 tarball」（判据段 9）。
+- **不证明 D-08 已完成**：`delete_repo` 仍在 scope 里（见上一节）。
+- **`created_at` 与 `published_at` 不同**（第 4 行）：Release 对象的 `created_at` 是 tag 所指提交的时刻（`2026-11-16T08:44:52Z`），`published_at`（`2026-11-25T12:09:37Z`）才是本次创建的时刻；引用时不要拿 `created_at` 当「Release 建于何时」。
