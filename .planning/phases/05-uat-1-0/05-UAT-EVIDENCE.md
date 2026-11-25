@@ -757,3 +757,68 @@ const skillsDir = join(pluginRoot, 'skills')
 
 1. **`05-UAT-EVIDENCE.md` 的 12 次出现远多于「1」**：它被 05-01/05-02/05-03 反复追加过。按「最后一次提交里有两个文件」判，Task 2 那种「只提交证据册」的批次之后就会把一个**已经提交的锚点**判成红（锚点在上一次提交里）。判据必须是「在历史里」。
 2. **本节自己就是一次新的回写**：把上面这张表写进判据段 12 会再产生一次提交，本次回写之后 `.continue-here.md` 的计数仍是 1、本文件的计数会再 +1 —— **闸是单调的**（追加证据既不会把锚点从历史里拿走，也不会弄脏工作树）。这正是 Task 2 的 `<action>` 第 3 步要求「回写后重跑一次闸并确认仍 PASS」的原因；复跑的读数在 Task 2 的提交闸里落账，本段不复述未经实测的数字。
+
+---
+
+## 判据段 13 — 3091 刷新（计划编号 12；因 05-02 占 8、dry-run 顺延 9、Task 2 占 10、05-03 落在 11、05-04 Task 1 落在 12，本段落在 13）
+
+> 本段覆盖 `05-04-PLAN.md` Task 2（`type="checkpoint:decision" gate="blocking"`，人类回执 **`proceed`**）的 `<action>` 第 1–5 步；第 6 步（重启 3091 = 杀掉执行会话）由人执行，第 7 步的读数补进本段「刷新后」半段。
+> **段号订正（承判据段 12 的同一条顺延规则）**：计划的 Task 2 写的是「判据段 12」，但 12 已被本计划的 Task 1 占用（Task 1 把 11/12/13 顺延为 12/13/14）。沿用同一条规则，本段落在 **13**，计划编号 12 只出现在标题指纹里。
+> **`--dump-config` 的例外（必须显式记账）**：本段在 `gsdtest` 上跑了 `--dump-config`，它**不是**只读探针 —— 实测它重写了 `<profile>/cordis.yml`（见 §3 第 6 行的 mtime）。这不构成对禁令的违反：该 profile 随后被 `--force` 重装并重启，`cordis.yml` 被重写是预期内且无害的；禁令针对的是把它当作**真实 home 上其它 profile** 的只读探针 —— `web` / `headless` / `gsd-p3-release` 一个都没跑过。
+
+### 1. 打包自当前 HEAD（第 1 步）
+
+| # | 命令 | 时间 (UTC) | 读数（逐字） |
+| -- | ---- | ---------- | ------------ |
+| 1 | `git rev-parse HEAD` / `git status --porcelain` | 17:58:52Z | `99835e5480f42958f4a7b76b47678b4089b28443` / **0 行** |
+| 2 | `node build.mjs`（串行，`build-smoke` 会重写构建树） | 17:59Z | rc 0；`gates: all passed (A/B/C)`；`build: fetched @opengsd/gsd-core@1.20.1, copied 76 trees, rewrote paths in 286 files, injected notes into 72 skills (72 total)` |
+| 3 | 构建后 `git status --porcelain` | 17:59Z | **0 行**（构建树不进 git，闸的前提仍成立） |
+| 4 | `npm pack --ignore-scripts --pack-destination /tmp/uat-tgz` | 17:59Z | rc 0；`filename: dsh-gsd-1.20.1-1.dsh022.tgz`；**`shasum: 36eac0dc40158bc90647947bf7de4fe3a4ee92bf`**；`integrity: sha512-d9QG/7JutjpTr…B9l1xWu7HyM0w==`；`package size 4.6 MB` / `unpacked size 16.0 MB` / **`total files: 958`** |
+| 5 | 独立核对 `shasum -a 1 /tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz` | 18:00Z | `36eac0dc40158bc90647947bf7de4fe3a4ee92bf` ⇒ 与第 4 行的 `shasum:` 行**逐字相同**（另记 `sha256 = fd4a363d3e7c232c861c3846b869a38d8cdeaf090ac2cb057a96f87b6328d11d`，`4 582 619 B`） |
+| 6 | `tar -xzOf <tgz> package/index.js \| grep -n 'skillsDir'` | 18:00Z | `23:const skillsDir = join(pluginRoot, 'skills')` / `35:      customSkillDirs: [skillsDir],` / ``43:      ctx.logger.info(`[dsh-gsd] skills provider: ${skillsDir}`)`` |
+| 7 | 抽出的 `:22` | 同上 | `const pluginRoot = dirname(fileURLToPath(import.meta.url))` —— **无 `'..'`**，即 CR-01 修复后形态 |
+| 8 | 包内技能计数 | 同上 | `package/skills/gsd-*/SKILL.md` = **72**（去重目录数同为 72） |
+| 9 | 包内两项字节锚 | 同上 | `package/skills/gsd-health/SKILL.md` **3587 B**；`package/skills/gsd-new-project/SKILL.md` **3856 B**（与判据段 11 的包内侧一致） |
+
+⇒ **tarball 来自当前 HEAD，且它自己的 `index.js` 就是修复后形态。** 这一条是重装能否治好 CR-01 的**唯一**前提：装的必须是这一份，`skillsDir` 才会解析到 `<plugin>/skills`。
+
+### 2. 提交闸（第 3 步）—— 交出重启之前共跑三次
+
+命令 = `05-04-PLAN.md` Task 2 `<verify>` 的第一条 `<automated>`，**原样抽出后 `eval`**（一个字未改；抽取方式 = `sed -n '206p' …05-04-PLAN.md | sed -n 's/^[[:space:]]*<automated>\(.*\)<\/automated>[[:space:]]*$/\1/p'`）。它问的是「在历史里 + 盘上等于 HEAD」，**不是**「在最后一次提交里」。
+
+**RUN #1 —— 锚点提交 `7ff3418` 之后，退出码 `0`**
+
+```text
+in-history .planning/phases/05-uat-1-0/.continue-here.md: 2 commit(s)
+in-history .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md: 14 commit(s)
+anchor-version: PUBLISHED_VERSION=1.20.1-1.dsh022
+pre-restart commit gate: PASS
+```
+
+（判据段 12 §10 记的 `.continue-here.md: 1 commit(s)` 在本轮变成 **2** —— 这正是闸「在历史里」口径的体现：Task 1 的骨架与 Task 2 的完整版是两次提交，两者都在历史里。若闸退化成 `git log -1`，这里会红。）
+
+RUN #2 / RUN #3 的读数在各自批次之后落账（见 §4）；本段的最终读数以最后一次为准。
+
+### 3. 刷新前读数（第 4 步）—— 此刻仍是双源并存
+
+时间 2026-11-25T18:01:2xZ，profile `/Users/yue.weny/.dsh/profiles/gsdtest`：
+
+| # | 读数 | 值 |
+| -- | ---- | -- |
+| 1 | 已装插件的 `version` | **`1.20.1-1.dsh022`** —— 与 `PUBLISHED_VERSION` **逐字相同**（⇒ 版本串区分不出修复前后，T-5-18） |
+| 2 | 已装 `index.js:20` | `const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')`（**CR-01 修复前**形态） |
+| 3 | 已装 `index.js:21` | `const skillsDir = join(pluginRoot, 'skills')` |
+| 4 | 按加载器语义求值（`node -e`，与包内同一 `resolve`/`join` 实现） | `plugin dir = …/profiles/gsdtest/node_modules/dsh-gsd`；`resolve(dir,'..') = …/profiles/gsdtest/node_modules`；**`skillsDir = …/profiles/gsdtest/node_modules/skills`，`exists = false`**；对照 `…/node_modules/dsh-gsd/skills` 的 `exists = true` |
+| 5 | `--dump-config` 的两 row 计数 | **2**：`:1282 - id: gsd`、`:1284 - id: gsd-hooks-bridge`（rc 0，**stderr 0 字节**） |
+| 6 | 该命令对 `cordis.yml` 的副作用（实测） | 前后均为 223 B，但 mtime `Nov 16 22:02:56 2026` → **`Nov 26 02:01:31 2026`** ⇒ **它确实重写了文件**，不是只读探针 |
+| 7 | 已装包内 `skills/gsd-*` | **72**（包内容本来就是全的；病在 `skillsDir` 的解析，不在文件） |
+| 8 | `~/.dsh/skills/gsd-*`（旧源） | **72**（此刻仍双源并存，属预期；单源由 Task 3 完成） |
+
+⇒ **刷新前的两 row 计数也是 2**，所以「两 row = 2」**不能**用来证明刷新成功；能区分的是第 2–4 行的 `skillsDir` 解析形态与新会话的 `[dsh-gsd] skills provider:` 那一行（判据段 12 §8 的 T-5-18 陷阱在本段被实测复现）。
+
+### 4. 边界：这证不了什么（本段写于第 4 步之后、第 5 步之前）
+
+- **不证明重装会成功**：§1 只证明 tarball 本身是修复后形态；它装进去之后 `skillsDir` 是否真的解析到 `<plugin>/skills`，要看「刷新后」半段。
+- **不证明刷新后技能真的出现在会话里**：这要等重启后的新会话（Task 2 第 7 步）—— `--dump-config` 证明的是**行**在场，不是 **provider 行**指向插件目录。
+- **不证明单源完成**：`~/.dsh/skills/gsd-*` 此刻仍 72，双源并存；删旧源是 Task 3 的 `--uninstall`，本段没有做、也不得做。
+- **`cordis.yml` 被重写这件事本身不作判据**：它只是本段必须记账的副作用（§3 第 6 行）；`--dump-config` 的退出码同样不作判据。
