@@ -579,6 +579,27 @@ PUBLISHED_SHA=a0529acf57e1ab01d59bd0730af0e7964d680033
 | 6 | 机器级一面：`~/.dsh/cordis.patch.yml` 存在性与 `gsd-hooks-bridge` 计数 | 16:09:08Z | `PRESENT gsd-hooks-bridge=0` ⇒ 三态里是 **`CLEAN`**，不是 `ABSENT`、也不是 `DIRTY`（故 `# MIG-GATE` 不会 `exit 2`） |
 | 7 | `.stripped-bak` 存在性：`ls ~/.dsh/profiles/*/*.stripped-bak` | 16:09:09Z | **0 个**（与计划预期一致：预检时还没有任何备份，`.stripped-bak` 只会在 Task 3 的 `--uninstall` 剥块时出现） |
 
+Task 1 的第 1 条 `<automated>` 的**逐字输出**（`profiles:` 逐行 + `old-skills:` + 逐 profile `bridge` 计数 + `managed:` 四项；这条命令在收尾时又跑了一次，两次输出逐字节相同）：
+
+```text
+profiles:
+gsd-p3-release
+gsdtest
+headless
+node_modules
+web
+old-skills: 72
+bridge gsd-p3-release: 0
+bridge gsdtest: 0
+bridge headless: 2
+bridge web: 2
+managed:
+  gsd-core           PRESENT
+  hooks              PRESENT
+  scripts            PRESENT
+  gsd-hooks.dsh.json PRESENT
+```
+
 `dsh.profile.bundles`（`node -e` 读每个 profile 的 `package.json`，不用 `grep` 近似）：
 
 | profile | `dsh.profile.bundles` |
