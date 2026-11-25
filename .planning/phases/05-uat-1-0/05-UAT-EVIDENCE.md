@@ -718,3 +718,21 @@ const skillsDir = join(pluginRoot, 'skills')
 - **不证明 `gsdtest` 刷新会成功**：§8 只记录「现在是 CR-01 修复前形态、自报 0 技能」，没有跑任何安装。
 - **不证明 `--dump-config` 的两个 row 各 1**：本段刻意没在真实 home 上跑 dump（它会重写 `cordis.yml`）。该读数属于 Task 2。
 - **不证明卸载前基线之外的任何事**：`skills=72` 是**卸载前**的点，步骤 5 的「0」是另一个点；两点都在同一台机器、同一 `DSH_HOME` 上才构成同一条判据。
+
+### 10. 提交闸（D-11 的强制步）—— 第 1 次提交之后的实测读数
+
+**这一次提交本身**：`git add` 逐个点名 `.planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md` 与 `.planning/phases/05-uat-1-0/.continue-here.md`（**没有**用 `-A`），`git commit -m "docs(05-04): record real-home pre-flight and the resume anchor"`，提交说明里写了「下一波会杀掉执行会话，未提交的 `.planning/` 写入补不回来」。
+
+| 断言（三条，缺一即红） | 逐字读数 | 时间 (UTC) |
+| ---------------------- | -------- | ---------- |
+| `git status --porcelain` 为空 | **0 行** | 16:11Z |
+| 每个文件 `git diff --quiet HEAD -- <path>` 通过 | `diff-quiet OK: .planning/phases/05-uat-1-0/.continue-here.md` / `diff-quiet OK: .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md` | 16:11Z |
+| 每个文件在 `git log --format= --name-only -- <path>` 里出现 ≥1 次 | `in-history .planning/phases/05-uat-1-0/.continue-here.md: 1 commit(s)` / `in-history .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md: 12 commit(s)` | 16:11Z |
+| 裁决行 | **`commit gate: PASS`**（退出码 0） | 16:11Z |
+
+**批次标识（只作标识，不作判据）**：`git log -1 --format='%h %s'` → `15ca7ae docs(05-04): record real-home pre-flight and the resume anchor`。
+
+两条口径说明，都是本闸**为什么不能写成「最后一次提交」**的实例：
+
+1. **`05-UAT-EVIDENCE.md` 的 12 次出现远多于「1」**：它被 05-01/05-02/05-03 反复追加过。按「最后一次提交里有两个文件」判，Task 2 那种「只提交证据册」的批次之后就会把一个**已经提交的锚点**判成红（锚点在上一次提交里）。判据必须是「在历史里」。
+2. **本节自己就是一次新的回写**：把上面这张表写进判据段 12 会再产生一次提交，本次回写之后 `.continue-here.md` 的计数仍是 1、本文件的计数会再 +1 —— **闸是单调的**（追加证据既不会把锚点从历史里拿走，也不会弄脏工作树）。这正是 Task 2 的 `<action>` 第 3 步要求「回写后重跑一次闸并确认仍 PASS」的原因；复跑的读数在 Task 2 的提交闸里落账，本段不复述未经实测的数字。
