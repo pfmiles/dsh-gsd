@@ -797,7 +797,16 @@ pre-restart commit gate: PASS
 
 （判据段 12 §10 记的 `.continue-here.md: 1 commit(s)` 在本轮变成 **2** —— 这正是闸「在历史里」口径的体现：Task 1 的骨架与 Task 2 的完整版是两次提交，两者都在历史里。若闸退化成 `git log -1`，这里会红。）
 
-RUN #2 / RUN #3 的读数在各自批次之后落账（见 §4）；本段的最终读数以最后一次为准。
+RUN #2 —— 刷新前读数批次（`eb041fd`）之后，退出码 `0`：
+
+```text
+in-history .planning/phases/05-uat-1-0/.continue-here.md: 2 commit(s)
+in-history .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md: 15 commit(s)
+anchor-version: PUBLISHED_VERSION=1.20.1-1.dsh022
+pre-restart commit gate: PASS
+```
+
+**RUN #3 —— 「刷新后」批次（本段所在的这次提交）之后、把重启交出去之前**：这是计划强制的最后一道（「回写后重跑一次闸并确认仍 PASS」）。**本段不预写它的结果**：它必须在把重启交出去之前跑绿，逐字读数贴在交给人类的重启交接里。**为什么不回写它的输出**：回写会再产生一次提交，使「交出重启前的最后一次闸」永远后移一格 —— 闸是**单调**的（追加证据既不把锚点从历史里拿走，也不弄脏工作树），所以终态 = 最终提交之后跑一次并确认 PASS，任何人可原样重跑复核。
 
 ### 3. 刷新前读数（第 4 步）—— 此刻仍是双源并存
 
@@ -816,9 +825,60 @@ RUN #2 / RUN #3 的读数在各自批次之后落账（见 §4）；本段的最
 
 ⇒ **刷新前的两 row 计数也是 2**，所以「两 row = 2」**不能**用来证明刷新成功；能区分的是第 2–4 行的 `skillsDir` 解析形态与新会话的 `[dsh-gsd] skills provider:` 那一行（判据段 12 §8 的 T-5-18 陷阱在本段被实测复现）。
 
-### 4. 边界：这证不了什么（本段写于第 4 步之后、第 5 步之前）
+### 4. 重装 `gsdtest`（第 5 步）与「刷新后」读数
 
-- **不证明重装会成功**：§1 只证明 tarball 本身是修复后形态；它装进去之后 `skillsDir` 是否真的解析到 `<plugin>/skills`，要看「刷新后」半段。
-- **不证明刷新后技能真的出现在会话里**：这要等重启后的新会话（Task 2 第 7 步）—— `--dump-config` 证明的是**行**在场，不是 **provider 行**指向插件目录。
+命令（版本取自判据段 12 的 `PUBLISHED_VERSION` 行，**不硬编码**）：
+
+```bash
+PV=$(sed -n 's/^PUBLISHED_VERSION=//p' .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md | head -1)
+dsh plugin --profile gsdtest add "/tmp/uat-tgz/dsh-gsd-$PV.tgz" --force
+```
+
+这里的 `--force` 是**安装器替换**语义，与永久禁用的 `npm publish --force` 无关。
+
+逐字输出（2026-11-25T18:02:4xZ，**rc 0**）：
+
+```text
+[WARN] Replaced "dsh-gsd" ("file:/Users/yue.weny/frontWorkspace/gsd-on-dsh/dsh-gsd") with "/tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz" from a different source.
+✓ Lockfile passes supply-chain policies (verified 15d ago)
+Packages: +6
+++++++
+Progress: resolved 6, reused 5, downloaded 1, added 6, done
+Agent skills awaiting approval: dsh-gsd@file:../../../../../tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz.
+Run "pnpm approve" to review them.
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
+- dsh-gsd file:../../../frontWorkspace/gsd-on-dsh/dsh-gsd
++ dsh-gsd 1.20.1-1.dsh022
+
+Done in 1.1s using pnpm v12.11.2
+```
+
+刷新前 vs 刷新后（后者 2026-11-25T18:02:5xZ，同一 profile）：
+
+| # | 断言 | 刷新前 | 刷新后 | 判定 |
+| -- | ---- | ------ | ------ | ---- |
+| 1 | `node_modules/dsh-gsd/package.json` 的 `version` | `1.20.1-1.dsh022` | `1.20.1-1.dsh022` | ✅ 等于 `PUBLISHED_VERSION`，但**两次相同** ⇒ 版本串不作刷新判据 |
+| 2 | `index.js` 的 `skillsDir` 形态 | `:20 resolve(dirname(fileURLToPath(import.meta.url)), '..')` ⇒ `<profile>/node_modules/skills` | `:22 dirname(fileURLToPath(import.meta.url))`（**无 `..`**）+ `:23 join(pluginRoot, 'skills')` ⇒ `<plugin>/skills` | ✅ 修复后形态 |
+| 3 | 该 `skillsDir` 目标是否存在（`node -e` 求值） | **`exists = false`** | **`exists = true`**（`…/node_modules/dsh-gsd/skills`）；旧形态路径 `…/node_modules/skills` 仍 `false` | ✅ **这一条才是刷新是否成立的判据** |
+| 4 | 包内 `skills/gsd-*` | 72 | **72** | ✅ |
+| 5 | 包内 `gsd-health/SKILL.md` / `gsd-new-project/SKILL.md` | — | **3587 B / 3856 B** | ✅ 与 tarball 内、判据段 11 的包内侧一致 |
+| 6 | `--dump-config` 两 row 计数 | **2**（`gsd` / `gsd-hooks-bridge`） | **2**（`:1282` / `:1284`，rc 0，stderr 0 B） | ✅ 但**两次相同** ⇒ 该计数不区分刷新前后 |
+| 7 | 装出来的 `index.js` 与 tarball 内那份逐字节相同 | — | 两侧 `sha256 = 6d0272025c8577faeb73700962b4287d912186c5cd93f654d2d55f40267585af` | ✅ 装的就是这一份 tarball |
+| 8 | profile 声明面 | `dsh-gsd: file:…/dsh-gsd`（HEAD 工作树路径） | `dsh-gsd: file:/tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz`；`bundles` 仍含 `dsh-gsd` | ✅ 走的是计划指定的 tarball 通道（Task 3 的 `web`/`headless` 走 registry 通道） |
+| 9 | `~/.dsh/skills/gsd-*`（旧源） | 72 | **72** | ✅ 旧源仍在 |
+
+⇒ **刷新成立**：能区分刷新前后的三条（第 2/3/7 行）全部从「修复前」变成「修复后」；而两条**看起来像判据**的读数（版本串、两 row 计数）**刷新前后完全相同**，按它们判会得到一个无法区分真假的绿 —— 这正是 T-5-18 要在判据侧堵住的通道。
+
+**刷新后仍是双源并存，单源由 Task 3 完成**：`~/.dsh/skills/gsd-*` 仍是 72，而 `gsdtest` 现在自己也供 72 个技能。此刻两者同时存在是**预期状态**，不是「单源已完成」；把旧源摘掉是 Task 3 的 `--uninstall` 的职责（本段没有执行它）。
+
+**一条必须记账的副作用（不阻塞，交给人决定）**：`gsdtest` 的 `dependencies` 现在指向 `/tmp/uat-tgz/…tgz`。`node_modules` 已装好，重启不受影响；但 `/tmp` 被系统清理后，该 profile 再执行 `pnpm install` 会因源消失而失败。若希望它长期可复现，后续可改走 registry 通道（`dsh plugin --profile gsdtest add dsh-gsd@$PUBLISHED_VERSION --registry=https://registry.npmjs.org/`）—— 本计划**不做**这一步：Task 2 指定的就是 tarball 通道，且这台 profile 不该在重启前再被改动一次。
+
+### 5. 边界：这证不了什么
+
+- **不证明刷新后技能真的出现在会话里**：§4 证明的是**盘上**的解析形态与包内容；技能是否真的进了会话，要等重启后的新会话（Task 2 第 7 步）里那行 `[dsh-gsd] skills provider: <profile>/node_modules/dsh-gsd/skills` —— `--dump-config` 证明的是**行**在场，不是 **provider 行**指向插件目录。
+- **不证明重启会成功**：重启是第 6 步（人执行），它的判据是 `lsof` 出现**新** pid + GUI 可用 + 新会话的 provider 行；本段只到「盘上已就绪」。
 - **不证明单源完成**：`~/.dsh/skills/gsd-*` 此刻仍 72，双源并存；删旧源是 Task 3 的 `--uninstall`，本段没有做、也不得做。
+- **不证明 `/tmp` 那份 tarball 会长期在**：它只保证这一次重装装的是这一份（`sha256` 逐字节相同）；`/tmp` 的生命周期不归本计划管（见 §4 末的副作用记账）。
 - **`cordis.yml` 被重写这件事本身不作判据**：它只是本段必须记账的副作用（§3 第 6 行）；`--dump-config` 的退出码同样不作判据。
