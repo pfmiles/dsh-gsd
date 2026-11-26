@@ -36,9 +36,11 @@
 //   ③ UAT-01 / INST-01        ④ INST-02..05        ⑤ UAT-02 / UAT-03
 //   ⑥ UAT-05 升级/回滚（同一命令换版本号）
 //   ⑦ UAT-06 三点启动开销 + 技能 front-matter 的启动读取（不是 watch）
-// ①② 不需要起 `dsh` 会话，但它们**同样**受 `missingPrereqs()` 门控：它们的证据只
-// 认一次 live 跑，否则「无 live 环境 ⇒ 全 skip ⇒ ℹ fail 0」会被读成 UAT-04 通过
-// （三段对照一次都没跑）。这是 T-5-12 那条 repudiation 通道的形状。
+// ①② 不需要起 `dsh` 会话，也**不**吃凭据/tarball：它们只 `spawnSync` hook wrapper
+// 配合成 payload，所以门控是 `hookPrereqs()`——**仅**要求 `DSH_UAT_LIVE=1`。opt-in 这
+// 一半必须保留：无 live 环境 ⇒ 全 skip ⇒ ℹ fail 0 会被读成 UAT-04 通过（三段对照一次
+// 都没跑），这是 T-5-12 那条 repudiation 通道的形状。hook 文件是 `hooks/` 的构建产物
+// （不入 git），缺失时 ①② **skip** 并提示 `node build.mjs`，而不是把冷克隆判红。
 //
 // ── 为什么不在 scripts/ ────────────────────────────────────────────────────
 // 仓根 `scripts/` 被 `.gitignore:8` 忽略、被 `build.mjs` 每轮 `rm -rf` 后从 staging
@@ -75,7 +77,8 @@ const runDsh = (args, { home, cwd = UAT_TMP, timeout = 180000 } = {}) => {
   return spawnSync('dsh', args, { cwd, env, encoding: 'utf8', timeout, maxBuffer: 64 * 1024 * 1024 })
 }
 
-// 前置探测：缺什么就报什么（`t.skip` 的理由必须是可诊断的具体项，不是一句 "skipped"）。
+// 前置探测（live 会话用例）：缺什么就报什么（`t.skip` 的理由必须是可诊断的具体项，
+// 不是一句 "skipped"）。① ② 不用它——它们没有会话、凭据、tarball 依赖，见 `hookPrereqs()`。
 const missingPrereqs = () => {
   const missing = []
   if (process.env.DSH_UAT_LIVE !== '1') {
@@ -86,22 +89,49 @@ const missingPrereqs = () => {
     const r = spawnSync(bin, argv, { encoding: 'utf8' })
     if (r.error || r.status !== 0) missing.push(`${bin} is not runnable (session records need it)`)
   }
-  const { tgz, candidates } = resolveTgz()
-  if (!tgz) missing.push(`no single tarball: DSH_UAT_TGZ unset and ${TGZ_DIR} resolved ${candidates.length} candidate(s) [${candidates.join(', ') || 'none'}]`)
+  const { tgz, reason } = resolveTgz()
+  if (!tgz) missing.push(`no single tarball: ${reason}`)
   return missing
 }
 
+// ①② 的前置：**只有** opt-in。保留 opt-in 是为了不让默认套件的全 skip 被读成 UAT-04
+// 通过（见文件头）；凭据/`dsh`/`zstd`/tarball 与 hook 两向对照无关，绑上去只会让有
+// hook 的人永远拿不到证据。
+const hookPrereqs = () => {
+  const missing = []
+  if (process.env.DSH_UAT_LIVE !== '1') {
+    missing.push('DSH_UAT_LIVE is not 1 (hook cases are opt-in: an always-on run must not make UAT-04 look covered by the default suite)')
+  }
+  return missing
+}
+
+// 解析待安装 tarball；无法唯一确定时同时给出**可诊断的原因**：`DSH_UAT_TGZ` 已设置但
+// 路径不存在，与「未设置且 /tmp/uat-tgz 里没有唯一候选」是两个不同的修复动作，混成一句
+// 「unset」会让人去查环境变量而不是查路径（IN-02）。
 const resolveTgz = () => {
   if (process.env.DSH_UAT_TGZ) {
     const p = resolve(process.env.DSH_UAT_TGZ)
-    return { tgz: existsSync(p) ? p : null, candidates: existsSync(p) ? [p] : [] }
+    if (existsSync(p)) return { tgz: p, candidates: [p], reason: null }
+    return {
+      tgz: null,
+      candidates: [],
+      reason: `DSH_UAT_TGZ is set to ${p} but no such file exists (point it at a real dsh-gsd-*.tgz, or unset it to auto-resolve under ${TGZ_DIR})`,
+    }
   }
-  if (!existsSync(TGZ_DIR)) return { tgz: null, candidates: [] }
+  if (!existsSync(TGZ_DIR)) {
+    return { tgz: null, candidates: [], reason: `DSH_UAT_TGZ is unset and ${TGZ_DIR} does not exist (0 candidates)` }
+  }
   const candidates = readdirSync(TGZ_DIR)
     .filter((f) => /^dsh-gsd-.*\.tgz$/.test(f))
     .sort()
     .map((f) => join(TGZ_DIR, f))
-  return { tgz: candidates.length === 1 ? candidates[0] : null, candidates }
+  return {
+    tgz: candidates.length === 1 ? candidates[0] : null,
+    candidates,
+    reason: candidates.length === 1
+      ? null
+      : `DSH_UAT_TGZ is unset and ${TGZ_DIR} resolved ${candidates.length} candidate(s) [${candidates.join(', ') || 'none'}] (need exactly 1)`,
+  }
 }
 
 // 零 GSD 残留判据：判据环境本身必须是干净的，否则「插件提供了技能/hooks」无从谈起。
@@ -747,16 +777,22 @@ const FAIL_OPEN_LINE = /validator disabled/i
 //   配置（本仓一旦 opt-in，此后每次 commit 都要过校验，属不可逆的骚扰）。
 // ═════════════════════════════════════════════════════════════════════════════
 test('① UAT-04 commit 校验三段对照：opt-in 拦 / opt-in 放 / 未 opt-in 放', { timeout: 180000 }, (t) => {
-  const missing = missingPrereqs()
+  const missing = hookPrereqs()
   if (missing.length) {
-    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    t.skip(`hook UAT requires: ${missing.join(' | ')}`)
     return
   }
-  for (const [p, why] of [
+  // hooks/ 是 gitignore 的构建产物：冷克隆上缺它应当 skip 并指路，而不是判红。
+  const absent = [
     [HOOK_WRAPPER, 'the stdio adapter every guard is dispatched through'],
     [COMMIT_HOOK, 'the commit validator under test'],
-  ]) {
-    assert.ok(existsSync(p), `${p} missing (${why}) — hooks/ is gitignored, run \`node build.mjs\` before the live harness`)
+  ].filter(([p]) => !existsSync(p))
+  if (absent.length) {
+    t.skip(
+      `${absent.map(([p, why]) => `${p} missing (${why})`).join(' | ')}`
+        + ' — hooks/ is gitignored: run `node build.mjs` before the hook cases',
+    )
+    return
   }
 
   const base = mkdtempSync(join(UAT_TMP, 'uat-hook-'))
@@ -838,17 +874,24 @@ test('① UAT-04 commit 校验三段对照：opt-in 拦 / opt-in 放 / 未 opt-i
 //   同形）。cwd 取仓根，这样扫描器读到的是**本仓**的 `.planning/config.json`。
 // ═════════════════════════════════════════════════════════════════════════════
 test('② UAT-04 injection 扫描落日志：fixture → advisory + INJECTION-PATTERN，不 block', { timeout: 180000 }, (t) => {
-  const missing = missingPrereqs()
+  const missing = hookPrereqs()
   if (missing.length) {
-    t.skip(`live UAT requires: ${missing.join(' | ')}`)
+    t.skip(`hook UAT requires: ${missing.join(' | ')}`)
     return
   }
-  for (const [p, why] of [
+  // 同 ①：缺构建产物/夹具 ⇒ skip + 指路（hook 两向对照不应因未构建而判红）。
+  const absent = [
     [HOOK_WRAPPER, 'the stdio adapter every guard is dispatched through'],
     [INJECTION_HOOK, 'the injection scanner under test'],
     [INJECTION_FIXTURE, 'the committed injection fixture (UAT-04 payload)'],
-  ]) {
-    assert.ok(existsSync(p), `${p} missing (${why}) — run \`node build.mjs\` and keep tests/fixtures/injection-sample.md tracked`)
+  ].filter(([p]) => !existsSync(p))
+  if (absent.length) {
+    t.skip(
+      `${absent.map(([p, why]) => `${p} missing (${why})`).join(' | ')}`
+        + ' — run `node build.mjs` before the hook cases (hooks/ is gitignored);'
+        + ' tests/fixtures/injection-sample.md is tracked, so restore it from git if that is the missing path',
+    )
+    return
   }
 
   const body = readFileSync(INJECTION_FIXTURE, 'utf8')

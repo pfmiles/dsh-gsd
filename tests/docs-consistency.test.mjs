@@ -10,7 +10,8 @@
 // manifest 六个元数据键的全等守卫。catalog 条目亦走行级正则，不引入 YAML 依赖。
 // ⑮（D-10-1）：`--test-concurrency=1` 的三处逐点计数扫描。⑯（05-02）：`BUILD.md:16`
 // 的活体套件计数自校验——读「预期 N」与「N/N」两种形态并断言与 `tests/*.test.mjs` 的
-// `test(` 总数相等（该断言**包含它自己**，见文件末尾注释）。
+// 顶层注册行（`test(` / `test.skip(` / `test.todo(` / `test.only(`）总数相等（该断言
+// **包含它自己**，见文件末尾注释；口径残差也在那里说明）。
 // 版本号解析只消费 build/lib/check-pins.mjs 导出（单一真值，02-PATTERNS key_link）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -418,9 +419,11 @@ test('⑭ MIGRATION 入口双语存在 + 文档两半各恰 3 个二级标题（
 // **三处逐处在位**，不是「套件跑绿了所以 flag 在」——后者正是这条竞争本身。
 //
 // 三处：`package.json` 的 `prepack`、`package.json` 的 `test`、
-// `.github/workflows/compat-matrix.yml` 的完整测试步骤。`grep -rn 'node --test'` 全仓
-// 恰好这三处、没有第四处 ⇒ 计数是**恰 3**，不是 `>= 3`：多出来的一处意味着有人新增了
-// 第四处却没有同步本断言的计数口径。
+// `.github/workflows/compat-matrix.yml` 的完整测试步骤。计数口径**只覆盖这两类载体**
+// （`package.json` 的 scripts 值 + 该 workflow 的 `run:` 行），不是全仓 grep：`BUILD.md`
+// 的命令示例、`scripts/` 与 `gsd-core/` 产物里的同名字面都不在本断言视野内。所以这里的
+// **恰 3** 是「本断言的两个扫描面内恰 3 处」，不是「全仓没有第四处」——新增构建脚本或
+// 文档示例不必改这里的计数，新增 lifecycle script / workflow `run:` 步才要同步。
 //
 // workflow 侧的形态约束（本断言不新增 `run:` 步）：`tests/compat-matrix.test.mjs` 的 ⑦
 // 要求每个 `run:` 的上一行是四词 `if:` 门、⑧ 要求 canonical 门行整行锚定 ⇒ 唯一安全的
@@ -485,14 +488,21 @@ test('⑮ D-10-1：`--test-concurrency=1` 三处齐备（package.json ×2 + work
   )
 })
 
-// ⑯（05-02 Task 3）：`BUILD.md:16` 是仓内**唯一**的活体套件计数，而过去没有任何断言守
-// 它——任何新增 `test(` 都会让它静默变旧（`05-PATTERNS` F-04 点名的退化通道）。本条把
-// 它变成自校验：从 `BUILD.md` 读「预期 N」与「N/N」两种形态（各自先断言**全文恰 1 处**，
-// 否则多处匹配会让「取哪一个」变成猜测），再与 `tests/*.test.mjs` 里顶层的 `test(` 行数
-// 之和比较。
+// ⑯（05-02 Task 3 / IN-01）：`BUILD.md:16` 是仓内**唯一**的活体套件计数，而过去没有
+// 任何断言守它——任何新增用例都会让它静默变旧（`05-PATTERNS` F-04 点名的退化通道）。
+// 本条把它变成自校验：从 `BUILD.md` 读「预期 N」与「N/N」两种形态（各自先断言**全文恰
+// 1 处**，否则多处匹配会让「取哪一个」变成猜测），再与 `tests/*.test.mjs` 里顶层注册行
+// 数之和比较。注册行 = 行首的 `test(` / `test.skip(` / `test.todo(` / `test.only(`——
+// 只数 `test(` 时，一个 `test.skip(` 会让 runner 多出一条用例而 BUILD.md 仍是旧数（IN-01）。
+//
+// ⚠ 残差（不要把它读成 runner 口径）：这是**源码行计数器**，不是 `node --test` 的注册
+// 数。会漏掉的形态：行内缩进/嵌套的 `test(`、`t.test(` 子测试、循环或动态注册；会多算
+// 的形态：行首 `test(` 的注释字面（当前不存在）。今天 47 条全部是顶行字面量 `test(`，
+// 两种口径因此相等；将来引入上述任一形态时本断言会先暴露差异——那时要么把该形态纳入
+// 正则，要么显式改写 BUILD.md 的计数口径，别让它继续代言 runner。
 // ⚠ 它自己也是一个 `test(`，所以计数**包含它本身**。这是良定义的：扫的是文件文本，不是
 // 运行期注册数——落地顺序因此是「先写本条 → 实跑取真实计数 → 把同一个数写回 BUILD.md」。
-test('⑯ BUILD.md 的活体套件计数自校验：预期 N 等于 tests/*.test.mjs 的 test( 总数', () => {
+test('⑯ BUILD.md 的活体套件计数自校验：预期 N 等于 tests/*.test.mjs 的顶层 test( 注册行总数', () => {
   // (a) 形态唯一：`预期 <digits>` 与 `<n>/<n>` 各恰 1 处。
   const declaredHits = [...buildMd.matchAll(/预期\s+(\d+)/g)].map((m) => m[1])
   assert.equal(
@@ -517,16 +527,23 @@ test('⑯ BUILD.md 的活体套件计数自校验：预期 N 等于 tests/*.test
     `BUILD.md 的两处活体计数互相矛盾：「预期 ${declared}」vs「${selfPairs[0]}/${selfPairs[0]}」`,
   )
 
-  // (b) 实跑口径：顶层 `test(` 行数之和（glob 是 `tests/*.test.mjs`，只扫顶层文件）。
+  // (b) 顶层注册行数之和（glob 是 `tests/*.test.mjs`，只扫顶层文件）。`test.skip(` /
+  // `test.todo(` 在 runner 里同样是**一条用例**（进 skipped/todo 汇总，总数照算），
+  // `test.only(` 亦然；只数 `test(` 会让这些写法与 BUILD.md:16 脱钩（IN-01）。仍不覆盖
+  // 的形态见文件上方「残差」段。
+  const REGISTRATION = /^test(?:\.(?:skip|todo|only))?\(/
   const testFiles = readdirSync(join(ROOT, 'tests'))
     .filter((f) => f.endsWith('.test.mjs'))
     .sort()
-  const perFile = testFiles.map((f) => ({ f, n: (read(`tests/${f}`).match(/^test\(/gm) || []).length }))
+  const perFile = testFiles.map((f) => ({
+    f,
+    n: read(`tests/${f}`).split('\n').filter((l) => REGISTRATION.test(l)).length,
+  }))
   const actual = perFile.reduce((a, b) => a + b.n, 0)
   assert.equal(
     actual,
     declared,
-    `BUILD.md:16 的活体计数已过期：它写 ${declared}，而 tests/*.test.mjs 的实际 test( 总数是 ${actual} `
+    `BUILD.md:16 的活体计数已过期：它写 ${declared}，而 tests/*.test.mjs 的实际顶层注册行总数是 ${actual} `
       + `（${perFile.map((x) => `${x.f}=${x.n}`).join(' / ')}）。`
       + '改 BUILD.md:16 或把新增用例数算进去，别让唯一活体计数静默变旧',
   )

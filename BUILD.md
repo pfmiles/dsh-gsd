@@ -107,8 +107,8 @@ npm view @opengsd/gsd-core@1.20.1 dist.integrity dist.shasum --registry=https://
   - gate B **三段式**：B1 staging 根前缀（4 树全扫）/ B2 本机 homedir 前缀残留（4 树全扫）/ B3 `/Users|home` 字面正则（仅 skills 树 = SKIL-04 字面范围）；
   - gate C：72×1 adapter 计数（72 份 SKILL.md 各恰 1 个注入块）。
 - build 在 staging 清理前 spawn 该脚本并**原样传播 exit 码**（1→IO-style, 2→gate）；成功路径 stdout 含 `gates: all passed (A/B/C)`。
-- **prepack**（package.json 实际契约）：`node build.mjs && node --test tests/*.test.mjs`——gates 内嵌 build。（plan 旧文 "node --test tests/" 目录参数在 Node 24.21.0 机械失败，已按 01-02 偏差 2 适配为 glob 形态；glob 形态在 Node 24.21.0 上实测全绿——当时共 7 个用例，当前套件规模见 §TL;DR。）
-- **test**（每波可重跑）：`npm test` = `node --test tests/*.test.mjs`。
+- **prepack**（package.json 实际契约）：`node build.mjs && node --test --test-concurrency=1 tests/*.test.mjs`——gates 内嵌 build。（plan 旧文 "node --test tests/" 目录参数在 Node 24.21.0 机械失败，已按 01-02 偏差 2 适配为 glob 形态；glob 形态在 Node 24.21.0 上实测全绿——当时共 7 个用例，当前套件规模见 §TL;DR。`--test-concurrency=1` 不可省：`tests/build-smoke.test.mjs` 会重建构建树，文件级并发会让其余套件读到半写的树。）
+- **test**（每波可重跑）：`npm test` = `node --test --test-concurrency=1 tests/*.test.mjs`（flag 同上，是与 prepack/CI 等价判据的一部分）。
 
 已实证的负向/正向命令（01-02 fixture）：
 
