@@ -12,6 +12,10 @@ validated: "2026-11-26"
 
 # Phase 5 — Validation Strategy
 
+> **⚠ G-1 已在本次审计之后关闭（2026-11-26，`aab3976`）。** 下面这份审计是对**修复前**的树（HEAD `68ed58a`）做的，其中「G-1：①② 与 live 用例共用 `missingPrereqs()`，导致两条 hook 用例在默认回路与 CI 里永不执行」这一缺口已按 `05-REVIEW.md` 的 WR-01 修复：新增 `hookPrereqs()` 只要求 `DSH_UAT_LIVE=1`（保留选择加入那一半，T-5-12 的 repudiation 理由不变），凭据 / `zstd` / tarball 的耦合从 ①② 剥离；两条 `assert.ok(existsSync(...))` 前置改为 `t.skip` 并提示 `node build.mjs`（冷 clone 不再假红）。
+> 实测（`aab3976` 上）：默认回路仍 `47 / pass 40 / skip 7`（①② 仍按设计 skip，`BUILD.md:16` 不变）；`DSH_UAT_LIVE=1` 且**无** `DEEPSEEK_API_KEY`、**无** `DSH_UAT_TGZ` → `47 / pass 42 / skip 5`，①② 转绿。
+> 本文件正文保留审计当时的结论与 `⚠️ PARTIAL（G-1）` 标记（它们如实记录的是**审计那一刻**的状态）；`nyquist_compliant: false` **不**由这次修复自动翻绿——是否翻绿留给下一次审计或 verifier 判定，不由修复者自证。
+
 > Per-phase validation contract for feedback sampling during execution.
 > **State A 审计（2026-11-26，HEAD `68ed58a`）**：本文件由 2026-11-16 的 plan-phase 种子版升级为执行后的实测版。
 > 绑定的是**实际落地的断言位置与实测读数**，不是种子的预期；种子与实测的每一处差异在 §Fact corrections 里逐条订正 —— 含**三处判据形态变化**：C-5 加严、C-6 如实记窄、C-12 因原形态在本 DSH 版本上恒红而改为更强的求值形态。
