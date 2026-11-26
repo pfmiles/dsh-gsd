@@ -1389,3 +1389,43 @@ node --test --test-concurrency=1 tests/uat-harness.test.mjs
 - 不证明发布字节与本地 HEAD 相同：`.dsh022` 发布于 `a0529ac`，其后 `tests/` 与 `BUILD.md` 有修复性提交；`tests/` 与 `BUILD.md` 都**不在** `package.json.files` 白名单内，所以二者不影响发布物内容 —— 但本段只陈述「跑的是 registry 上那一份」，不陈述「与 HEAD 等同」。
 - 不证明 UAT-05 的 **registry 通道**升级/回滚语义（OPEN-3）：本条换版本号用的是本地两个 tarball，与判据段 8 同口径。
 - 不证明 codegraph 同层组合（OPEN-4）。
+
+---
+
+## 判据段 16 — D-08 收窄落地，与 `0.0.0-stage` 的 deprecate 失败
+
+### D-08：`delete_repo` 已撤
+
+人类执行 `gh auth refresh --remove-scopes delete_repo` 后直读：
+
+| 项 | 前 | 后 |
+|---|---|---|
+| `gh auth status` 的 Token scopes | `delete_repo, gist, read:org, repo, workflow` | **`gist, read:org, repo, workflow`** |
+
+- `delete_repo` **已不在**，最小集 `repo` / `read:org` / `gist` / `workflow` 四项**仍在**（`workflow` 是 `gh workflow run` 预演 CI 与 `gh release create` 所必需）。
+- 这是 PROJECT.md 记的 A-03-02（「token 扩权后待收窄」）的收口，也是 D-08 的全部内容。Phase 3 那个探针私仓 `pfmiles/dsh-gsd-ci-probe` 已删除，本 phase 之后不再有 `delete_repo` 的用途；预演 CI 改用 `workflow_dispatch`（判据段 10）。
+
+### `0.0.0-stage`：deprecate **被 registry 拒绝**（E404），占位符仍在
+
+人类执行的命令与结果（`2026-11-26T13:05:27Z`）：
+
+```
+npm deprecate dsh-gsd@0.0.0-stage "npm staged-publish placeholder, no code; use 1.20.1-1.dsh022 or later" \
+  --registry https://registry.npmjs.org/
+npm notice deprecating dsh-gsd@0.0.0-stage with message "…"
+npm error code E404
+npm error 404 Not Found - PUT https://registry.npmjs.org/dsh-gsd - Not found
+```
+
+**失败点定位（读 npm 12.2.1 源码，不是猜）**：`lib/commands/deprecate.js:42-80` 做两步 —— ① `GET /dsh-gsd?write=true` 取回 packument，按 `semver.satisfies(v, spec, {includePrerelease:true})` 选出目标版本；② 把该版本的 `deprecated` 字段写进 packument 后 `PUT /dsh-gsd`。本次 `npm notice deprecating …` **已打印**，说明第 ① 步成功、版本被正确选中；红在第 ② 步的 PUT 上。因此这不是「版本不存在」，也不是「没权限」（那会是 403），而是服务端拒绝该文档的写入 —— 且发生在 2FA 之前（命令未触发 OTP 提示）。
+
+**这不是一个功能问题，判据如下（逐条直读）**：
+
+| 读数 | 值 | 含义 |
+|---|---|---|
+| `dist-tags.latest` | **`1.20.1-1.dsh022`** | 按名安装拿到的是正确的版本 |
+| `versions` | `['0.0.0-stage','1.20.1-1.dsh022']` | 占位符与真版本并存 |
+| `/dsh-gsd/0.0.0-stage` | HTTP **200** | 占位符可被显式 pin 安装（2 个文件 / 329 B） |
+| 占位符的 `deprecated` 字段 | **absent** | 本次尝试未生效 |
+
+**结论与边界**：`npm i dsh-gsd` 与 `npm i dsh-gsd@1.20.1-1.dsh022` 都不受影响（`latest` 指向真版本）；只有显式写 `dsh-gsd@0.0.0-stage` 才会装到那个 2 文件占位符。deprecate 属卫生项、非判据项，且**已尝试并被服务端拒绝**——不再重试同一路径（重复发同一 PUT 不会改变结果）。若仍需清理，可行路径只剩 npmjs 网页端的包管理界面（人工），或等 npm 自身回收 staged 占位符。本项**如实记为未闭合**，不写成「已 deprecate」。

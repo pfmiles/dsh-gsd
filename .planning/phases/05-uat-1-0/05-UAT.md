@@ -54,7 +54,7 @@
 | (c) 3 registry 通道升级/回滚语义 | **本轮不测（deferred）** | 需要一个已发布的旧版本做真实跨版本回滚，而 `.dsh021` 从未也永不发布；在 19 个需求 ID 与 D-10 五件里都没有对应判据，属「可以测但不是本 phase 承诺」 |
 | (c) 4 codegraph 同层合成 | **行级判据已闭合，行为级 deferred** | 判据段 14 §10 已证四份 patch 的 row-id 集 pairwise-disjoint 且 `MISSING:` 0 行；「两个 bundle 在同一层真的同时生效」需要长驻进程观测，与 watch 同类 |
 | (c) 5 dshmarket PR #18793 | ✅ **已合并** `2026-11-25T16:36:45Z`，单文件 `+6/−0` | `gh pr view` 直读；四检全 SUCCESS。D-09 的「不等合并」判据本就不含合并 |
-| (c) 6 `0.0.0-stage` | ⚠️ **仍未 deprecate** | 需 OTP，属人类步骤；命令见证据册判据段 11 与收尾消息 |
+| (c) 6 `0.0.0-stage` | ⚠️ **仍未 deprecate —— 已尝试，被 registry 拒绝（E404）** | 人类于 2026-11-26T13:05:27Z 执行 `npm deprecate`；`npm notice deprecating …` 已打印（客户端选中成功），红在随后的 `PUT /dsh-gsd` 上，且早于 2FA。**不影响按名安装**：`latest` 仍指向 `.dsh022`，只有显式 pin `@0.0.0-stage` 才会装到那个 2 文件占位符。详见证据册判据段 16；同一路径不再重试 |
 | (c) 7 `gsd-p3-release` 0 技能 | ✅ **已修**（2026-11-26） | 用同一条 registry 通道重装 `dsh-gsd@1.20.1-1.dsh022`：`index.js` 转为 CR-01 修复后形态、包内 `skills/gsd-*` = 72、version = `.dsh022`。四个 profile 现全部一致 |
 | (c) 1 本仓 commit 校验未 opt-in | 保持现状 | 上游 opt-in 语义，非缺陷；`05-UAT.md` 表内已作为被断言的开放项对待 |
-| **D-08 撤 `delete_repo`** | ⚠️ **仍未执行** | `gh auth status` 仍含 `delete_repo`；需人过一次浏览器 re-auth：`gh auth refresh --remove-scopes delete_repo` |
+| **D-08 撤 `delete_repo`** | ✅ **已执行**（2026-11-26） | `gh auth refresh --remove-scopes delete_repo` 后直读：scopes 变为 `gist, read:org, repo, workflow` —— `delete_repo` 已移除，最小四集仍在。详见证据册判据段 16 |
