@@ -1245,7 +1245,7 @@ Success Criteria 第 6–10 条（`:129-133`）逐条抄回：
 
 ### 13. 边界：这证不了什么
 
-- **不证明旧仓推送**：第 8 步没有执行。远端 sha 仍应是 `41fcc7a`、`snippet.en.md` 的正文还没进对方 `README.md`；`05-UAT.md` 的 D-10-4 行按四值闭集取 `⚠ 未执行`。
+- ~~**不证明旧仓推送**~~ **（已过期；2026-11-26T06:53:10Z 更正）**：本段写入时第 8 步尚未执行 —— 当时远端 sha 是 `41fcc7a`、`snippet.en.md` 的正文还没进对方 `README.md`、`05-UAT.md` 的 D-10-4 行按四值闭集取 `⚠ 未执行`。人类回 `approved` 后推送已执行并由 **§15** 留证（远端 `3af3f27`、blockquote 与 snippet 逐字节相同）。所以这条对**迁移写段**仍然成立（写段本身不产生任何远端状态变化），对**当前终态**已不成立。
 - **不证明 hooks 在运行时真的拦截**：`COEXIST-REAL` 判的是「在册 ⇔ 挂上 + row 集合」，不是事件的运行时行为（runbook 的「这三段都还不能证明什么」原话）。
 - **不证明 codegraph 的同层合成**：四源只有**行级** id 不相交的证据（G-4 的既定边界），没有装三个 bundle 的合成演练。
 - **不证明技能真的进了会话**：§7 证的是 provider 注册的根与那里的 72 个可解析 bundle，外加旧源为 0；没有在一次 live 会话的技能目录里数出 72 行。
@@ -1273,3 +1273,74 @@ commit gate: PASS
 **RUN #2 / RUN #3（本段写入之后的两次）**：本段的这次回写会产生第 2 批提交，回写后按同一脚本再跑一次（RUN #2）；交出第 8 步之前再跑最后一次（RUN #3）。**这两次的逐字读数贴在交给人类的推送交接里，不回写本段** —— 回写会再产生一次提交，使「交出推送许可前的最后一次闸」永远后移一格。闸是**单调**的（追加证据既不把三个文件从历史里拿走，也不弄脏工作树），所以终态 = 最终提交之后跑一次并确认 PASS，任何人可原样重跑 `/tmp/commit-gate-t3.sh` 复核。
 
 **为什么这一道闸必须在推旧仓之前**：本段的 `--uninstall` 已经删掉本机 72 个旧技能，本会话随时可能失去技能读取能力 —— 与 Task 2 的「重启会杀掉会话」是同一类不可恢复性，未提交的证据同样补不回来。第 8 步是对**另一个仓库**的写动作，一旦推出去就留在对方历史里，所以证据必须先进本仓历史。
+
+> **推送已发生**：人类回 `approved` 之后，第 8 步已执行并留证于 **§15**。§14 因此成为「推送前」的历史读数；它只问本仓三个文件，所以推送不会改变它的结论。
+
+### 15. 第 8 步：旧仓推送（人类回 `approved` 之后执行）
+
+> 判据归属：本段落在 **判据段 14** 之内（计划编号 13 不变）；编号按既定规则顺延为 §15，不回改前面任何一节的编号。
+
+推送**发生在 §14 的闸 PASS 之后**，顺序不可颠倒（D-11：`--uninstall` 已删掉本机 72 个旧技能，未提交的证据补不回来）。
+
+**推送前读数**
+
+| 读 | 值 |
+| -- | -- |
+| `gh api repos/pfmiles/install-gsd-dsh/commits/main --jq .sha` | `41fcc7ab60f7efc78dafa2655d325d0fddeb066d`（= `41fcc7a`，与备料基准一致） |
+| 新鲜 clone（**不**用本机旧 clone） | `git -c credential.helper= -c credential.helper='!gh auth git-credential' clone https://github.com/pfmiles/install-gsd-dsh.git /tmp/oldrepo-push-20261126T065225Z` → HEAD `41fcc7a`、工作树干净 |
+| 旧仓 `README.md` | **23653 B / 314 行 / CJK 0**（与备料的观测形态逐项一致） |
+| 章节锚点 | `^---$` 全文件唯一命中 **33** 行；`## Quick start` **35** 行；34 行是空行 |
+
+插入形态用**锚点而非行号**（锚点不会随对方任一次编辑漂移）：`---\n\n` + `snippet.en.md` 的 691 B + `\n\n## Quick start`。落位后 `---` 仍在 33 行、blockquote 占 **35–42**、`## Quick start` 移到 **44**，两侧各恰一个空行。
+
+**推送命令与输出**（`git status --porcelain` 里只有 ` M README.md`，`--numstat` = `9 0 README.md`）
+
+```text
+$ git -C /tmp/oldrepo-push-20261126T065225Z \
+    -c credential.helper= -c credential.helper='!gh auth git-credential' \
+    push https://github.com/pfmiles/install-gsd-dsh.git HEAD:main
+To https://github.com/pfmiles/install-gsd-dsh.git
+   41fcc7a..3af3f27  HEAD -> main
+```
+
+exit **0**，**第一次即成功** —— 本轮没有用到 `-c http.version=HTTP/1.1` 的回退（那只是网络层抖动时的有界重试手段）。SSH 对 `pfmiles` 仍然无效（`Permission denied (publickey)`），通道沿用 03 验证过的「显式 HTTPS URL + `gh auth git-credential`」。
+
+**推送后远端读数**
+
+| 读 | 值 |
+| -- | -- |
+| `gh api …/commits/main --jq .sha` | **`3af3f27f5893fbf66950551fba8ddfc9427f1106`** —— 前进于 `41fcc7a` |
+| 父提交 | `41fcc7ab60f7efc78dafa2655d325d0fddeb066d`（**单亲**：这是快进，不是 amend / 强推） |
+| 该提交的 `files` | **`README.md` 一个**；`additions 9` / `deletions 0` |
+| 提交信息 / 时间 | `docs: cross-link the DSH plugin install path` / `2026-11-26T06:53:10Z` |
+| 远端 `README.md` | **24346 B**（= 23653 + **693**）/ CJK 仍 **0** |
+
+**逐字节比较（比较对象是 `snippet.en.md`，不是 `docs/oldrepo-link/README.md` —— 后者是备料说明）**
+
+远端字节取自 `gh api repos/pfmiles/install-gsd-dsh/contents/README.md?ref=3af3f27f…` 的 base64 解码，**不是**本地 clone 的那份：
+
+```text
+remote README bytes 24346
+cmp README.md (remote vs local clone): IDENTICAL
+remote-snippet-bytes 691 extracted 691 equal true
+tail-after-blockquote "\n\n## Quick start"
+REMOTE-BYTE-CHECK: PASS
+cmp snippet: IDENTICAL
+2ee9bde6e0fe691462922178a63d57bc9f979b899c0d32717177805107858b09  /tmp/remote-blockquote.bin
+2ee9bde6e0fe691462922178a63d57bc9f979b899c0d32717177805107858b09  …/docs/oldrepo-link/snippet.en.md
+```
+
+⇒ 远端 `README.md` 里那段 blockquote 与 `docs/oldrepo-link/snippet.en.md` **逐字节相同**（691 B，sha256 相同），并且它以 `\n\n## Quick start` 收尾（落点正确）。**注意 snippet 无 EOF 换行**，所以比较是按 691 B 精确切片，不是按行比较 —— 按行比较会因补一个换行而假红或假绿。
+
+**没有推的东西**
+
+- `snippet.zh.md` **没推**：旧仓 CJK 推送前后都是 **0**（逐字重数），且 `git ls-files` 里没有 `snippet*` / `pr.md`。
+- `pr.md` 没推：这次提交只动 `README.md`（`gh api` 的 `files` 逐字为 `README.md`）。
+- 旧仓其余内容没有改写：`additions 9 / deletions 0`，clone 里的 `git diff --numstat` 同样是 `9 0 README.md`。
+
+**边界：这证不了什么**
+
+- 不证明这条互链对读者有效 —— 只证明字节摆在了约定位置、且没把对方门面改成双语。
+- 不证明回退无痕：旧仓可以 `git revert 3af3f27`，但那会在对方历史里再留一条提交；本段只证「推上去的字节是对的」。
+- 不证明将来不漂移：片段刻意不写机器路径、不写旧仓行号、不写 `dsh-gsd@<version>`，所以它不会因发版而过期；但两侧 README 的**措辞**仍可能各自演进。
+- 本轮的最后一道仓内闸（推送之后的 RUN #4）与 §14 的 RUN #2/#3 同口径处理：**不回写本段**（回写会再产生一次提交，把「交出推送许可前的最后一次闸」永久后移一格），读数由交付消息给出；闸是单调的，任何人可在终态原样重跑 `/tmp/commit-gate-t3.sh` 复核。

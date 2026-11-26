@@ -3,32 +3,32 @@ gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: 端到端 UAT 与 1.0 收官
 current_plan: 4
-status: executing
-stopped_at: "Completed 05-03-PLAN.md (npm 首发已发生；Release 已建；dshmarket PR #18793 已开)"
-last_updated: "2026-11-25T12:30:22.771Z"
-last_activity: 2026-11-25
-last_activity_desc: Phase 05 plan 03 complete
-state_head: 5f9b130e54ec2748d98b1e97a7eaef84c7c8033d
+status: verifying
+stopped_at: Completed 05-04-PLAN.md (真实 ~/.dsh 迁移 + G-4 + 旧仓互链已推送；phase 待 verify-work)
+last_updated: "2026-11-26T06:59:01.490Z"
+last_activity: 2026-11-26
+last_activity_desc: Phase 05 plan 04 complete
+state_head: 620f5a66f401be1a8719807ddc292a9c9ec2e7fa
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # STATE: dsh-gsd
 
 ## Current Position
 
-Phase: 05 (端到端 UAT 与 1.0 收官) — EXECUTING
+Phase: 05 (端到端 UAT 与 1.0 收官) — VERIFYING
 Plan: 4 of 4
 Current Plan: 4
 Total Plans in Phase: 4
-Status: Ready to execute
-Last activity: 2026-11-25 — Phase 05 plan 03 complete (05-03-SUMMARY.md: npm 首发已发生、Release 已建、dshmarket PR #18793 已开)
+Status: Phase complete — ready for verification
+Last activity: 2026-11-26 — Phase 05 plan 04 complete (05-04-SUMMARY.md: 真实 `~/.dsh` 迁移 + G-4 + 旧仓互链已推送；phase 待 verify-work)
 
-Progress: [█████████░] 17/18 plans (94%) — 4/5 phases (80%)
+Progress: [██████████] 18/18 plans (100%) — 4/5 phases (80%)
 
 ## Current Focus
 
@@ -97,6 +97,7 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 | Phase 05 P01 | 37 min | 3 tasks | 6 files |
 | Phase 05 P02 | 26 min | 3 tasks | 9 files |
 | Phase 05 P03 | 69 min (3 dispatches) | 3 tasks | 3 files |
+| Phase 05 P04 | 14h 49m | 3 tasks | 7 files |
 
 ## Decisions
 
@@ -166,9 +167,12 @@ Phase 3: 发布（GitHub + npm + dshmarket） —— **Context locked，ready to
 - [Phase 05]: registry 通道「装上了」不靠 pnpm 计数器（它打 downloaded 0），靠「装出的 958 个文件与 registry 上那份 tarball 逐文件 sha256 相同」（判据段 11）
 - [Phase 05]: dshmarket 走 gh api 退化路径（首选 clone 两次被网络层拒：Empty reply / HTTP2 framing layer），逐字节一致由「从 fork 下载回来再 cmp」证明；四检 ①②③ 已确认，④ 由目标仓 PR check 决定（D-09 合并不等）
 - [Phase 05]: D-08 的 delete_repo scope 收窄未执行（需交互式浏览器 re-auth），gh auth status 原样清单记入判据段 11；npm deprecate dsh-gsd@0.0.0-stage 也未执行（需 OTP），两项均交回给人
+- [Phase 05]: 旧仓推送的授权范围被严格守住：只把 docs/oldrepo-link/snippet.en.md 推进 pfmiles/install-gsd-dsh 的 README.md（snippet.zh.md 与 pr.md 不推）；插入用章节锚点（--- 之后、## Quick start 之前），比较对象是 snippet 的 691 B 精确切片且取的是远端字节（gh api contents?ref=<sha> 解码），不是本地 clone 的文件
+- [Phase 05]: 不可逆动作前的秩序是硬前提：三道提交闸同形态（git status --porcelain 为空 + git diff --quiet HEAD -- <f> + <f> 在 git log --format= --name-only -- <f> 里 ≥1 次），从不使用 git log -1 —— 只提交证据册的批次不会把已提交的锚点判红
+- [Phase 05]: gsd-p3-release 迁移后 0 个 gsd-* 技能（CR-01 修复前的 index.js + home 级旧源已归零）保持未修：它不在人类授权的范围内，只记录不修，交人裁决；version 串 1.20.1-1.dsh022 完全区分不出这件事（与 T-5-18 同一陷阱）
 
 ## Session
 
-**Last session:** 2026-11-25T12:30:22.691Z
-**Stopped at:** Completed 05-03-PLAN.md (npm 首发已发生；Release 已建；dshmarket PR #18793 已开)
+**Last session:** 2026-11-26T06:58:56.551Z
+**Stopped at:** Completed 05-04-PLAN.md (真实 ~/.dsh 迁移 + G-4 + 旧仓互链已推送；phase 待 verify-work)
 **Resume file:** None
