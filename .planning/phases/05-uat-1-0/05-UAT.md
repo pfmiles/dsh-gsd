@@ -1,7 +1,8 @@
 # 05-UAT.md — Phase 05 端到端 UAT：判据 ↔ 证据 ↔ 结论
 
 > **判据对象**：`tests/uat-harness.test.mjs` 的 7 个用例（① ② ③ ④ ⑤ ⑥ ⑦）+ 回归面（`tests/pack-contents.test.mjs` / `tests/docs-consistency.test.mjs`）。
-> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–14；本表每一行都能在证据册里对着逐字输出复核（判据段 9 = 发布前 dry-run、10 = D-04 裁决与两次 CI、11 = 发布后 registry/Release/dshmarket、12 = 真实 home 只读预检、13 = 3091 刷新、14 = 真实 `~/.dsh` 迁移、G-4 与旧仓互链推送）。
+> **证据册**：`05-UAT-EVIDENCE.md` 的判据段 1–15；本表每一行都能在证据册里对着逐字输出复核（判据段 9 = 发布前 dry-run、10 = D-04 裁决与两次 CI、11 = 发布后 registry/Release/dshmarket、12 = 真实 home 只读预检、13 = 3091 刷新、14 = 真实 `~/.dsh` 迁移、G-4 与旧仓互链推送、**15 = 在 registry 上的发布字节上复跑 7 条 live**）。
+> **锚定关系（判据段 15，2026-11-26）**：7 条用例已在**发布字节**（`dsh-gsd-1.20.1-1.dsh022.tgz`，sha1 与 registry `dist.shasum` 逐字节相同）上整套重跑，`tests 7 / pass 7 / fail 0 / skipped 0`。因此 UAT-01..06 与 INST-01..05 的 `passed` 不再依赖 11-16 候选树的记录；UAT-06 的**技能 watch** 半段仍是 `not measured`（该轮测的是启动时读取）。
 > **判据环境**：一次性 `DSH_HOME`（`mkdtemp('/tmp/dsh-uat-')`），**不是**本机 `~/.dsh`（D-01：真实 home 有 72 个旧 `gsd-*` 技能、`web`/`headless` 的 patch 里各有 2 行 `GSD-DSH-bridge`，在它上面任何「技能可见 / hook 生效」都会由旧源满足而静默失效）。
 > **结论列**：只取 `passed` / `failed` / `⚠ 未执行` / `open item` 四种值；唯一例外是 UAT-06 的 `技能 watch` 行，按 T-5-15 取 `not measured`（结构性不可测，理由写在该行备注里——编一个数字比不写更糟）。
 > **时间**：一律 UTC。

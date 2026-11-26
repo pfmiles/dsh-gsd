@@ -1344,3 +1344,48 @@ cmp snippet: IDENTICAL
 - 不证明回退无痕：旧仓可以 `git revert 3af3f27`，但那会在对方历史里再留一条提交；本段只证「推上去的字节是对的」。
 - 不证明将来不漂移：片段刻意不写机器路径、不写旧仓行号、不写 `dsh-gsd@<version>`，所以它不会因发版而过期；但两侧 README 的**措辞**仍可能各自演进。
 - 本轮的最后一道仓内闸（推送之后的 RUN #4）与 §14 的 RUN #2/#3 同口径处理：**不回写本段**（回写会再产生一次提交，把「交出推送许可前的最后一次闸」永久后移一格），读数由交付消息给出；闸是单调的，任何人可在终态原样重跑 `/tmp/commit-gate-t3.sh` 复核。
+
+---
+
+## 判据段 15 — 在**发布字节**上复跑 7 条 live（关闭 R-5-04）
+
+**为什么需要这一段。** 判据段 1–8 的 live 记录跑在 2026-11-16 的候选树上；此后 `package.json` 等元数据在 11-25 改动过，而发布发生在 11-26。判据段 11 只把 **UAT-01 的会话谓词**在 registry 字节上复验过一次，UAT-02..06 与 INST-01..05 一直没有锚到发布字节 —— verifier 两轮都把这条记为 **R-5-04**（recorded-only，不可复跑）。本段消除它。
+
+**被测对象是发布字节本身，不是本地 HEAD。** 从权威 registry 取回并验明正身：
+
+| 项 | 读数 |
+|---|---|
+| 路径 | `/tmp/uat-published/dsh-gsd-1.20.1-1.dsh022.tgz` |
+| 大小 | 4,582,650 B |
+| 本地 `shasum -a 1` | `69cc8c8a5482fb2d097daa8dec5f7e0f510c3007` |
+| registry `dist.shasum` | `69cc8c8a5482fb2d097daa8dec5f7e0f510c3007` |
+| 结论 | 二者**逐字节相同** ⇒ 被跑的就是 npm 上那一份 |
+
+**调用**（凭据只经进程环境传入一次，不打印、不落盘；临时 home 钉 `/tmp`）：
+
+```
+DSH_UAT_TGZ=/tmp/uat-published/dsh-gsd-1.20.1-1.dsh022.tgz \
+DSH_UAT_LIVE=1 DEEPSEEK_API_KEY=<进程环境> \
+node --test --test-concurrency=1 tests/uat-harness.test.mjs
+```
+
+**结果：`ℹ tests 7 / pass 7 / fail 0 / skipped 0`，总耗时 145 131 ms。**
+
+| 用例 | 耗时 | 本条打印的判据读数 |
+|---|---|---|
+| ① UAT-04 commit 三段对照 | 828 ms | `opt-in+nonconforming=exit 2/block:CONVENTIONAL_COMMITS_VIOLATION \| opt-in+conforming=exit 0/no-block \| no-opt-in+nonconforming=exit 0/no-block \| repo hooks.community=absent` |
+| ② UAT-04 injection advisory | 94 ms | `severity=HIGH findings=3 INJECTION-PATTERN=3 decision=(none)` |
+| ③ UAT-01 / INST-01 | 10 082 ms | 零残留 `/tmp` home → `plugin add` → 第二次 one-shot 的会话记录谓词成立 |
+| ④ INST-02..05 | 2 395 ms | 受管面差集 / 装即注册（不重启）/ 卸载归零与两个边 |
+| ⑤ UAT-02 / UAT-03 | 95 229 ms | `gsd-new-project` 造 `.planning/`、引擎经包内绝对路径；`.env` 读被拦且哨兵不进记录、`.txt` 哨兵进记录（阳性对照） |
+| ⑥ UAT-05 升级/回滚 | 10 396 ms | `.dsh022→.dsh021→.dsh022` 三跳，每跳 `dump 393 lines (gsd=1, bridge=1)`，末跳 `session turnEnd=1 assistant=1` |
+| ⑦ UAT-06 三点开销 | 26 032 ms | `base deltas=8/11/9 ms (median 9)` / `p5 deltas=279/253/305 ms (median 279)` / `plugin segment ≈ 270 ms`；`wall` 仅作反例记录（LLM 主导）；`boot-read token hits=4` |
+
+**与判据段 8 的读数对照**（同一仪器、不同轮次，不要求相等）：base 中位 9 → 9 ms 一致；p5 中位 279 → 279 ms 一致；插件段 ≈270 → ≈270 ms 一致。墙钟本轮 base 2887–3526 ms、p5 3231–3790 ms，与判据段 8 的 2560–2673 / 3287–3834 同量级 —— 仍然**不可**用作开销判据。
+
+**边界（这一段证不了什么）**
+
+- 不证明 UAT-06 的**技能 watch** 行为：本条测的仍是「启动时读取」（`boot-read token hits=4`），README 与 `05-UAT.md` 继续写 `not measured`。
+- 不证明发布字节与本地 HEAD 相同：`.dsh022` 发布于 `a0529ac`，其后 `tests/` 与 `BUILD.md` 有修复性提交；`tests/` 与 `BUILD.md` 都**不在** `package.json.files` 白名单内，所以二者不影响发布物内容 —— 但本段只陈述「跑的是 registry 上那一份」，不陈述「与 HEAD 等同」。
+- 不证明 UAT-05 的 **registry 通道**升级/回滚语义（OPEN-3）：本条换版本号用的是本地两个 tarball，与判据段 8 同口径。
+- 不证明 codegraph 同层组合（OPEN-4）。
