@@ -60,7 +60,7 @@
 - [x] **UAT-03**: 真实会话 read `.env` 被拦（HOOK-02 复验）
 - [x] **UAT-04**: hooks 回归抽测（commit 校验、prompt-injection 扫描）
 - [x] **UAT-05**: 升级/回滚同命令换版本号后抽测通过
-- [ ] **UAT-06**: 启动开销与技能 watch 的量化记录（启动耗时、目录监视行为）
+- [x] **UAT-06**: 启动开销与技能 watch 的量化记录（启动耗时、目录监视行为）—— 启动开销已量化（事件时间戳口径 base 中位 **9 ms** / p5 中位 **279 ms** / 插件段 **≈270 ms**，见 `05-UAT-EVIDENCE.md` 判据段 8 与 15）；**技能 watch 按 T-5-15 记为 `not measured`**，结构性理由写在 README 中英双段与 `05-UAT.md` 的对应行（一次性会话每次都是新进程、启动时重读技能目录，watcher 只在长驻 `web` 进程里可观察，而数 fsevents 需要 root）。本条按计划里预登记的退路（「无 method 2 的读数时必须写 `not measured` 并写出原因」）判定为满足，verifier 于 2026-11-26 显式裁定；**不代表 watch 被观测过**
 
 ### Phase 5 收口移交 (D-10)
 

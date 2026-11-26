@@ -46,3 +46,15 @@
 6. **`dsh-gsd@0.0.0-stage` 占位版本未 deprecate**：npm 的 staged publishing 在真版本被接受前先落了它（`description: "Temporary package placeholder for staged publishing"`、2 文件 / 329 B、`_npmUser pf_miles1`、创建于 2026-11-25T11:10:24.523Z）。它不占 `latest`、不影响卡片命令，但会出现在版本列表里。建议按 D-05 同精神处置（**不 unpublish**，只标注）：`npm deprecate dsh-gsd@0.0.0-stage "<reason>" --registry https://registry.npmjs.org/`。**需 OTP，本 phase 未执行**，与 D-08 的 scope 收窄一起交回给人。
 7. **`gsd-p3-release` 迁移后 0 个 `gsd-*` 技能来源**（05-04 的范围外发现，判据段 14 §8）：该 profile 的 `dsh.profile.bundles` 含 `dsh-gsd`，但它的 `index.js` 是 **CR-01 修复前**形态（`resolve(dirname(...), '..')` ⇒ `skillsDir = <profile>/node_modules/skills`，**不存在**），而 home 级 `~/.dsh/skills/gsd-*` 已被 `--uninstall` 归零 ⇒ 它此刻没有任何 `gsd-*` 来源。计划的 in-scope 集是 `web` + `headless`，所以**没有**动它。修复只需一条命令（`dsh plugin --profile gsd-p3-release add "dsh-gsd@1.20.1-1.dsh022" --registry=https://registry.npmjs.org/`，版本取自证据册 `PUBLISHED_VERSION` 行），但那是重新配置一个不在授权范围内的 profile，**交人裁决**。注意 `version` 串（`1.20.1-1.dsh022`）完全区分不出这件事 —— 与 T-5-18 同一个陷阱。
 8. ~~**D-10-4 的推送尚未发生**~~ **（2026-11-26T06:53:10Z 已闭合）**：人类回 `approved` 后第 8 步已执行 —— 远端 `41fcc7a → 3af3f27`（单文件 `README.md`，`+9/−0`），blockquote 与 `snippet.en.md` 逐字节相同（691 B / sha256 `2ee9bde6…`），`snippet.zh.md` 未推。逐条读数见判据段 14 **§15**。仍然成立的只剩 §15 边界段里那三条（读者有效性、回退会在对方历史再留痕、两侧措辞可能各自演进）——它们不是 D-10-4 的判据缺口。
+**(d) 收尾处置（2026-11-26，编排层记账 —— 上面 (c) 的原文按「当时状态」保留，不改写）**
+
+| 项 | 现状 | 依据 |
+|---|---|---|
+| (c) 2 技能 watch | **仍 `not measured`**（有意为之） | 结构性不可测；UAT-06 按计划预登记的退路判满足，`REQUIREMENTS.md` 的 UAT-06 已翻 `[x]` 并在行内写明「不代表 watch 被观测过」 |
+| (c) 3 registry 通道升级/回滚语义 | **本轮不测（deferred）** | 需要一个已发布的旧版本做真实跨版本回滚，而 `.dsh021` 从未也永不发布；在 19 个需求 ID 与 D-10 五件里都没有对应判据，属「可以测但不是本 phase 承诺」 |
+| (c) 4 codegraph 同层合成 | **行级判据已闭合，行为级 deferred** | 判据段 14 §10 已证四份 patch 的 row-id 集 pairwise-disjoint 且 `MISSING:` 0 行；「两个 bundle 在同一层真的同时生效」需要长驻进程观测，与 watch 同类 |
+| (c) 5 dshmarket PR #18793 | ✅ **已合并** `2026-11-25T16:36:45Z`，单文件 `+6/−0` | `gh pr view` 直读；四检全 SUCCESS。D-09 的「不等合并」判据本就不含合并 |
+| (c) 6 `0.0.0-stage` | ⚠️ **仍未 deprecate** | 需 OTP，属人类步骤；命令见证据册判据段 11 与收尾消息 |
+| (c) 7 `gsd-p3-release` 0 技能 | ✅ **已修**（2026-11-26） | 用同一条 registry 通道重装 `dsh-gsd@1.20.1-1.dsh022`：`index.js` 转为 CR-01 修复后形态、包内 `skills/gsd-*` = 72、version = `.dsh022`。四个 profile 现全部一致 |
+| (c) 1 本仓 commit 校验未 opt-in | 保持现状 | 上游 opt-in 语义，非缺陷；`05-UAT.md` 表内已作为被断言的开放项对待 |
+| **D-08 撤 `delete_repo`** | ⚠️ **仍未执行** | `gh auth status` 仍含 `delete_repo`；需人过一次浏览器 re-auth：`gh auth refresh --remove-scopes delete_repo` |
