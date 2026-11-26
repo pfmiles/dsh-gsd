@@ -1252,4 +1252,24 @@ Success Criteria 第 6–10 条（`:129-133`）逐条抄回：
 - **不证明 peer 依赖是干净的**：两次 `add` 都打了 `[WARN] Issues with peer dependencies found`（runbook 提及的已知噪声）；豁免扫描的 `0` 只证「没有记录 `allow-version` 豁免」，不证「peer 全部满足」。
 - **`+1 -5` 不作判据**：它只是 pnpm 的 prune 计数；四源在场是装完之后另外 `ls` 复核的。
 - **`--dump-config` 的标头数与退出码不作判据**：标头数没有 H0 基线（§6 已按 runbook 降级）；退出码在有 bundle 被跳过时也仍是 0。
-- **`/tmp` 的备份不是回退路径**：它只保住那 72 个技能目录的内容；插件态的回退仍是「`.stripped-bak` 手工回填 + 重跑旧脚本」，`.stripped-bak` 必须留着（§12 的禁令）。
+- **`/tmp` 的备份不是回退路径**：它只保住那 72 个技能目录的内容；插件态的回退仍是「`.stripped-bak` 手工回填 + 重跑旧脚本」，`.stripped-bak` 必须留着（见 `.continue-here.md` 的禁令段）。
+
+### 14. 提交闸（D-11 的强制步，必须先于推旧仓）
+
+**这一次提交本身**：`git add` 逐个点名 **三个**文件（`05-UAT-EVIDENCE.md` / `05-UAT.md` / `.continue-here.md`，**没有**用 `-A`）→ `git commit -m "docs(05-04): record the real-home migration and the G-4 re-verification"`。提交说明里写明了「no old-repo push (Task 3 step 8), no `.stripped-bak` deletion: both handed to the human」。`git show --stat` 的读数是 `3 files changed, 436 insertions(+), 88 deletions(-)`。
+
+命令 = 计划 Task 3 第 7 步描述的**同一形态**（与前两道闸相同，写成可重跑脚本 `/tmp/commit-gate-t3.sh`）：`git status --porcelain` 为空 + 三个文件各自 `git diff --quiet HEAD -- <path>` + 各自在 `git log --format= --name-only -- <path>` 里出现 ≥1 次。**不用 `git log -1`。**
+
+**RUN #1 —— 第 1 批（三个文件的落账提交 `2763d40`）之后，2026-11-26T04:40:11Z，退出码 `0`：**
+
+```text
+in-history .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md: 17 commit(s)
+in-history .planning/phases/05-uat-1-0/05-UAT.md: 5 commit(s)
+in-history .planning/phases/05-uat-1-0/.continue-here.md: 4 commit(s)
+batch (identifier only, not a criterion): 2763d40 docs(05-04): record the real-home migration and the G-4 re-verification
+commit gate: PASS
+```
+
+**RUN #2 / RUN #3（本段写入之后的两次）**：本段的这次回写会产生第 2 批提交，回写后按同一脚本再跑一次（RUN #2）；交出第 8 步之前再跑最后一次（RUN #3）。**这两次的逐字读数贴在交给人类的推送交接里，不回写本段** —— 回写会再产生一次提交，使「交出推送许可前的最后一次闸」永远后移一格。闸是**单调**的（追加证据既不把三个文件从历史里拿走，也不弄脏工作树），所以终态 = 最终提交之后跑一次并确认 PASS，任何人可原样重跑 `/tmp/commit-gate-t3.sh` 复核。
+
+**为什么这一道闸必须在推旧仓之前**：本段的 `--uninstall` 已经删掉本机 72 个旧技能，本会话随时可能失去技能读取能力 —— 与 Task 2 的「重启会杀掉会话」是同一类不可恢复性，未提交的证据同样补不回来。第 8 步是对**另一个仓库**的写动作，一旦推出去就留在对方历史里，所以证据必须先进本仓历史。
