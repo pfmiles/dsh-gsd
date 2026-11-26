@@ -882,3 +882,374 @@ Done in 1.1s using pnpm v12.11.2
 - **不证明单源完成**：`~/.dsh/skills/gsd-*` 此刻仍 72，双源并存；删旧源是 Task 3 的 `--uninstall`，本段没有做、也不得做。
 - **不证明 `/tmp` 那份 tarball 会长期在**：它只保证这一次重装装的是这一份（`sha256` 逐字节相同）；`/tmp` 的生命周期不归本计划管（见 §4 末的副作用记账）。
 - **`cordis.yml` 被重写这件事本身不作判据**：它只是本段必须记账的副作用（§3 第 6 行）；`--dump-config` 的退出码同样不作判据。
+
+---
+
+## 判据段 14 — 真实 `~/.dsh` 迁移（runbook 步骤 1–6）与 G-4（计划编号 13；13 已被 05-04 Task 2 的 3091 刷新占用，本段落在 14）
+
+> 本段覆盖 `05-04-PLAN.md` Task 3（`type="checkpoint:human-verify" gate="blocking-human"`）的 `<action>` **第 1–7 步**（写段）。**第 8 步（推旧仓）没有执行**：它等人类回 `approved`，本段止于它之前。
+> **段号口径（承判据段 12 的同一条顺延规则）**：计划的 Task 3 写的是「判据段 13」，但 13 已被本计划的 Task 2 占用。Task 1 已在判据段 12 记下「本计划的三段落在 12 / 13 / 14」；本段就是那第三个，标题指纹里的「计划编号 13」不构成第二个 13。
+> **这一段的写动作是不可逆的**：`--uninstall` 对 `$DSH_HOME/skills/gsd-*` 是无条件 `rm -rf`。唯一的额外保险是执行前把 72 个目录复制到 `/tmp`（§3），它**不是**插件态的回退路径（回退靠 `.stripped-bak`，见 §12）。
+> **`--dump-config` 的第二次显式记账**：本段在 `web` 与 `headless` 上各跑了一次 `--dump-config`（计划的 Task 3 第 4 步**要求**两 profile 的 two-row 计数，这是它被允许的唯一理由）。实测它重写了两个 profile 的 `<profile>/cordis.yml`（mtime 从 `Nov 16` 变成 `Nov 26 12:32`，字节数仍 223 B）—— 迁移期它已经是动作的一部分，不构成「把它当只读探针」的违反；`gsd-p3-release` 一次都没跑过。
+
+### 1. 前提
+
+| # | 命令 | 时间 (UTC) | 读数 |
+| -- | ---- | ---------- | ---- |
+| 1 | `git rev-parse --abbrev-ref HEAD` / `git rev-parse HEAD` | 04:30:2xZ | `main` / `aee42e577eedfe04c334e483e710ce76113c8486` |
+| 2 | `git status --porcelain` | 04:30:2xZ | **0 行（空）** |
+| 3 | 根 pin 守卫（`<project_root_pin>`，每个 commit 前重跑） | 全程 | `PIN: PASS pinned=/Users/yue.weny/frontWorkspace/gsd-on-dsh/dsh-gsd actual=…` |
+
+⇒ D-11 的前提成立：Task 3 开始前没有未提交的 `.planning/` 改动。
+
+### 2. 步骤 1 硬门 —— **本轮重跑**（不沿用 Task 1 的旧输出）
+
+抽取方式：`sed -n '60,124p' docs/MIGRATION.md > /tmp/mig-gate-zh-t3.sh`（zh 半，65 行，一个字未改写）；`grep -c '^# MIG-GATE' docs/MIGRATION.md` = **2**（zh/en 各一块，属计划的「计数为 2 也可接受」分支）。
+
+`MIG_DECIDED_PROFILES="web headless gsdtest gsd-p3-release"`（= 判据段 12 §5 的四条 `DECIDE` 行）。**UTC 2026-11-26T04:30:52Z，退出码 `0`：**
+
+```text
+DSH_HOME=/Users/yue.weny/.dsh
+GATE: skills=72
+GATE: profiles=4 decided=web headless gsdtest gsd-p3-release
+GATE: undecided=headless web
+GATE: bridge=headless web
+GATE: multirow=-
+GATE: machine-level=CLEAN
+GATE: PASS
+```
+
+| 项 | 读数 |
+| -- | ---- |
+| 裁决行 | **`GATE: PASS`** |
+| 退出码 | **0** |
+| 命中集 | `undecided ∪ bridge ∪ multirow` = `{headless, web}`（与 Task 1 两次跑**完全相同**：刷新重启没有改变现场） |
+| `GATE: skills` | **72** —— 与 §3 的备份计数同源（备份在它之后 22 秒做的，见下） |
+| `machine-level` | `CLEAN`（文件在、`gsd-hooks-bridge` 计数 0）⇒ 不会 `exit 2` |
+| 与 `DECIDE` 行的对应 | `web`/`headless` = 命中集，`migrate`；`gsdtest`/`gsd-p3-release` = 在册也给去向，`migrate`。**四行逐字对应，没有增删** |
+
+### 3. 备份（销毁性步骤之前的唯一额外保险）
+
+```bash
+B=/tmp/dsh-legacy-skills-backup-$(date -u +%Y%m%dT%H%M%SZ)
+mkdir -p "$B" && cp -a "$HOME/.dsh/skills/." "$B/"
+```
+
+| 项 | 读数 |
+| -- | ---- |
+| 备份路径 | **`/tmp/dsh-legacy-skills-backup-20261126T043114Z`** |
+| `gsd-*` 目录数 | **72**（`BACKUP-GUARD: PASS (72)`） |
+| 文件数 / 体积 | **268** files / **2408 KB** |
+| 字节抽检 | `$B/gsd-health/SKILL.md` = **3084 B**、`$B/gsd-new-project/SKILL.md` = **3195 B** —— 与卸载前源侧 `wc -c` 的读数**逐字相同** |
+| 它为什么不能伪造阴性对照 | 阴性对照 A 读的是 `$DSH_HOME/skills/gsd-*`；备份在 `/tmp`，不在 `$DSH_HOME` 下，构不成第二个源 |
+
+**一条必须写下来的方法学陷阱（本轮踩到并纠正）**：`ls -d "$HOME/.dsh/skills/gsd-*"`（**glob 在引号内**）会让 `ls` 去找一个字面名为 `gsd-*` 的文件，于是打印 `No such file or directory`、计数 0 —— 而目录其实在。runbook 自己的块写的是 `"$DSH_HOME"/skills/gsd-*`（glob 在引号外），是对的。**任何人复核本段读数时，0 必须先排除这个引号形态**，否则会把「旧源还在」读成「旧源已死」。
+
+### 4. 步骤 2 `--uninstall`（退出码不作判据）
+
+```bash
+export DSH_HOME="$HOME/.dsh"
+bash /Users/yue.weny/frontWorkspace/gsd-on-dsh/install-gsd-dsh/install-gsd-dsh.sh --uninstall
+```
+
+**UTC 2026-11-26T04:31:49Z，rc `0`（源码末尾无条件 `exit 0`，故不作判据），逐字输出：**
+
+```text
+== uninstall GSD/DSH deployment from /Users/yue.weny/.dsh ==
+   removed managed gsd-core/
+   removed managed hooks/
+   removed managed scripts/
+   removed managed gsd-hooks.dsh.json
+no marked block: /Users/yue.weny/.dsh/profiles/gsd-p3-release/cordis.patch.yml
+no marked block: /Users/yue.weny/.dsh/profiles/gsdtest/cordis.patch.yml
+stripped GSD-DSH-bridge /Users/yue.weny/.dsh/profiles/headless/cordis.patch.yml (backup: /Users/yue.weny/.dsh/profiles/headless/cordis.patch.yml.stripped-bak)
+stripped GSD-DSH-bridge /Users/yue.weny/.dsh/profiles/web/cordis.patch.yml (backup: /Users/yue.weny/.dsh/profiles/web/cordis.patch.yml.stripped-bak)
+   Done. If you also want to drop GSD's global state: rm -rf ~/.gsd
+```
+
+⇒ 被剥的正是 `web` 与 `headless`（bridge 各 2 → 0），`gsdtest` 与 `gsd-p3-release` 本就没有 block（`no marked block:`）。`.stripped-bak` 恰 **2** 个，就是这两个 profile 的（卸载前实测 0 个）。
+
+**卸载后立刻取的阴性对照（2026-11-26T04:31:57Z，先于步骤 4 的安装）**：A `0`；B `gsd-core absent` / `hooks absent` / `scripts absent`；C `gsd-hooks.dsh.json*` **0 行输出**；D bridge/sandbox **0 行输出**；E `machine-level: PRESENT gsd-hooks-bridge=0`。步骤 5 在安装之后又原样跑了一次，读数相同（§6）。
+
+### 5. 步骤 3 —— 卸全局 CLI
+
+```text
+$ npm uninstall -g @opengsd/gsd-core
+removed 106 packages in 961ms
+$ command -v gsd_run
+(无输出) ⇒ no gsd_run on PATH
+$ npm ls -g --depth=0 | grep -i gsd
+(无输出) ⇒ no gsd package in global prefix
+```
+
+⇒ 承 04-D-04：runbook 默认卸掉 PATH 上的全局 CLI（1.16.0）。包内 skills 的 adapter 写的是包内绝对路径，故这一步不损伤插件态（runbook 步骤 3 的第二段）。
+
+### 6. 步骤 4 —— registry 通道装 `web` 与 `headless`（版本取自判据段 12，不硬编码）
+
+```bash
+PV=$(sed -n 's/^PUBLISHED_VERSION=//p' .planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md | head -1)   # 1.20.1-1.dsh022
+LIVE=$(npm view dsh-gsd dist-tags.latest --registry https://registry.npmjs.org/)                  # 1.20.1-1.dsh022
+dsh plugin --profile web      add "dsh-gsd@$PV" --registry=https://registry.npmjs.org/
+dsh plugin --profile headless add "dsh-gsd@$PV" --registry=https://registry.npmjs.org/
+```
+
+| 项 | 读数 |
+| -- | ---- |
+| 判据段 12 记录的 `PUBLISHED_VERSION` | **`1.20.1-1.dsh022`** |
+| 权威 registry 现场 `dist-tags.latest`（04:32:07Z） | **`1.20.1-1.dsh022`** ⇒ `registry-pin: MATCH`（不等则停手问人，本轮相等） |
+| 本机默认 registry | `https://registry.npmmirror.com`（只读镜像，判据段 12 §3 第 1 行）⇒ 两条安装命令都带 `--registry=https://registry.npmjs.org/` |
+| 是否用了 `--force` | **没有**（`--force` 是 Task 2 重装 `gsdtest` 的安装器替换语义，不属于真实迁移的 registry 通道） |
+
+**`web`（04:32:07Z，rc 0）逐字关键行**：
+
+```text
+✓ Lockfile passes supply-chain policies (verified 16d ago)
+Packages: +1 -5
++-----
+dependencies:
++ dsh-gsd 1.20.1-1.dsh022
+Done in 189ms using pnpm v12.11.2
+```
+
+`+1 -5` 是 pnpm 的 prune 计数，**不得**当作「删掉了四源里的谁」：装完立刻复核过，`dsh-gsd` / `@jiangzhenguo/dsh-codegraph` / `dsh-deja` / `dshmarket` 四个 `cordis.patch.yml` **全部 present**，`bundles` 从 5 项变 6 项（`… dshmarket, dsh-gsd`）。
+
+**`headless`（04:32:17Z，rc 0）逐字关键行**：`Packages: +1` / `+` / `+ dsh-gsd 1.20.1-1.dsh022` / `Done in 115ms`。
+
+**两 profile 的断言（全部同时成立）**：
+
+| 断言 | `web` | `headless` |
+| ---- | ----- | ---------- |
+| `node_modules/dsh-gsd/package.json` 的 `version` | **`1.20.1-1.dsh022`** | **`1.20.1-1.dsh022`** |
+| `index.js:22` 形态 | `const pluginRoot = dirname(fileURLToPath(import.meta.url))`（无 `'..'`） | 同左 |
+| `skillsDir` 求值 / 目标是否存在 | `<plugin>/skills` / **`exists=true`** | `<plugin>/skills` / **`exists=true`** |
+| 包内 `skills/gsd-*` | **72** | **72** |
+| 包内 `gsd-health/SKILL.md` | **3587 B** | **3587 B** |
+| 包内 `gsd-new-project/SKILL.md` | **3856 B** | **3856 B** |
+| `--dump-config` 两 row | `gsd` **1** / `gsd-hooks-bridge` **1**（合计 2） | **1** / **1**（合计 2） |
+| 同一次 dump 的 stderr | **0 B**（rc 0） | **0 B**（rc 0） |
+| `dsh-gsd` 层标签 | `# == dsh-gsd` **1 行** | **1 行** |
+| 标头数 | **39** | **14** |
+
+**H0 没有取 ⇒ 增量判据按 runbook 降级**：runbook 要求在步骤 2 之后、步骤 4 之前 dump 一次取 H0；本轮没有在那段窗口里 dump（当时优先保证「卸载后立刻取阴性对照」）。按 runbook 的原文这属于「真没取到就降级：跳过增量判据，只用步骤 5 的 stderr / 标签 / row 集合与步骤 6 的真实迁移形态（`COEXIST-REAL`，它不比较增量）」。所以上表的标头数（39 / 14）**只作现场记录，不作判据**，也没有拿它跟 `dsh.profile.bundles` 的长度比（runbook 明写那是伪不变量）。
+
+### 7. `gsdtest` 在旧源被摘掉之后**仍从插件供 72 个技能**（D-11 先刷新后迁移的全部理由）
+
+| # | 读数 | 值 |
+| -- | ---- | -- |
+| 1 | `ls -d "$DSH_HOME"/skills/gsd-* \| wc -l` | **0**（旧源已死；`~/.dsh/skills` 下仍有 15 个非 `gsd-*` 条目，`--uninstall` 只删 `gsd-*` 前缀） |
+| 2 | 执行**已安装插件自己的** `apply()` 拿到的 provider 行 | `[dsh-gsd] skills provider: /Users/yue.weny/.dsh/profiles/gsdtest/node_modules/dsh-gsd/skills` |
+| 3 | 该行的目标目录 | `resolved-exists=true`，`gsd-dirs=**72**` |
+| 4 | 该目录下每个 bundle 的完整性 | `dirs=72` / `with-SKILL.md=72` / `frontmatter-ok=72` |
+| 5 | 启动探针：同一 stack 临时起在 **3097** 端口（输出被捕获） | 监听成功（`lsof` 出现 pid），**stderr 0 字节** ⇒ 没有 bundle 被静默跳过；随后 `kill`，3097 无残留；3091 仍是 pid **11168**、未受影响 |
+
+**第 2 行是怎么读到的（也是本段的一个方法论收获）**：Task 2 判定「provider 行读不到」（3091 的 fd 1/2 指向 `/dev/ttys001`），本段改用**执行已安装插件本身**：`node` 里 `import` `~/.dsh/profiles/gsdtest/node_modules/dsh-gsd/index.js`，用 stub `ctx`（`logger.info` 收集 + `skills.registerProvider` 捕获工厂）调 `apply(ctx, {})`，就把它要打印的那行原样拿到了 —— 这些字节就是 pid 11168 启动时加载的同一份（`sha256 = 6d027202…267585af`，与 tarball 内那份相同）。同一探针对 `web` 与 `headless` 也各跑了一次，三个 profile 的 provider 行都指向 `<profile>/node_modules/dsh-gsd/skills`、都是 72：
+
+```text
+profile=gsdtest        provider-line="… /profiles/gsdtest/node_modules/dsh-gsd/skills"         resolved-exists=true  gsd-dirs=72
+profile=web            provider-line="… /profiles/web/node_modules/dsh-gsd/skills"             resolved-exists=true  gsd-dirs=72
+profile=headless       provider-line="… /profiles/headless/node_modules/dsh-gsd/skills"        resolved-exists=true  gsd-dirs=72
+profile=gsd-p3-release provider-line="… /profiles/gsd-p3-release/node_modules/skills"          resolved-exists=false gsd-dirs=-1   ← 见 §8
+```
+
+**这一节证不了什么**：它证的是「插件注册的技能根是哪里、那里有多少个可解析的 bundle」+「旧源为 0」，**没有**在一次 live 会话的技能目录里数出 72 行。`dsh --profile gsdtest --json` 这种 one-shot 形态在这个 web-app profile 上不适用（实测 `error: unknown option '--json'`：`--json` 是 app 参数、不是 launcher 参数）。判据段 11 那种 one-shot 计数是在 `/tmp` 的 headless 形态 profile 上做的。
+
+### 8. `gsd-p3-release` 的迁移后状态（**范围外，如实报告，未改动**）
+
+计划把 in-scope 集限定为 `web` + `headless`，本段**没有**动 `gsd-p3-release`。但它在迁移后有一个必须报告的状态：
+
+| 项 | 读数 |
+| -- | ---- |
+| `dsh.profile.bundles` | `["@deepseek-ai/dsh-base","dsh-gsd"]`（在册） |
+| 已装插件 `version` | `1.20.1-1.dsh022` |
+| 已装 `index.js` 形态 | `const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')` —— **CR-01 修复前**形态 |
+| 它的 provider 行 | `[dsh-gsd] skills provider: /Users/yue.weny/.dsh/profiles/gsd-p3-release/node_modules/skills`，**`exists=false`** |
+| ⇒ 迁移后它从插件拿到的 `gsd-*` 技能 | **0**（该 bundle 早就在册，但 `skillsDir` 指向不存在的目录） |
+| 迁移前它靠什么拿技能 | home 级 `$DSH_HOME/skills/gsd-*`（现已 0）⇒ **它此刻没有任何 `gsd-*` 技能来源** |
+| 本段是否修它 | **没有**。修它 = 往该 profile 再装一次插件（`dsh plugin --profile gsd-p3-release add "dsh-gsd@$PV" --registry=https://registry.npmjs.org/`），属于重新配置一个不在 in-scope 集里的 profile，交给人裁决 |
+
+**这条与判据段 12 §5 的 `DECIDE gsd-p3-release: migrate` 不矛盾、但补上了那行没看到的一半**：那行写的是「已处插件形态 ⇒ 保留，本轮不动它」，依据是 `bundles` 含 `dsh-gsd`；而**在册 ≠ 供技能** —— 它的 `index.js` 是修复前形态，所以「不动它」的代价是它失去技能来源。T-5-18 的陷阱在这里以另一个 profile 的形态复现：`version` 串（`1.20.1-1.dsh022`）完全区分不出这件事。
+
+### 9. 步骤 5 —— 阴性对照 A–E + 内容比对 + 豁免扫描（两条必须**同时**成立）
+
+#### 9.1 阴性对照 + 内容比对：`docs/MIGRATION.md:193-225` 原样抽出后执行
+
+**`P=web`（04:35:56Z，块自身 rc 0 —— 不作判据）逐字输出：**
+
+```text
+DSH_HOME=/Users/yue.weny/.dsh
+       0
+gsd-core   absent
+hooks      absent
+scripts    absent
+machine-level: PRESENT gsd-hooks-bridge=0
+3587 /Users/yue.weny/.dsh/profiles/web/node_modules/dsh-gsd/skills/gsd-health/SKILL.md
+3856 /Users/yue.weny/.dsh/profiles/web/node_modules/dsh-gsd/skills/gsd-new-project/SKILL.md
+      72
+       0
+39
+dsh-gsd layer present
+1
+1
+```
+
+**`P=headless`（04:36:04Z）**：同一块，`diff` 证明**只替换了一行**（`3c3 P=web → P=headless`）；输出同上，仅两处随 profile 变：路径里的 `profiles/web` → `profiles/headless`、标头数 `39` → `14`。
+
+| 对照 | 期望 | 实测（`web` / `headless`） | 判定 |
+| ---- | ---- | -------------------------- | ---- |
+| A 旧源技能数 | 0 | **0** / **0** | ✅ |
+| B `gsd-core` / `hooks` / `scripts` | 三行全 absent | `absent` ×3 / `absent` ×3 | ✅ |
+| C `ls "$DSH_HOME"/gsd-hooks.dsh.json*` | 无输出 | **无输出**（0 行） | ✅ |
+| D `grep -l -e 'GSD-DSH-bridge BEGIN' -e 'GSD-DSH-sandbox BEGIN' profiles/*/cordis.patch.yml` | 无输出 | **无输出**（0 文件） | ✅ |
+| E 机器级一面 | `ABSENT` 或 `PRESENT gsd-hooks-bridge=0` | `PRESENT gsd-hooks-bridge=0`（= PRESENT-and-clean） | ✅ |
+| 内容比对 1 `gsd-health/SKILL.md` | 3587 B | **3587** / **3587** | ✅ |
+| 内容比对 2 `gsd-new-project/SKILL.md` | 3856 B | **3856** / **3856** | ✅ |
+| 内容比对 3 `skills/gsd-*` | 72 | **72** / **72** | ✅ |
+| 层是否挂上 `dsh-gsd layer present` | 出现 | 出现 / 出现 | ✅ |
+| 两 row `gsd` / `gsd-hooks-bridge` | 各 1 | **1 / 1**（两 profile 都是） | ✅ |
+| dump 的 stderr 字节 | 0 | **0** / **0** | ✅ |
+
+**两条判据如何互补**：A–E 只证「旧源已死」（插件坏掉也能满足 0），内容比对只证「新源是真源」（无法排除混源）；上表两半都成立。
+
+#### 9.2 豁免扫描
+
+| 项 | 读数 |
+| -- | ---- |
+| `web/compatibility.json` | **absent**（没有 `allow-version` 豁免被记录） |
+| `headless/compatibility.json` | **absent** |
+| profile 清单里的 `allow-version` / `allowVersion` | **0** 个文件命中 |
+| 安装命令里的 `--force` | **0 处**（runbook 的「绝不 `--force`」针对的是用它绕过兼容门；本段两次 `add` 都没带） |
+
+### 10. 步骤 6 —— G-4：静态段四源 + CB-8b（`COEXIST-REAL`）
+
+#### 10.1 静态段（`docs/MIGRATION.md:246-273` 原样抽出，零安装）—— 04:36:14Z
+
+```text
+DSH_HOME=/Users/yue.weny/.dsh
+coexist-static ok: gsd gsd-hooks-bridge dsh-codegraph deja dsh-market
+```
+
+| 判据 | 读数 |
+| ---- | ---- |
+| 裁决行 | **`coexist-static ok:`** 出现 |
+| `MISSING:` 行数 | **0**（四源齐全；`MISSING:` 在本段被判红，不当 skip） |
+| `SKIPPED` 行 | **没有**（`n<2` 才会打，本机四源全在） |
+| 退出码 | 0（只作辅助：runbook 明写静态段的 `exit 1` 是失败信号、不是裁决） |
+
+**四条来源的 row id 集合（逐字，同一次只读抽取）**：
+
+| 来源 | `cordis.patch.yml` | row id 集合 |
+| ---- | ------------------ | ----------- |
+| `dsh-gsd` | `$DSH_HOME/profiles/web/node_modules/dsh-gsd/cordis.patch.yml` | `[gsd, gsd-hooks-bridge]` |
+| `codegraph`（`@jiangzhenguo/dsh-codegraph`） | `…/node_modules/@jiangzhenguo/dsh-codegraph/cordis.patch.yml` | `[dsh-codegraph]` |
+| `deja`（`dsh-deja`） | `…/node_modules/dsh-deja/cordis.patch.yml` | `[deja]` |
+| `dshmarket` | `…/node_modules/dshmarket/cordis.patch.yml` | `[dsh-market]` |
+
+两两不相交：**`pairwise-disjoint=true`**，合计 5 个 id。与判据段 12 §6 的差别只有一条：`dsh-gsd` 从 `MISSING` 变成 `[gsd, gsd-hooks-bridge]` —— 那正是计划要求的「迁移前必然缺、由 Task 3 补齐」。
+
+#### 10.2 CB-8b —— `COEXIST-REAL`（`docs/MIGRATION.md:308-353` 原样抽出，零安装）—— 04:36:14Z
+
+```text
+DSH_HOME=/Users/yue.weny/.dsh
+COEXIST-REAL env DSH_HOME=/Users/yue.weny/.dsh profile=web
+COEXIST-REAL listed dsh-gsd
+COEXIST-REAL label dsh-gsd PRESENT
+COEXIST-REAL listed dsh-deja
+COEXIST-REAL label dsh-deja PRESENT
+COEXIST-REAL listed dshmarket
+COEXIST-REAL label dshmarket PRESENT
+COEXIST-REAL row gsd 1
+COEXIST-REAL row gsd-hooks-bridge 1
+COEXIST-REAL row deja 1
+COEXIST-REAL row dsh-market 1
+COEXIST-REAL dup 0
+COEXIST-REAL PASS
+```
+
+**CB-8b 的五条合取（`04-05-PLAN.md:436` 的 ①–⑤），逐条读数**：
+
+| # | 合取 | 读数 | 判定 |
+| -- | ---- | ---- | ---- |
+| ① | dump 的 stderr 0 字节 | `wc -c < /tmp/c-real.err` = **0** | ✅ |
+| ② | `dsh-gsd` **必须在** `dsh.profile.bundles` 里（缺则 `required-absent:dsh-gsd`） | `LISTED` = `@deepseek-ai/dsh-base @deepseek-ai/dsh-web-app @jiangzhenguo/dsh-codegraph dsh-deja dshmarket **dsh-gsd**`；输出里**没有** `required-absent:` | ✅ |
+| ③ | 三个关注 bundle 的 listed ⇔ labeled | `dsh-gsd` listed + `label … PRESENT`；`dsh-deja` listed + `PRESENT`；`dshmarket` listed + `PRESENT`（没有 `COEXIST-REAL absent` 行） | ✅ |
+| ④ | 在册 bundle 的期望 row id 各恰 1 行 | `gsd 1` / `gsd-hooks-bridge 1` / `deja 1` / `dsh-market 1` | ✅ |
+| ⑤ | 这些 id 上 `uniq -d` 为空 | `COEXIST-REAL dup 0`；独立复核 `uniq -d` 输出 **0 行** | ✅ |
+| — | 块自身的裁决 | **`COEXIST-REAL PASS`**，退出码 **0** | ✅ |
+
+#### 10.3 `CB-8` 的归属与口径（不许写错的那几句）
+
+- **`CB-8b` 是存在的**，定义在 `04-05-PLAN.md`：`:436` 写它的五条合取，`:772-773` 命名 `CB-8a = COEXIST-DRILL` 与 `CB-8b = COEXIST-REAL`（该文件 5 行命中：`76 / 436 / 437 / 772 / 773`）。
+- `04-VALIDATION.md:165` 的 G-4 escalation 行指的就是它；**它把 CB-8b 记作「四条判据」是少算了一条** —— ② `required-absent:dsh-gsd` 必须跑，而且恰恰是「步骤 4 没做成」时唯一会红的那条。本轮 ② 有读数（listed，无 `required-absent`）。
+- `docs/MIGRATION.md` 全文 **0 次**出现 `CB-8` 这个标签（`grep -c` = 0，判据段 12 §7 的 5 / 1 / 0 已钉住行号）。所以本段引的是 runbook 的 `:239-257` 静态段正文与 `:305-354` 的 `COEXIST-REAL` 块正文，并按名字引 `CB-8b` 加它的两处出处。
+- 真实迁移只跑两段（静态段 + `COEXIST-REAL`）；中间的 `COEXIST-DRILL`（真装三个 bundle）是**一次性 home** 的演练形态，真实迁移**不跑**它，本段也没有跑。
+
+### 11. ROADMAP 复核（做成动作，不改写）
+
+`.planning/ROADMAP.md` 的 Phase 5 段（`:115-147`）逐项复核。`**Requirements**` 行（`:119`）：
+
+```text
+**Requirements**: UAT-01, UAT-02, UAT-03, UAT-04, UAT-05, UAT-06, INST-01, INST-02, INST-03, INST-04, INST-05, INST-06, PUB-01, PUB-03, D-10-1, D-10-2, D-10-3, D-10-4, D-10-5
+```
+
+解析出 19 个 ID，与 D-10 要求的 19 个**完全一致**（`missing none` / `extra none` / `duplicates none`）。逐 ID：
+
+| # | ID | 在 Requirements 行 | 备注 |
+| -- | -- | ------------------ | ---- |
+| 1 | `UAT-01` | **present** | |
+| 2 | `UAT-02` | **present** | |
+| 3 | `UAT-03` | **present** | |
+| 4 | `UAT-04` | **present** | |
+| 5 | `UAT-05` | **present** | |
+| 6 | `UAT-06` | **present** | |
+| 7 | `INST-01` | **present** | |
+| 8 | `INST-02` | **present** | |
+| 9 | `INST-03` | **present** | |
+| 10 | `INST-04` | **present** | |
+| 11 | `INST-05` | **present** | |
+| 12 | `INST-06` | **present** | |
+| 13 | `PUB-01` | **present** | |
+| 14 | `PUB-03` | **present** | |
+| 15 | `D-10-1` | **present** | |
+| 16 | `D-10-2` | **present** | |
+| 17 | `D-10-3` | **present** | |
+| 18 | `D-10-4` | **present** | |
+| 19 | `D-10-5` | **present** | |
+
+Success Criteria 第 6–10 条（`:129-133`）逐条抄回：
+
+| SC | 条文（首句） | D-10 名字 | 判定 |
+| -- | ------------ | --------- | ---- |
+| 6 | （`D-10-1`）`--test-concurrency=1` 在 `package.json` 的 `test`、`package.json` 的 `prepack` 与 `.github/workflows/compat-matrix.yml` 的全量测试步**三处**齐备，且有一条计数断言守着它 | `D-10-1` | **present** |
+| 7 | （`D-10-2`）G-4 闭合：真实迁移 `web` 后步骤 6 静态段的四条来源 row id 两两不相交（`MISSING:` 判红）且 `COEXIST-REAL` 通过 | `D-10-2` | **present** |
+| 8 | （`D-10-3`）真实 `~/.dsh` 迁移完成：旧源为零、`web` 与 `headless` 的插件 row 各恰 1、包内 72 技能与两项字节数对齐 | `D-10-3` | **present** |
+| 9 | （`D-10-4`）旧仓 `pfmiles/install-gsd-dsh` 互链已推送：远端 main 的 sha 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致 | `D-10-4` | **present**（条文在；**执行**尚未发生，见 §13） |
+| 10 | （`D-10-5`）`gsd-core/bin/lib/ui-frontend-evidence.cjs` 在**构建后**的 `SKIP_DIRS` 含 `.gsd-build-tmp`，连跑两次 `node build.mjs` 仍成立 | `D-10-5` | **present** |
+
+⇒ **19/19 ID 与 5/5 SC 全部在场，本段没有改 ROADMAP 一个字节。** 这条之所以是「复核」而不是「回写」：规划期已回写一次，Phase 4 的 `req-line-misparse`（区间形态 `UAT-01..06` 不被 CLI 展开）就是第二次改写会撞上的坑 —— 而现在这一行是**逐 ID 展开**的形态。
+
+### 12. 套件回归（迁移后）
+
+`node --test --test-concurrency=1 tests/*.test.mjs`（2026-11-26T04:36:49Z，cwd = 仓根）：
+
+```text
+ℹ tests 47
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 7
+ℹ todo 0
+ℹ duration_ms 8411.228334
+```
+
+⇒ **47 / fail 0**，与基线一致。7 个 skip 是 live UAT 用例（`DSH_UAT_LIVE is not 1` + `DEEPSEEK_API_KEY is not in the process env`），属设计内的 opt-in 行为，不是迁移引起的。套件不依赖 `~/.dsh`（凭据文件 `~/.dsh/.credentials.yaml` 未被迁移触碰：591 B、mtime `Oct 22 14:14`）。
+
+### 13. 边界：这证不了什么
+
+- **不证明旧仓推送**：第 8 步没有执行。远端 sha 仍应是 `41fcc7a`、`snippet.en.md` 的正文还没进对方 `README.md`；`05-UAT.md` 的 D-10-4 行按四值闭集取 `⚠ 未执行`。
+- **不证明 hooks 在运行时真的拦截**：`COEXIST-REAL` 判的是「在册 ⇔ 挂上 + row 集合」，不是事件的运行时行为（runbook 的「这三段都还不能证明什么」原话）。
+- **不证明 codegraph 的同层合成**：四源只有**行级** id 不相交的证据（G-4 的既定边界），没有装三个 bundle 的合成演练。
+- **不证明技能真的进了会话**：§7 证的是 provider 注册的根与那里的 72 个可解析 bundle，外加旧源为 0；没有在一次 live 会话的技能目录里数出 72 行。
+- **不证明 peer 依赖是干净的**：两次 `add` 都打了 `[WARN] Issues with peer dependencies found`（runbook 提及的已知噪声）；豁免扫描的 `0` 只证「没有记录 `allow-version` 豁免」，不证「peer 全部满足」。
+- **`+1 -5` 不作判据**：它只是 pnpm 的 prune 计数；四源在场是装完之后另外 `ls` 复核的。
+- **`--dump-config` 的标头数与退出码不作判据**：标头数没有 H0 基线（§6 已按 runbook 降级）；退出码在有 bundle 被跳过时也仍是 0。
+- **`/tmp` 的备份不是回退路径**：它只保住那 72 个技能目录的内容；插件态的回退仍是「`.stripped-bak` 手工回填 + 重跑旧脚本」，`.stripped-bak` 必须留着（§12 的禁令）。
