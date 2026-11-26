@@ -12,7 +12,7 @@
 - [x] **Phase 2: 版本与兼容矩阵** - engines.dsh 模型化、CI matrix、版本号方案固化 (completed 2026-11-12)
 - [x] **Phase 3: 发布（GitHub + npm + dshmarket）** - 发布就绪：建仓并推送、prepack 校验、CHANGELOG、L37 修复后 CI 首绿 (completed 2026-11-12)
 - [x] **Phase 4: 迁移与并存** - runbook、差异表、旧脚本定位互链 (completed 2026-11-15)
-- [ ] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录
+- [x] **Phase 5: 端到端 UAT 与 1.0 收官** - 干净机器 8 项验收 + hooks 回归 + 开销记录 (completed 2026-11-26)
 
 ## Phase Details
 
@@ -132,7 +132,7 @@ Plans:
   9. （D-10-4）旧仓 `pfmiles/install-gsd-dsh` 互链已推送：远端 main 的 sha 前进且插入正文与 `docs/oldrepo-link/snippet.en.md` 逐字节一致
   10. （D-10-5）`gsd-core/bin/lib/ui-frontend-evidence.cjs` 在**构建后**的 `SKIP_DIRS` 含 `.gsd-build-tmp`，连跑两次 `node build.mjs` 仍成立
 
-**Plans**: 4/4 plans executed（原列 2 项；按 D-10 的「五件全纳入」扩到 4，收口段单独成最后一波 —— D-11 要求它必须在所有 `.planning/` 产物提交之后）
+**Plans**: 4/4 plans complete（原列 2 项；按 D-10 的「五件全纳入」扩到 4，收口段单独成最后一波 —— D-11 要求它必须在所有 `.planning/` 产物提交之后）
 
 **Wave 1**
 - [x] 05-01: 判据 harness 与安装/会话面 —— tracer（干净 `/tmp` home → 装插件 → 会话谓词）+ INST-02..05 + UAT-02/03 + `--test-concurrency=1` 三处与 ⑮（D-01 / D-02 / D-10-1）
