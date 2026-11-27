@@ -30,6 +30,8 @@
 
 ### Closeout
 
+**Milestone marker:** git tag **`milestone-1.0`**（annotated，指向归档提交）。**刻意不用 `v1.0`** —— 本仓的对外版本空间是插件包版本 `1.20.1-1.dsh022`（`<gsd-ver>-<rev>-dsh<line>`，编码上游 GSD 1.20.1），由 tag `1.20.1-1.dsh022` 标记 commit `a0529ac`；`v1.0` 会让人以为存在一个叫 1.0 的 npm 包或 Release（实际没有），而 `v1.0` 指向的树 `package.json` 里仍是 `1.20.1-1.dsh022`，检出后打出的包会**自称同一个版本号却是不同字节**。两套编号因此分居两个命名空间。
+
 **Closeout type:** `override_closeout` —— 5 份 VERIFICATION 在各自收官时都是 `passed`，但 5 份 `covered_digest` 在收官时**全部对不上当前字节**。审计侧是干净的：`audit-open` 收官前报 2 条 `uat_gaps`（`05-UAT.md` / `05-UAT-EVIDENCE.md`，`open_scenario_count` 均为 0），成因是这两份手写交付物缺 GSD 期望的 `status:` frontmatter，**并非真的有待办场景**；本次给两份补上终态声明后 `audit-open` 报 `All artifact types clear.`，**没有 acknowledge 任何条目**，因此 STATE.md 里没有 `## Deferred Items` 行。
 
 ### Known verification overrides
