@@ -7,18 +7,18 @@ tags: [uat, hooks, commit-validator, injection-scanner, plugin-add, version-swap
 requires:
   - phase: 05-uat-1-0
     plan: 01
-    provides: `tests/uat-harness.test.mjs` 的骨架（`uatEnv` / `missingPrereqs` / `sessionText` / `assertSessionSucceeded`）+ 证据册判据段 1–3 + `/tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz`
+    provides: "`tests/uat-harness.test.mjs` 的骨架（`uatEnv` / `missingPrereqs` / `sessionText` / `assertSessionSucceeded`）+ 证据册判据段 1–3 + `/tmp/uat-tgz/dsh-gsd-1.20.1-1.dsh022.tgz`"
   - phase: 03-github-npm-dshmarket
     provides: 可安装 tarball 与其 `files` 白名单
   - phase: 01-plugin-bootstrap
-    provides: `hooks/` 构建树与 `dsh-gsd-suite/run.cjs` wrapper（两个 hook 的唯一分发入口）
+    provides: "`hooks/` 构建树与 `dsh-gsd-suite/run.cjs` wrapper（两个 hook 的唯一分发入口）"
 provides:
   - UAT-04 的 commit 校验三段对照（opt-in 拦 / opt-in 放 / 未 opt-in 放）+ injection 只落日志
   - UAT-05 的「同一条 `plugin add` 换版本号」（`.dsh022 ↔ .dsh021`）三段判据
   - UAT-06 的三点事件时间戳数字（9 ms / 279 ms / ≈270 ms）与技能 watch 的 `not measured` 处置
   - D-10-5 的构建期 `SKIP_DIRS` 补丁（canonical 覆盖件 + 拷贝步 + 构建后字节等值断言）
-  - `05-UAT.md` 的 13 行判据 ↔ 证据 ↔ 结论表（12 个四值闭集结论单元）
-  - `BUILD.md:16` 从「无人守的活体计数」变成由 ⑯ 自校验（47/47）
+  - "`05-UAT.md` 的 13 行判据 ↔ 证据 ↔ 结论表（12 个四值闭集结论单元）"
+  - "`BUILD.md:16` 从「无人守的活体计数」变成由 ⑯ 自校验（47/47）"
 affects: [05-03, 05-04]
 
 actuals:

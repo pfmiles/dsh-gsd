@@ -10,7 +10,7 @@ requires:
     provides: build/assets/pins.json 行↔pin 真源 + build/lib/check-pins.mjs 强等值门 + compat-matrix 4 格 × 6 步 workflow + build/lib/compat-probe.mjs 宿主求值探针
 provides:
   - peer 收紧为 exact 0.2.2-rc.1（package.json 与 pins.json 同构），workflow L37 零改动下 install-ok 方向被真实解析树证明
-  - workflow 顶层 permissions{contents: read} + install-ok 格门控正向解析断言（run: 行数仍 4，未新增步骤）
+  - "workflow 顶层 permissions{contents: read} + install-ok 格门控正向解析断言（run: 行数仍 4，未新增步骤）"
   - tests/pack-contents.test.mjs 纳入 tests/*.test.mjs glob（发布面 per-commit 防线，3 tests）
   - 全量 29/29 与真实 tarball（958 文件）装成 boot 证据，profile gsd-p3-release 可供 Phase 5 复用对照
 affects: [03-02, 03-03, Phase 5 UAT-01]

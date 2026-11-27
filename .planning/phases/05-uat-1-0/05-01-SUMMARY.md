@@ -10,10 +10,10 @@ requires:
   - phase: 04-migration-coexistence
     provides: 演练证据册三段式（`04-DRILL-EVIDENCE.md`）+ 迁移 runbook
 provides:
-  - `tests/uat-harness.test.mjs` —— UAT 唯一执行件，3 个 live 用例（UAT-01/02/03、INST-01..05）
+  - "`tests/uat-harness.test.mjs` —— UAT 唯一执行件，3 个 live 用例（UAT-01/02/03、INST-01..05）"
   - 会话判据「`assistant/message` 在场 ∧ `turn/end` 递归无 `kind:error`」（实现在 JSON.parse 之后）
-  - `.planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md` 判据段 1–3（可重放命令 + UTC 三元组）
-  - `--test-concurrency=1` 三处齐备 + `docs-consistency` ⑮ 计数断言（D-10-1）
+  - "`.planning/phases/05-uat-1-0/05-UAT-EVIDENCE.md` 判据段 1–3（可重放命令 + UTC 三元组）"
+  - "`--test-concurrency=1` 三处齐备 + `docs-consistency` ⑮ 计数断言（D-10-1）"
 affects: [05-02, 05-03, 05-04]
 
 actuals:
@@ -27,7 +27,7 @@ tech-stack:
     - 零残留一次性 `DSH_HOME`（`/tmp/dsh-uat-*`）+ 子进程 env 白名单
     - 会话记录判据（zstd 解压 → 逐行 JSON.parse → 事件级断言），而非「目录存在」
     - 「五类受管面 + 全 home 树（排除 profile）」双快照差集
-    - `!!js` 声明式求值（baseUrl = profile 目录）以复核包内自定位
+    - "`!!js` 声明式求值（baseUrl = profile 目录）以复核包内自定位"
     - 双哨兵阳性/阴性对照（同一前缀、不同值）
 
 key-files:
