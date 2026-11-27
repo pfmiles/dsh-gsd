@@ -1,3 +1,10 @@
+---
+phase: 05-uat-1-0
+status: complete
+completed: 2026-11-26
+status_note: "原始证据账本（复验序 1-9 + 判据段 1-15），本身不含场景级 status，结论由 05-UAT.md 承载。audit-open 依据文件名里的 -UAT 把它当作待判 UAT 报告而报 unknown，故在此显式声明终态。"
+---
+
 # 05-UAT-EVIDENCE.md — Phase 05 端到端 UAT 原始证据账本
 
 > **判据对象**：`tests/uat-harness.test.mjs` 的 live 用例。用例 ③ = UAT-01 / INST-01；用例 ④ = INST-02..05；用例 ⑤ = UAT-02 / UAT-03（本文件按判据段追加，判据段 2/3 由后续计划写入）。
